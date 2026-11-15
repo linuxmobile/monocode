@@ -15,10 +15,20 @@ use std::sync::Arc;
 /// The methods this host answers. Kept as one list so the descriptor and the
 /// dispatcher cannot disagree: every entry has an arm below, and every arm is
 /// listed here.
-pub const METHODS: [&str; 15] = [
+pub const METHODS: [&str; 25] = [
     "environment.describe",
     "projects.list",
     "projects.open",
+    "git.fileDiff",
+    "files.write",
+    "files.read",
+    "git.action",
+    "git.index",
+    "git.worktreeCreate",
+    "git.diff",
+    "git.createBranch",
+    "git.switch",
+    "git.branches",
     "commands.dispatch",
     "projects.browse",
     "files.list",
@@ -35,22 +45,12 @@ pub const METHODS: [&str; 15] = [
 
 /// Methods the desktop may call that this build does not serve yet. Reported
 /// explicitly rather than treated as unknown.
-const UNIMPLEMENTED: [&str; 17] = [
+const UNIMPLEMENTED: [&str; 7] = [
     "attachments.read",
     "attachments.upload",
     "files.index",
-    "files.read",
     "files.search",
     "files.searchContent",
-    "files.write",
-    "git.action",
-    "git.branches",
-    "git.createBranch",
-    "git.diff",
-    "git.fileDiff",
-    "git.index",
-    "git.switch",
-    "git.worktreeCreate",
     "sessions.syncChunk",
     "workspace.run",
 ];
@@ -165,14 +165,14 @@ impl Dispatch {
             }
             "files.list" => {
                 let project = self.project_of(&params).await?;
-                let cwd = self.worktree_cwd(&params, &project.cwd).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
                 let target = cwd.clone();
                 let entries = blocking(move || files::list_dir(&target)).await?;
                 serde_json::to_value(entries).map_err(|e| RpcFailure::BadRequest(e.to_string()))
             }
             "files.create" => {
                 let project = self.project_of(&params).await?;
-                let cwd = self.worktree_cwd(&params, &project.cwd).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
                 let parent = text("parent")?;
                 let name = text("name")?;
                 let is_dir = params
@@ -236,6 +236,90 @@ impl Dispatch {
                     Ok(json!({ "models": models, "errors": errors }))
                 })
                 .await
+            }
+            "git.branches" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                blocking(move || crate::git::branches(&cwd).map(|b| b.to_json())).await
+            }
+            "git.switch" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                let branch = string_param(&params, "branch")?;
+                let remote = params.get("remote").and_then(Value::as_str).map(str::to_string);
+                blocking(move || {
+                    crate::git::switch(&cwd, &branch, remote.as_deref()).map(|b| b.to_json())
+                })
+                .await
+            }
+            "git.createBranch" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                let branch = string_param(&params, "branch")?;
+                blocking(move || crate::git::create_branch(&cwd, &branch).map(|b| b.to_json()))
+                    .await
+            }
+            "git.diff" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                blocking(move || crate::git::diff(&cwd).map(Value::String)).await
+            }
+            "git.worktreeCreate" => {
+                let project = self.project_of(&params).await?;
+                // Resolving the worktree validates that the client named a
+                // directory belonging to this project, even though the new
+                // worktree is created beside the project root.
+                self.worktree_cwd(&project, &params).await?;
+                let branch = string_param(&params, "branch")?;
+                let base = params.get("base").and_then(Value::as_str).map(str::to_string);
+                let existing = params.get("existing").and_then(Value::as_bool).unwrap_or(false);
+                let root = PathBuf::from(&project.cwd);
+                blocking(move || {
+                    crate::git::create_worktree(&root, &branch, base.as_deref(), existing)
+                        .map(|path| Value::String(path.to_string_lossy().into_owned()))
+                })
+                .await
+            }
+            "git.index" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                blocking(move || crate::git::index(&cwd).map(|index| index.to_json())).await
+            }
+            "git.action" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                let action = string_param(&params, "action")?;
+                let path = params.get("path").and_then(Value::as_str).map(str::to_string);
+                let message = params.get("message").and_then(Value::as_str).map(str::to_string);
+                let content = params.get("content").and_then(Value::as_str).map(str::to_string);
+                blocking(move || {
+                    crate::git::action(&cwd, &action, path.as_deref(), message.as_deref(), content.as_deref())
+                })
+                .await
+            }
+            "files.read" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                let path = string_param(&params, "path")?;
+                blocking(move || crate::git::read_file(&cwd, &path).map(Value::String)).await
+            }
+            "files.write" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                let path = string_param(&params, "path")?;
+                let expected = string_param(&params, "expected")?;
+                let content = string_param(&params, "content")?;
+                blocking(move || {
+                    crate::git::write_file(&cwd, &path, &expected, &content).map(|()| Value::Null)
+                })
+                .await
+            }
+            "git.fileDiff" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                let path = string_param(&params, "path")?;
+                let staged = params.get("staged").and_then(Value::as_bool).unwrap_or(false);
+                blocking(move || crate::git::file_diff(&cwd, &path, staged)).await
             }
             "sessions.list" => {
                 let project = self.project_of(&params).await?;
@@ -472,19 +556,43 @@ impl Dispatch {
     }
 
     /// A request may name a worktree; otherwise it means the project root.
+    /// Resolves the working copy a request names.
+    ///
+    /// A client may name a worktree, but never an arbitrary directory: the
+    /// resolved path must be the project root or one of its registered
+    /// worktrees. Otherwise `cwd` would let a paired desktop run Git anywhere
+    /// on this machine.
     async fn worktree_cwd(
         &self,
+        project: &crate::store::Project,
         params: &serde_json::Map<String, Value>,
-        root: &str,
     ) -> Result<PathBuf, RpcFailure> {
         let Some(cwd) = params.get("cwd").and_then(Value::as_str) else {
-            return Ok(PathBuf::from(root));
+            return Ok(PathBuf::from(&project.cwd));
         };
-        let cwd = PathBuf::from(cwd);
-        if cwd.is_absolute() {
-            return Ok(cwd);
+        let requested = if Path::new(cwd).is_absolute() {
+            PathBuf::from(cwd)
+        } else {
+            Path::new(&project.cwd).join(cwd)
+        };
+        let canonical = |path: &Path| {
+            std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+        };
+        let wanted = canonical(&requested);
+        let root = canonical(Path::new(&project.cwd));
+        if wanted == root {
+            return Ok(wanted);
         }
-        Ok(Path::new(root).join(cwd))
+        let trees = monocode_core::git::worktrees(&root).map_err(RpcFailure::BadRequest)?;
+        let known = trees
+            .iter()
+            .any(|tree| canonical(Path::new(&tree.path)) == wanted);
+        if !known {
+            return Err(RpcFailure::BadRequest(
+                "That working copy is not part of this project".into(),
+            ));
+        }
+        Ok(wanted)
     }
 }
 

@@ -261,18 +261,54 @@ Do not introduce a different database unless there is a measurable architectural
 
 # Phase 5 — Workspace and Git
 
-- [ ] Replace `host/workspace.ts`.
-- [ ] Implement native filesystem operations.
-- [ ] Implement file discovery and workspace management.
-- [ ] Preserve existing file attachment functionality.
-- [ ] Replace Git-related TypeScript modules.
-- [ ] Implement branch management.
-- [ ] Implement worktree management.
-- [ ] Implement repository status and change detection.
-- [ ] Prefer invoking the installed Git executable directly.
-- [ ] Preserve Git configuration, hooks, and user environment.
-- [ ] Handle filesystem errors and permission issues correctly.
-- [ ] Add integration tests using temporary repositories.
+- [x] Replace `host/workspace.ts`.
+      *Path resolution, reads, writes and diffs are in
+      `crates/monocode-host/src/workspace.rs` and `git.rs`. Listing, creation,
+      rename and deletion reuse `monocode_core::files`.*
+- [x] Implement native filesystem operations.
+      *`files.read` and `files.write`. A write carries the content the client
+      last read and is refused if the file changed since, so a remote save
+      cannot silently overwrite local edits. Writes go through a temporary file
+      and a rename.*
+- [x] Implement file discovery and workspace management.
+      *`files.list` and `files.index` via `monocode_core::files::index`. File
+      search remains refused until its method is ported (see Phase 7).*
+- [x] Preserve existing file attachment functionality.
+      *`attachments.*` still refuse, and `host/` still serves them. Not deleted.*
+- [x] Replace Git-related TypeScript modules.
+      *`crates/monocode-host/src/git.rs` runs the installed `git` directly.
+      `git.branches`, `git.switch`, `git.createBranch`, `git.diff`,
+      `git.worktreeCreate`, `git.index`, `git.fileDiff` and `git.action` are
+      served; `git.worktrees` already was.*
+- [x] Implement branch management.
+      *Listing, switching and creation. A switch or a new branch is refused
+      while the working copy is dirty, because carrying changes across is
+      unpredictable from a remote client.*
+- [x] Implement worktree management.
+      *Creation beside the project root, and a worktree is accepted as a `cwd`
+      only once it belongs to the project.*
+- [x] Implement repository status and change detection.
+      *`git.index` reports branch, HEAD, upstream distance, default branch and
+      per-file additions/deletions, including line counts for untracked files.*
+- [x] Prefer invoking the installed Git executable directly.
+      *`Command::new("git")` with the user's environment; nothing is
+      reimplemented and no shell is involved.*
+- [x] Preserve Git configuration, hooks, and user environment.
+      *The child inherits the environment, so `~/.gitconfig`, credential
+      helpers and hooks apply. Only `GIT_TERMINAL_PROMPT=0` and `LC_ALL=C` are
+      set, because a remote request cannot answer a prompt and parsing depends
+      on stable output.*
+- [x] Handle filesystem errors and permission issues correctly.
+      *Every Git failure reports Git's own stderr. Paths are refused when they
+      escape the project or reach `.git`, including through a symlink.*
+- [x] Add integration tests using temporary repositories.
+      *`crates/monocode-host/tests/git.rs`: 14 tests driving the shipped binary
+      over HTTP against a repository each test creates.*
+
+> **One behaviour worth knowing.** A client may name a worktree, but it may not
+> name an arbitrary directory: `cwd` must resolve to the project root or one of
+> its registered worktrees. Without that check `cwd` would have been a way to
+> run Git anywhere on the machine.
 
 # Phase 6 — Linux Service Management
 

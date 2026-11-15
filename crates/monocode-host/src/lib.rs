@@ -4,6 +4,7 @@
 //! integration tests can exercise the session store and the turn loop against
 //! a real (fake) provider process instead of only through HTTP.
 
+pub mod git;
 pub mod methods;
 pub mod mutex;
 pub mod protocol;
@@ -11,6 +12,7 @@ pub mod server;
 pub mod session;
 pub mod store;
 pub mod turn;
+pub mod workspace;
 
 use serde_json::json;
 
