@@ -575,7 +575,7 @@ mod tests {
             .unwrap();
         cx.run_until_parked();
         let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
-        visual.simulate_keystrokes("cmd-w");
+        visual.simulate_keystrokes("secondary-w");
         visual.run_until_parked();
         window
             .update(visual, |shell, w, cx| {
@@ -616,7 +616,7 @@ mod tests {
         cx.run_until_parked();
         let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
-        visual.simulate_keystrokes("cmd-2");
+        visual.simulate_keystrokes("secondary-2");
         visual.run_until_parked();
         visual.refresh().unwrap();
         window
