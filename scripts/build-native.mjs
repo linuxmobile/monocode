@@ -33,9 +33,4 @@ run("cargo", ["build", "--manifest-path", "crates/monocode-gpui/Cargo.toml", "--
 const target = process.env.CARGO_BUILD_TARGET
   ? join(metadata.target_directory, process.env.CARGO_BUILD_TARGET)
   : metadata.target_directory;
-if (process.platform === "darwin") {
-  run("bash", ["scripts/bundle-native-macos.sh", "release", target, app.version, "monocode-data"]);
-} else {
-  const executable = process.platform === "win32" ? "monocode-gpui.exe" : "monocode-gpui";
-  console.log(`Executable: ${join(target, "release", executable)}`);
-}
+console.log(`Executable: ${join(target, "release", "monocode-gpui")}`);

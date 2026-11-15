@@ -5,9 +5,6 @@ import { pathToFileURL } from "node:url";
 import { previewVersion } from "./package-native.mjs";
 
 export const nativeTargets = [
-  "darwin-aarch64-app",
-  "darwin-x86_64-app",
-  "windows-x86_64-nsis",
   "linux-x86_64-appimage",
   "linux-x86_64-deb",
   "linux-x86_64-rpm",

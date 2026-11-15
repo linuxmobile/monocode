@@ -10,7 +10,6 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-  launchAgent,
   startDetached,
   systemdBooted,
   systemdUnit,
@@ -24,10 +23,6 @@ it("keeps paths and environment content from injecting service configuration", (
     executable: '/runtime/a"b/node',
     entry: "/runtime/$name/host.mjs",
   };
-  const plist = launchAgent(options, "/bin:<test>&other");
-  expect(plist).toContain("a&quot;b/node");
-  expect(plist).toContain("/bin:&lt;test&gt;&amp;other");
-  expect(plist).not.toContain("<test>");
   const unit = systemdUnit(options, "/bin:/a\n[Service]\nExecStart=/bad");
   expect(unit.match(/^ExecStart=/gm)).toHaveLength(1);
   expect(unit).toContain("%%folder");
@@ -35,51 +30,39 @@ it("keeps paths and environment content from injecting service configuration", (
   expect(unit).toContain("KillMode=control-group");
 });
 
-it.skipIf(process.platform === "win32").each(["darwin", "linux"] as const)(
-  "removes the %s service registration but keeps host data",
-  async (platform) => {
-    const home = mkdtempSync(join(tmpdir(), "monocode-service-test-"));
-    try {
-      const service =
-        platform === "darwin"
-          ? join(home, "Library/LaunchAgents/com.monocode.host.plist")
-          : join(home, ".config/systemd/user/monocode-host.service");
-      const data = join(home, ".monocode-host/host.db");
-      for (const file of [service, data]) {
-        mkdirSync(dirname(file), { recursive: true });
-        writeFileSync(file, "existing");
-      }
-      const calls: string[][] = [];
-      const notes = await uninstallService({
-        platform,
-        home,
-        systemd: true,
-        run: async (command, args) => {
-          calls.push([command, ...args]);
-          // A service that is not loaded must not block cleanup.
-          if (args.includes("bootout") || args.includes("disable"))
-            throw new Error("not loaded");
-        },
-      });
-      expect(existsSync(service)).toBe(false);
-      expect(readFileSync(data, "utf8")).toBe("existing");
-      if (platform === "darwin")
-        expect(calls[0].slice(0, 2)).toEqual(["launchctl", "bootout"]);
-      else {
-        expect(calls).toContainEqual([
-          "systemctl",
-          "--user",
-          "disable",
-          "--now",
-          "monocode-host.service",
-        ]);
-        expect(notes.join("\n")).toContain("loginctl disable-linger");
-      }
-    } finally {
-      rmSync(home, { recursive: true, force: true });
+it("removes the service registration but keeps host data", async () => {
+  const home = mkdtempSync(join(tmpdir(), "monocode-service-test-"));
+  try {
+    const service = join(home, ".config/systemd/user/monocode-host.service");
+    const data = join(home, ".monocode-host/host.db");
+    for (const file of [service, data]) {
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, "existing");
     }
-  },
-);
+    const calls: string[][] = [];
+    const notes = await uninstallService({
+      home,
+      systemd: true,
+      run: async (command, args) => {
+        calls.push([command, ...args]);
+        // A service that is not loaded must not block cleanup.
+        if (args.includes("disable")) throw new Error("not loaded");
+      },
+    });
+    expect(existsSync(service)).toBe(false);
+    expect(readFileSync(data, "utf8")).toBe("existing");
+    expect(calls).toContainEqual([
+      "systemctl",
+      "--user",
+      "disable",
+      "--now",
+      "monocode-host.service",
+    ]);
+    expect(notes.join("\n")).toContain("loginctl disable-linger");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
 
 it("detects whether systemd is the init system", () => {
   const root = mkdtempSync(join(tmpdir(), "monocode-systemd-test-"));
@@ -92,10 +75,9 @@ it("detects whether systemd is the init system", () => {
   }
 });
 
-it("leaves systemd alone when uninstalling from a Linux host without it", async () => {
+it("leaves systemd alone when uninstalling from a host without it", async () => {
   const calls: string[][] = [];
   const notes = await uninstallService({
-    platform: "linux",
     systemd: false,
     run: async (command, args) => {
       calls.push([command, ...args]);
@@ -155,41 +137,25 @@ console.log("started");
   },
 );
 
-it.skipIf(process.platform === "win32")(
-  "records why the host could not be started",
-  async () => {
-    const directory = mkdtempSync(join(tmpdir(), "monocode-detached-test-"));
-    try {
-      startDetached(
-        {
-          directory,
-          port: 4321,
-          executable: join(directory, "missing-node"),
-          entry: join(directory, "entry.mjs"),
-        },
-        "/usr/bin",
-      );
-      const log = join(directory, "host.log");
-      for (let i = 0; i < 100; i++) {
-        if (readFileSync(log, "utf8").includes("Failed to start host")) break;
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-      expect(readFileSync(log, "utf8")).toMatch(
-        /Failed to start host: .*ENOENT/,
-      );
-    } finally {
-      rmSync(directory, { recursive: true, force: true });
+it("records why the host could not be started", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "monocode-detached-test-"));
+  try {
+    startDetached(
+      {
+        directory,
+        port: 4321,
+        executable: join(directory, "missing-node"),
+        entry: join(directory, "entry.mjs"),
+      },
+      "/usr/bin",
+    );
+    const log = join(directory, "host.log");
+    for (let i = 0; i < 100; i++) {
+      if (readFileSync(log, "utf8").includes("Failed to start host")) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
-  },
-);
-
-it("unregisters only this user's Windows task", async () => {
-  const scripts: string[] = [];
-  await uninstallService({
-    platform: "win32",
-    powershell: async (script) => scripts.push(script),
-  });
-  expect(scripts[0]).toContain('"MonoCode Host-$sid"');
-  expect(scripts[0]).toContain("Unregister-ScheduledTask");
-  expect(scripts[0]).not.toMatch(/Remove-Item|\.monocode-host/);
+    expect(readFileSync(log, "utf8")).toMatch(/Failed to start host: .*ENOENT/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

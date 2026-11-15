@@ -1,16 +1,8 @@
-// Package a prebuilt native executable. Never invokes the Tauri app build or
-// writes production release/update paths.
+// Package a prebuilt native executable. Never builds the app or writes
+// production release/update paths.
 import { spawnSync } from "node:child_process";
-import {
-  cp,
-  mkdir,
-  readFile,
-  readdir,
-  writeFile,
-  chmod,
-  lstat,
-} from "node:fs/promises";
-import { join, resolve, dirname, basename } from "node:path";
+import { cp, mkdir, readdir, writeFile, chmod } from "node:fs/promises";
+import { join, resolve, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -27,7 +19,6 @@ export function previewVersion(version) {
     version,
     base: match.slice(1, 4).join("."),
     sequence: match[4],
-    windows: match.slice(1).join("."),
   };
 }
 function run(command, args, options = {}) {
@@ -45,38 +36,6 @@ function run(command, args, options = {}) {
   return result;
 }
 
-// stapler's EX_NOHOST (68) can indicate a ticket-service/network failure.
-// Retry it boundedly; every other status still stops packaging immediately.
-export async function runStapler(
-  action,
-  file,
-  { wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) } = {},
-) {
-  for (let attempt = 1; attempt <= 5; attempt++) {
-    try {
-      run("xcrun", ["stapler", action, file]);
-      return;
-    } catch (error) {
-      if (error.status !== 68 || attempt === 5) throw error;
-      const delay = attempt * 10_000;
-      console.warn(
-        `Apple ticket service unavailable during ${action}; retrying in ${delay / 1000}s (${attempt}/5)`,
-      );
-      await wait(delay);
-    }
-  }
-}
-
-// Count apparent bytes, including sparse files, without following the
-// Applications shortcut or any other symlinks outside the staging tree.
-async function logicalBytes(path) {
-  const info = await lstat(path);
-  if (!info.isDirectory()) return info.size;
-  const children = await Promise.all(
-    (await readdir(path)).map((name) => logicalBytes(join(path, name))),
-  );
-  return info.size + children.reduce((sum, size) => sum + size, 0);
-}
 async function notices(directory) {
   await mkdir(directory, { recursive: true });
   for (const file of [
@@ -151,110 +110,7 @@ export async function packageNative({
     artifacts.push({ filename, target });
     return join(out, filename);
   };
-  if (kind === "macos") {
-    const expectedArch = arch === "aarch64" ? "arm64" : "x86_64";
-    const actualArch = run("lipo", ["-archs", binary], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "inherit"],
-    }).stdout.trim();
-    if (actualArch !== expectedArch)
-      throw new Error(`Expected ${expectedArch}, found ${actualArch}`);
-    run(
-      "bash",
-      [
-        "scripts/bundle-native-macos.sh",
-        "release",
-        dirname(dirname(binary)),
-        version,
-        "monocode-data",
-      ],
-      {
-        env: {
-          ...process.env,
-          MONOCODE_NATIVE_SIGNING_IDENTITY:
-            process.env.APPLE_SIGNING_IDENTITY || "",
-        },
-      },
-    );
-    const app = join(dirname(binary), "Monocode Native.app");
-    if (
-      !process.env.APPLE_SIGNING_IDENTITY ||
-      process.env.APPLE_SIGNING_IDENTITY === "-"
-    )
-      throw new Error(
-        "Public previews require a Developer ID signing identity",
-      );
-    const submit = async (file, staple) => {
-      const result = run(
-        "xcrun",
-        [
-          "notarytool",
-          "submit",
-          file,
-          "--key",
-          process.env.APPLE_API_KEY_PATH,
-          "--key-id",
-          process.env.APPLE_API_KEY,
-          "--issuer",
-          process.env.APPLE_API_ISSUER,
-          "--wait",
-          "--output-format",
-          "json",
-        ],
-        { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
-      );
-      if (JSON.parse(result.stdout).status !== "Accepted")
-        throw new Error(
-          `Apple did not accept ${basename(file)} for notarization`,
-        );
-      if (staple) {
-        await runStapler("staple", staple);
-        await runStapler("validate", staple);
-      }
-    };
-    const zip = join(work, "notarize.zip");
-    run("ditto", ["-c", "-k", "--keepParent", app, zip]);
-    await submit(zip, app);
-    run("codesign", ["--verify", "--deep", "--strict", app]);
-    run("spctl", ["--assess", "--type", "execute", app]);
-    const name = arch === "aarch64" ? "aarch64" : "x64";
-    const archive = add(
-      `MonocodeNative_${version}_${name}.app.tar.gz`,
-      `darwin-${arch}-app`,
-    );
-    run("tar", ["-czf", archive, "-C", dirname(app), "Monocode Native.app"], {
-      env: { ...process.env, COPYFILE_DISABLE: "1" },
-    });
-    const imageRoot = join(work, "dmg");
-    await mkdir(imageRoot);
-    run("ditto", [app, join(imageRoot, "Monocode Native.app")]);
-    run("ln", ["-s", "/Applications", join(imageRoot, "Applications")]);
-    const dmg = add(`MonocodeNative_${version}_${name}.dmg`);
-    const imageSizeMiB =
-      Math.ceil((await logicalBytes(imageRoot)) / 1048576) + 64;
-    run("hdiutil", [
-      "create",
-      "-volname",
-      "Monocode Native",
-      "-srcfolder",
-      imageRoot,
-      "-ov",
-      "-format",
-      "UDZO",
-      "-fs",
-      "HFS+",
-      "-size",
-      `${imageSizeMiB}m`,
-      dmg,
-    ]);
-    run("codesign", [
-      "--sign",
-      process.env.APPLE_SIGNING_IDENTITY,
-      "--timestamp",
-      dmg,
-    ]);
-    await submit(dmg, dmg);
-  } else if (kind === "linux") {
+  if (kind === "linux") {
     const debRoot = join(work, "deb");
     await linuxTree(debRoot, binary, "deb");
     await mkdir(join(debRoot, "DEBIAN"));
@@ -326,34 +182,6 @@ export async function packageNative({
       join(top, "RPMS/x86_64", rpms[0]),
       add(rpms[0], "linux-x86_64-rpm"),
     );
-  } else if (kind === "windows") {
-    const stage = join(work, "windows");
-    await mkdir(stage);
-    await cp(binary, join(stage, "monocode-gpui.exe"));
-    await writeFile(
-      join(stage, "native-install.json"),
-      JSON.stringify({ app_id: "dev.usemono.gpui", kind: "nsis" }),
-    );
-    await notices(join(stage, "licenses"));
-    const installer = add(
-      `MonocodeNative_${version}_x64-setup.exe`,
-      "windows-x86_64-nsis",
-    );
-    const quote = (value) =>
-      value.replaceAll("$", "$$").replaceAll('"', '$\\"');
-    const template = await readFile(
-      join(root, "scripts/native-installer.nsi"),
-      "utf8",
-    );
-    const script = template
-      .replaceAll("@STAGE@", quote(stage))
-      .replaceAll("@OUTFILE@", quote(installer))
-      .replaceAll("@ICON@", quote(join(root, "assets/icons/icon.ico")))
-      .replaceAll("@VERSION@", version)
-      .replaceAll("@WINDOWS_VERSION@", parsed.windows);
-    const nsi = join(work, "installer.nsi");
-    await writeFile(nsi, script);
-    run("makensis", [nsi]);
   } else throw new Error(`Unknown native package kind: ${kind}`);
   await writeFile(
     join(out, `artifacts-${kind}-${arch}.json`),

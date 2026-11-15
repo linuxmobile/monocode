@@ -32,7 +32,6 @@ npm run native:dev
 - `crates/monocode-core/` - provider transports, persistence, accounts, Git/files, remote connections and shared services
 - `crates/monocode-gpui/` - native shell, composer, transcript, editor, settings and platform UI
 - `host/` - the headless remote host, its transport code and shared TypeScript models
-- `mobile/` - the separate Expo mobile app
 - `scripts/` - native development, packaging and embedded-asset generators
 
 Provider protocol work belongs in `crates/monocode-core`. The native UI lives in

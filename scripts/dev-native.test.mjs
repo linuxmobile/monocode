@@ -152,46 +152,6 @@ test("coalesces restart requests during a build without launching stale code or 
   assert.ok(events.indexOf("quit") > events.lastIndexOf("built"));
 });
 
-test("macOS bundles automatically and preserves the selected data mode for Finder", async (t) => {
-  for (const [args, mode] of [
-    [[], "dev-data"],
-    [["--monocode-data"], "monocode-data"],
-    [["--monocode-data", "--dev-data", "--cwd", "--monocode-data"], "dev-data"],
-  ]) {
-    await t.test(`${mode}: ${JSON.stringify(args)}`, async (t) => {
-      const f = await fixture(t, {}, { platform: "darwin", args });
-      await f.until((events) => f.starts(events) === 1);
-      const packaged = f.calls.find((call) => call.command === "bash");
-      assert.deepEqual(packaged.args, ["scripts/bundle-native-macos.sh", "native-dev", join(f.root, "custom-target"), "0.15.0", mode]);
-      const app = f.calls.find((call) => !["cargo", "bash"].includes(call.command));
-      assert.equal(app.command, join(f.root, "custom-target/native-dev/Monocode Native.app/Contents/MacOS/monocode-gpui"));
-      assert.deepEqual(app.args, args);
-      const events = await f.events();
-      assert.ok(events.indexOf("built") < events.indexOf("package"));
-      assert.ok(events.indexOf("package") < events.findIndex((event) => event.startsWith("start:")));
-    });
-  }
-});
-
-test("failed macOS packaging keeps the current app running", async (t) => {
-  const f = await fixture(t, {}, { platform: "darwin" });
-  await f.until((events) => f.starts(events) === 1);
-  await writeFile(join(f.root, "fail-package"), "");
-  f.dev.requestBuild();
-  await f.until((events) => events.includes("package-failed"));
-  assert.equal(f.starts(await f.events()), 1);
-  assert.equal((await f.events()).includes("quit"), false);
-});
-
-test("Windows launches the executable from the configured build target", async (t) => {
-  const f = await fixture(t, { CARGO_BUILD_TARGET: "x86_64-pc-windows-msvc" }, { platform: "win32" });
-  await f.until((events) => f.starts(events) === 1);
-  assert.equal(f.calls.some((call) => call.command === "bash"), false);
-  const app = f.calls.find((call) => call.command !== "cargo");
-  assert.equal(app.command, join(f.root, "custom-target/x86_64-pc-windows-msvc/native-dev/monocode-gpui.exe"));
-  assert.equal(app.options.detached, false);
-});
-
 test("closing during compilation terminates Cargo and never launches an app", { timeout: 10_000 }, async (t) => {
   const f = await fixture(t, { TEST_BUILD_DELAY: "5000" });
   await f.until((events) => events.includes("build"));

@@ -3,6 +3,10 @@
 > Historical note: references to the production React/Tauri app, its frontend,
 > Rust workspace and packaging below describe checks made before that app was
 > removed from the repository. They are kept as a record of the migration.
+>
+> The same applies to the macOS and Windows checks: this branch supports Linux
+> only, and the dated sections below record what was verified on those
+> platforms before they were dropped.
 
 Status recorded on October 22, 2026, on macOS Apple Silicon. These are local
 results, not a release certification. Later dated sections supplement this

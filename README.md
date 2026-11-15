@@ -49,8 +49,6 @@ MonoCode is still early. If something breaks, [report a bug](https://github.com/
 You’ll need Node.js 22+ and a stable Rust toolchain on Linux with Wayland. See
 [build setup](docs/building.md) for platform dependencies and packaging.
 
-The mobile app is a separate Expo project in [`mobile/`](mobile/README.md). Run it with `cd mobile && npm install && npm start`.
-
 ```bash
 npm run native:dev     # launch with a separate development database
 npm run native:build   # create an optimized build

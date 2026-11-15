@@ -1,12 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-  mkdir,
-  readFile,
-  writeFile,
-  chmod,
-  copyFile,
-  rm,
-} from "node:fs/promises";
+import { mkdir, readFile, writeFile, chmod, copyFile, rm } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { resolve, join } from "node:path";
 import { ensureRuntimeArchive } from "./runtime-download.mjs";
@@ -15,41 +8,11 @@ import { ensureRuntimeArchive } from "./runtime-download.mjs";
 // https://nodejs.org/dist/v24.21.0/SHASUMS256.txt
 const nodeVersion = "24.21.0";
 const runtimes = {
-  "darwin-arm64":
-    "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057",
-  "darwin-x64":
-    "1462cb3b3046b815cf8ea436d3da450ec1a9f11dac7e5a46b0ada5305d7e8097",
   "linux-arm64":
     "724282c3b43aec998aa9527380465b45d229e021b58035f5f4f63095eabfe5d5",
   "linux-x64":
     "6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff",
-  "win32-x64":
-    "158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541",
-  "win32-arm64":
-    "8779b1bde1d39f8d420e3b57aa657b39891af434d3de44a919044cec06785921",
 };
-const psQuote = (value) => `'${value.replaceAll("'", "''")}'`;
-const ps = (script) =>
-  execFileSync(
-    "powershell.exe",
-    [
-      "-NoProfile",
-      "-NonInteractive",
-      "-EncodedCommand",
-      Buffer.from(
-        `$ErrorActionPreference = 'Stop'; ${script}`,
-        "utf16le",
-      ).toString("base64"),
-    ],
-    {
-      // Avoid loading inherited PowerShell 7 modules in Windows PowerShell 5.1.
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key]) => key.toUpperCase() !== "PSMODULEPATH",
-        ),
-      ),
-    },
-  );
 const args = process.argv.slice(2);
 const target = args.includes("--target")
   ? args[args.indexOf("--target") + 1]
@@ -63,51 +26,25 @@ const { version } = JSON.parse(await readFile("package.json", "utf8"));
 for (const target of targets) {
   if (!(target in runtimes))
     throw new Error(`Unsupported host target: ${target}`);
-  const windows = target.startsWith("win32-");
-  const extension = windows ? "zip" : "tar.gz";
-  const stem = `node-v${nodeVersion}-${target.replace("win32-", "win-")}`;
-  const archive = join(cache, `${stem}.${extension}`);
+  const stem = `node-v${nodeVersion}-${target}`;
+  const archive = join(cache, `${stem}.tar.gz`);
   await ensureRuntimeArchive({
     archive,
-    url: `https://nodejs.org/dist/v${nodeVersion}/${stem}.${extension}`,
+    url: `https://nodejs.org/dist/v${nodeVersion}/${stem}.tar.gz`,
     checksum: runtimes[target],
   });
   const folder = join(output, target);
   await rm(folder, { recursive: true, force: true });
   await mkdir(folder, { recursive: true });
-  if (windows) {
-    if (process.platform === "win32") {
-      const unpacked = join(folder, "runtime");
-      ps(
-        `Expand-Archive -LiteralPath ${psQuote(archive)} -DestinationPath ${psQuote(unpacked)}`,
-      );
-      await copyFile(
-        join(unpacked, stem, "node.exe"),
-        join(folder, "node.exe"),
-      );
-      await copyFile(join(unpacked, stem, "LICENSE"), join(folder, "LICENSE"));
-      await rm(unpacked, { recursive: true, force: true });
-    } else {
-      execFileSync("unzip", [
-        "-q",
-        "-j",
-        archive,
-        `${stem}/node.exe`,
-        `${stem}/LICENSE`,
-        "-d",
-        folder,
-      ]);
-    }
-  } else
-    execFileSync("tar", [
-      "-xzf",
-      archive,
-      "-C",
-      folder,
-      "--strip-components=1",
-      `${stem}/bin/node`,
-      `${stem}/LICENSE`,
-    ]);
+  execFileSync("tar", [
+    "-xzf",
+    archive,
+    "-C",
+    folder,
+    "--strip-components=1",
+    `${stem}/bin/node`,
+    `${stem}/LICENSE`,
+  ]);
   await copyFile("build/host/monocode-host.mjs", join(folder, "host.mjs"));
   await copyFile("host/provider-guard.mjs", join(folder, "provider-guard.mjs"));
   await copyFile("LICENSE", join(folder, "MONOCODE-LICENSE"));
@@ -115,45 +52,21 @@ for (const target of targets) {
     join(folder, "version.json"),
     JSON.stringify({ version, nodeVersion, target }),
   );
-  if (windows) {
-    await writeFile(
-      join(folder, "monocode-host.cmd"),
-      '@echo off\r\nsetlocal DisableDelayedExpansion\r\n"%~dp0node.exe" "%~dp0host.mjs" %*\r\nexit /b %errorlevel%\r\n',
-    );
-  } else {
-    await writeFile(
-      join(folder, "monocode-host"),
-      '#!/bin/sh\nset -eu\nDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$DIR/bin/node" "$DIR/host.mjs" "$@"\n',
-    );
-    await chmod(join(folder, "monocode-host"), 0o755);
-  }
+  await writeFile(
+    join(folder, "monocode-host"),
+    '#!/bin/sh\nset -eu\nDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$DIR/bin/node" "$DIR/host.mjs" "$@"\n',
+  );
+  await chmod(join(folder, "monocode-host"), 0o755);
   if (target === `${process.platform}-${process.arch}`) {
-    const executable = windows
-      ? join(folder, "node.exe")
-      : join(folder, "bin/node");
-    const actual = execFileSync(
-      executable,
-      [join(folder, "host.mjs"), "--version"],
-      {
-        encoding: "utf8",
-      },
-    ).trim();
+    const actual = execFileSync(join(folder, "bin/node"), [join(folder, "host.mjs"), "--version"], {
+      encoding: "utf8",
+    }).trim();
     if (actual !== version)
       throw new Error("Packaged host failed its executable smoke test");
   }
-  const filename = `monocode-host-${target}.${extension}`;
+  const filename = `monocode-host-${target}.tar.gz`;
   await rm(join(output, filename), { force: true });
-  if (windows) {
-    if (process.platform === "win32")
-      ps(
-        `Compress-Archive -Path ${psQuote(join(folder, "*"))} -DestinationPath ${psQuote(join(output, filename))}`,
-      );
-    else
-      execFileSync("zip", ["-q", "-r", join(output, filename), "."], {
-        cwd: folder,
-      });
-  } else
-    execFileSync("tar", ["-czf", join(output, filename), "-C", folder, "."]);
+  execFileSync("tar", ["-czf", join(output, filename), "-C", folder, "."]);
   const hash = createHash("sha256")
     .update(await readFile(join(output, filename)))
     .digest("hex");

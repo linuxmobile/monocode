@@ -1,7 +1,5 @@
 import {
   ALT,
-  IS_MAC,
-  IS_WIN,
   MOD,
   SHIFT,
 } from "../../../platform/native/platform";
@@ -242,16 +240,6 @@ export const SETTINGS_INDEX: SettingsEntry[] = [
     label: "Notes",
     keywords: "notebook markdown rail scratchpad",
   },
-  ...(IS_MAC
-    ? [
-        {
-          id: "quick-composer",
-          section: "general" as const,
-          label: "Quick composer",
-          keywords: "spotlight global shortcut hotkey floating prompt anywhere",
-        },
-      ]
-    : []),
   {
     id: "working-agents",
     section: "general",
@@ -270,7 +258,7 @@ export const SETTINGS_INDEX: SettingsEntry[] = [
     label: "Tab animations",
     keywords: "motion open close resize transition",
   },
-  ...(IS_WIN
+  ...(false
     ? [
         {
           id: "close-to-tray",
@@ -971,9 +959,8 @@ const CLOSE_TO_TRAY_KEY = "monocode.closeToTray";
 export const CLOSE_TO_TRAY_DEFAULT = true;
 
 export function loadCloseToTray(): boolean {
-  // Close to tray is Windows-only: nowhere else installs a tray icon.
-  if (!IS_WIN) return false;
-  return readFlag(CLOSE_TO_TRAY_KEY) ?? CLOSE_TO_TRAY_DEFAULT;
+  // Nowhere else installs a tray icon.
+  return false;
 }
 
 export function saveCloseToTray(value: boolean) {
@@ -1133,7 +1120,7 @@ export function saveIdleAgentLimit(value: IdleAgentLimit) {
   }
 }
 
-const CTRL = IS_MAC ? "⌃" : "Ctrl+";
+const CTRL = "Ctrl+";
 
 export type KeybindingRow = {
   command: string;
@@ -1155,15 +1142,6 @@ export const KEYBINDINGS: KeybindingRow[] = [
   { command: "App: Find in Files", keys: `${MOD}${SHIFT}F`, when: "Always" },
   { command: "App: Open Project", keys: `${MOD}O`, when: "Always" },
   { command: "App: New Window", keys: `${MOD}${SHIFT}N`, when: "Always" },
-  ...(IS_MAC
-    ? [
-        {
-          command: "App: Quick Composer",
-          keys: `${MOD}${SHIFT}Space`,
-          when: "Anywhere",
-        },
-      ]
-    : []),
   { command: "App: Toggle Sidebar", keys: `${MOD}B`, when: "Always" },
   {
     command: "App: Toggle Session Sidebar",
@@ -1288,17 +1266,10 @@ const KEY_CODES: Record<string, string> = {
   "→": "ArrowRight",
 };
 
-const DISPLAY_MODIFIERS: [string, string][] = IS_MAC
-  ? [
-      ["⌘", "Command"],
-      ["⌃", "Control"],
-      ["⌥", "Option"],
-      ["⇧", "Shift"],
-    ]
-  : [
-      ["Ctrl+", "Control"],
-      ["Alt+", "Option"],
-      ["Shift+", "Shift"],
+const DISPLAY_MODIFIERS: [string, string][] = [
+  ["Ctrl+", "Control"],
+  ["Alt+", "Option"],
+  ["Shift+", "Shift"],
     ];
 
 const QUICK_COMPOSER_COMMAND = "App: Quick Composer";

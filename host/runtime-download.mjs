@@ -13,7 +13,7 @@ class DownloadError extends Error {
   }
 }
 
-// Use Node's HTTPS client as an independent transport when Windows fetch stalls.
+// Node's HTTPS client as an independent transport, for a fetch that stalls.
 // The caller's abort signal bounds both the request and its response stream.
 export function fetchViaHttps(url, { signal }, getImpl = get) {
   return new Promise((resolve, reject) => {
@@ -77,7 +77,7 @@ export async function ensureRuntimeArchive(
     wait = waitFor,
     timeoutMs = 120_000,
     log = console.warn,
-    fallbackFetchImpl = process.platform === "win32" ? fetchViaHttps : null,
+    fallbackFetchImpl = null,
   } = {},
 ) {
   let cached;

@@ -1,4 +1,3 @@
-import { IS_MAC } from "../../../platform/native/platform";
 
 /** The same spelling is accepted by tauri-plugin-global-shortcut. */
 export const QUICK_COMPOSER_DEFAULT_SHORTCUT = "Command+Shift+Space";
@@ -114,10 +113,10 @@ export function quickComposerShortcutPreview(
   key?: string,
 ): string {
   const prefix = [
-    modifiers.metaKey && (IS_MAC ? "⌘" : "Win+"),
-    modifiers.ctrlKey && (IS_MAC ? "⌃" : "Ctrl+"),
-    modifiers.altKey && (IS_MAC ? "⌥" : "Alt+"),
-    modifiers.shiftKey && (IS_MAC ? "⇧" : "Shift+"),
+    modifiers.metaKey && "Win+",
+    modifiers.ctrlKey && "Ctrl+",
+    modifiers.altKey && "Alt+",
+    modifiers.shiftKey && "Shift+",
   ]
     .filter(Boolean)
     .join("");
@@ -149,9 +148,12 @@ export function shortcutTokens(value: string): string {
 export function quickComposerShortcutLabel(value: string): string {
   const parts = value.split("+");
   const code = parts.pop() ?? "Space";
-  const modifiers = IS_MAC
-    ? { Command: "⌘", Control: "⌃", Option: "⌥", Shift: "⇧" }
-    : { Command: "Win+", Control: "Ctrl+", Option: "Alt+", Shift: "Shift+" };
+  const modifiers = {
+    Command: "Win+",
+    Control: "Ctrl+",
+    Option: "Alt+",
+    Shift: "Shift+",
+  };
   return (
     parts
       .map(

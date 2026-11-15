@@ -1,24 +1,14 @@
-import { IS_WIN } from "../../platform/native/platform";
-
-function windowsPath(path: string): boolean {
-  return /^[A-Za-z]:[\\/]/.test(path) || path.startsWith("\\\\") || path.startsWith("//");
-}
-
 export function slash(path: string): string {
-  return windowsPath(path) || (IS_WIN && !path.startsWith("/"))
-    ? path.replace(/\\/g, "/") : path;
+  return path.replace(/\\/g, "/");
 }
 
 function trimSlash(path: string): string {
   return slash(path).replace(/\/+$/, "") || "/";
 }
 
-/** Stable comparison key for Windows paths without changing their display case. */
+/** Stable comparison key for a path. */
 export function pathKey(path: string): string {
-  const normalized = trimSlash(path);
-  return /^[A-Za-z]:(?:\/|$)/.test(normalized) || normalized.startsWith("//")
-    ? normalized.toLowerCase()
-    : normalized;
+  return trimSlash(path);
 }
 
 export function prettyCwd(cwd: string): string {
@@ -76,7 +66,7 @@ export function isEqualOrInside(path: string, root: string): boolean {
 export function joinPath(parent: string, relative: string): string {
   const base = trimSlash(parent);
   const parts = relative
-    .split(windowsPath(parent) ? /[/\\]/ : /\//)
+    .split(/\//)
     .filter((part) => part && part !== ".");
   let out = base;
   for (const part of parts) {
@@ -239,8 +229,6 @@ function parseWorkspaceFileReference(
   const remoteRoot = cwd ? /^remote:\/\/[^/]+\//.exec(cwd)?.[0] : undefined;
   if (remoteRoot && value.startsWith(remoteRoot))
     return { path: value, navigation };
-  // File URLs can also decode to UNC paths. Windows accepts mixed separators.
-  if ((decodeUrl || fileUrl) && /^[\\/]{2}/.test(value)) return undefined;
   // A provider-relative `~/` reference means the user's home directory, not a
   // path relative to the project's cwd. Expand it to an absolute path up
   // front when a home directory can be recognised, so it flows through the

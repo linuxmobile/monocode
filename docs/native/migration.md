@@ -13,9 +13,9 @@ client.
 | `crates/monocode-gpui/Cargo.toml` | Independent native Cargo workspace, profiles and dependency patches |
 | `host/` | Headless remote host and the shared TypeScript models it serves |
 | `scripts/dev-native.mjs` | Development build and manual restart runner |
-| `scripts/build-native.mjs` | Optimized build and macOS packaging |
+| `scripts/build-native.mjs` | Optimized build |
 | `scripts/native-editor/`, `scripts/native-settings/` | Generators for embedded JavaScript assets |
-| `vendor/gpui-pre*/` | Pinned framework and platform patches |
+| `vendor/gpui-pre*/` | Pinned framework and the Linux platform patch |
 
 `monocode-core` has no GPUI dependency. Keep provider and storage behavior in
 core services, with UI work in GPUI views. Development uses isolated data;
@@ -40,9 +40,8 @@ in the repository.
 
 ## Framework patches
 
-GPUI and its platform crate are pinned to `gpui-pre` 0.3.9. Local Apple renderer
-patches cover alpha blending, font matching, backdrop blur and shadows. The
-headless Metal regression is documented in [verification](verification.md).
+GPUI and its platform crate are pinned to `gpui-pre` 0.3.9. The local renderer
+patch covers alpha blending, font matching, backdrop blur and shadows.
 
 The vendored framework/platform crates remove the unused `zed-scap` dependency.
 The native build rejects lockfiles that reintroduce it, and the `screen-capture`

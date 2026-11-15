@@ -4,14 +4,7 @@ import { appendFileSync, closeSync, existsSync, openSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir, userInfo } from "node:os";
 import { join } from "node:path";
-import {
-  runPowerShell,
-  windowsTaskScript,
-  windowsUninstallScript,
-} from "./windows";
-
 const exec = promisify(execFile);
-const LABEL = "com.monocode.host";
 type ServiceOptions = {
   directory: string;
   port: number;
@@ -42,42 +35,6 @@ export async function connectionInfo(
   });
   if (!response.ok) throw new Error("Host is not ready");
   return { port: state.port, pid: state.pid };
-}
-
-const xml = (value: string) =>
-  value.replace(
-    /[<>&"']/g,
-    (char) =>
-      ({
-        "<": "&lt;",
-        ">": "&gt;",
-        "&": "&amp;",
-        '"': "&quot;",
-        "'": "&apos;",
-      })[char]!,
-  );
-
-export function launchAgent(options: ServiceOptions, path: string): string {
-  const args = [
-    options.executable,
-    options.entry,
-    "serve",
-    "--data-dir",
-    options.directory,
-    "--port",
-    String(options.port),
-  ];
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>Label</key><string>${LABEL}</string>
-<key>ProgramArguments</key><array>${args.map((arg) => `<string>${xml(arg)}</string>`).join("")}</array>
-<key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
-<key>ThrottleInterval</key><integer>10</integer>
-<key>EnvironmentVariables</key><dict><key>PATH</key><string>${xml(path)}</string></dict>
-<key>StandardOutPath</key><string>${xml(join(options.directory, "host.log"))}</string>
-<key>StandardErrorPath</key><string>${xml(join(options.directory, "host.log"))}</string>
-</dict></plist>\n`;
 }
 
 // systemd expands % specifiers in both settings; $ variables only in ExecStart.
@@ -175,53 +132,33 @@ type Run = (
  */
 export async function uninstallService(
   system: {
-    platform?: NodeJS.Platform;
     home?: string;
     systemd?: boolean;
     run?: Run;
-    powershell?: (script: string) => Promise<unknown>;
   } = {},
 ): Promise<string[]> {
-  const platform = system.platform ?? process.platform;
   const home = system.home ?? homedir();
   const run: Run =
     system.run ??
     ((command, args, env = process.env) =>
       exec(command, args, { env, timeout: 30_000, maxBuffer: 128 * 1024 }));
   const ignore = () => undefined;
-  if (platform === "darwin") {
-    await run("launchctl", [
-      "bootout",
-      `gui/${process.getuid!()}/${LABEL}`,
-    ]).catch(ignore);
-    await rm(join(home, "Library/LaunchAgents", `${LABEL}.plist`), {
-      force: true,
-    });
-    return [];
-  }
   // Without systemd nothing was registered; the caller stops the running host.
-  if (platform === "linux" && !(system.systemd ?? systemdBooted())) return [];
-  if (platform === "linux") {
-    const user = userInfo();
-    const env = systemdEnvironment(user.uid);
-    await run(
-      "systemctl",
-      ["--user", "disable", "--now", "monocode-host.service"],
-      env,
-    ).catch(ignore);
-    await rm(join(home, ".config/systemd/user/monocode-host.service"), {
-      force: true,
-    });
-    await run("systemctl", ["--user", "daemon-reload"], env).catch(ignore);
-    return [
-      `Lingering is still enabled for ${user.username}; other user services may rely on it. To turn it off: loginctl disable-linger ${user.username}`,
-    ];
-  }
-  if (platform === "win32") {
-    await (system.powershell ?? runPowerShell)(windowsUninstallScript());
-    return [];
-  }
-  throw new Error("MonoCode Host supports Windows, Linux and macOS");
+  if (!(system.systemd ?? systemdBooted())) return [];
+  const user = userInfo();
+  const env = systemdEnvironment(user.uid);
+  await run(
+    "systemctl",
+    ["--user", "disable", "--now", "monocode-host.service"],
+    env,
+  ).catch(ignore);
+  await rm(join(home, ".config/systemd/user/monocode-host.service"), {
+    force: true,
+  });
+  await run("systemctl", ["--user", "daemon-reload"], env).catch(ignore);
+  return [
+    `Lingering is still enabled for ${user.username}; other user services may rely on it. To turn it off: loginctl disable-linger ${user.username}`,
+  ];
 }
 
 export async function installService(
@@ -245,36 +182,9 @@ export async function installService(
   ].join(":");
   const run = async (command: string, args: string[], env = process.env) =>
     exec(command, args, { env, timeout: 15_000, maxBuffer: 128 * 1024 });
-  if (process.platform === "darwin") {
-    const domain = `gui/${process.getuid!()}`;
-    try {
-      await run("launchctl", ["print", domain]);
-    } catch {
-      throw new Error(
-        "Sign in at the Mac's desktop once, then reconnect. MonoCode Host runs as a login service; keep the Mac signed in and awake.",
-      );
-    }
-    const folder = join(homedir(), "Library/LaunchAgents");
-    const file = join(folder, `${LABEL}.plist`);
-    await mkdir(folder, { recursive: true });
-    let loaded = false;
-    try {
-      await run("launchctl", ["print", `${domain}/${LABEL}`]);
-      loaded = true;
-    } catch {
-      /* first install */
-    }
-    if (loaded) {
-      // A loaded service already has an owner and executable. Start it without
-      // rewriting its configuration or sending a kill/restart command.
-      await run("launchctl", ["kickstart", `${domain}/${LABEL}`]);
-    } else {
-      await writeFile(file, launchAgent(options, path), { mode: 0o600 });
-      await run("launchctl", ["bootstrap", domain, file]);
-    }
-  } else if (process.platform === "linux" && !systemdBooted()) {
+  if (!systemdBooted()) {
     startDetached(options, path);
-  } else if (process.platform === "linux") {
+  } else {
     const user = userInfo();
     const env = systemdEnvironment(user.uid);
     try {
@@ -308,10 +218,6 @@ export async function installService(
       ["--user", "enable", "--now", "monocode-host.service"],
       env,
     );
-  } else if (process.platform === "win32") {
-    await runPowerShell(windowsTaskScript(options, process.env.PATH ?? ""));
-  } else {
-    throw new Error("MonoCode Host supports Windows, Linux and macOS");
   }
   for (let attempt = 0; attempt < 50; attempt++) {
     try {
@@ -322,10 +228,8 @@ export async function installService(
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   throw new Error(
-    process.platform === "win32"
-      ? `The host task did not start. Sign in to the Windows desktop as the SSH user and keep that account signed in (locking is fine), then reconnect. Check Task Scheduler and ${join(options.directory, "host.log")}.`
-      : process.platform === "linux" && !systemdBooted()
-        ? `The host did not start. Check ${join(options.directory, "host.log")}.`
-        : `The host service was installed but did not start. Check ${join(options.directory, "host.log")}.`,
+    !systemdBooted()
+      ? `The host did not start. Check ${join(options.directory, "host.log")}.`
+      : `The host service was installed but did not start. Check ${join(options.directory, "host.log")}.`,
   );
 }

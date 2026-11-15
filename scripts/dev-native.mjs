@@ -23,7 +23,6 @@ export async function startDev({
   log = (message) => console.log(`[dev] ${message}`),
   debounce = 300,
 } = {}) {
-  const bundle = platform === "darwin";
   const buildEnv = { ...env, CARGO_BUILD_JOBS: env.CARGO_BUILD_JOBS || "1" };
   const launch = (command, argv, options = {}) => track(spawnProcess(command, argv, {
     cwd: root, env: buildEnv, stdio: "inherit", ...options,
@@ -90,22 +89,7 @@ export async function startDev({
         }
         // Another restart request during compilation gets a fresh build first.
         if (builtRevision !== revision) continue;
-        let executable = join(target, "native-dev", platform === "win32" ? "monocode-gpui.exe" : "monocode-gpui");
-        if (bundle) {
-          const dataMode = args.reduce((mode, arg, index) => {
-            if (["--cwd", "--monocode-db"].includes(args[index - 1])) return mode;
-            if (arg === "--dev-data") return "dev-data";
-            if (arg === "--monocode-data") return "monocode-data";
-            return mode;
-          }, "dev-data");
-          const packaged = await run("bash", ["scripts/bundle-native-macos.sh", "native-dev", target, pkg.version, dataMode]);
-          if (closing) return;
-          if (packaged.code !== 0) {
-            log("App packaging failed. Fix the error, then type r to retry.");
-            continue;
-          }
-          executable = join(target, "native-dev", "Monocode Native.app", "Contents", "MacOS", "monocode-gpui");
-        }
+        const executable = join(target, "native-dev", "monocode-gpui");
         if (builtRevision !== revision) continue;
         await stopApp();
         if (closing) return;
@@ -114,7 +98,7 @@ export async function startDev({
           env: { ...buildEnv, MONOCODE_DEV_RELOAD: "1" },
           stdio: ["pipe", "inherit", "inherit"],
           // Ctrl+C reaches the runner, which lets the app run its quit hooks.
-          detached: platform !== "win32",
+          detached: true,
         });
         // An app that exits while a restart is being requested may close its pipe first.
         next.stdin.on("error", () => {});

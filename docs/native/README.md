@@ -6,15 +6,14 @@ their own Cargo workspace and lockfile.
 ## Requirements
 
 - Node.js 22+ and a current stable Rust toolchain.
-- On macOS, Xcode with macOS components.
 - Linux core checks need D-Bus headers and pkg-config (`libdbus-1-dev` and
   `pkg-config` on Debian/Ubuntu).
 - At least one installed, signed-in agent CLI. See [provider setup](../providers.md).
 
 The native commands do not require `npm install` or a frontend build.
-macOS is the primary preview target. A Linux ARM64 source build has been
-smoke-tested in a VM; Linux x64 packages and Windows GUI interaction still need
-runtime testing. See [preview limitations](parity.md).
+Linux is the only supported platform. A Linux ARM64 source build has been
+smoke-tested in a VM; the Linux x64 packages still need runtime testing. See
+[preview limitations](parity.md).
 
 Fenced `mermaid` blocks render as native diagrams in Markdown previews and
 conversations. See [Mermaid diagrams](mermaid.md) for examples and limitations.
@@ -71,9 +70,6 @@ Type `r` then Enter in the terminal to rebuild and restart. The current app stay
 open until the new build succeeds. Ctrl+C stops the app and runner. There is no
 hot reload or automatic rebuild on save.
 
-On macOS, the command packages and launches `Monocode Native.app`. Other
-platforms launch the executable directly.
-
 ## Build
 
 ```sh
@@ -83,16 +79,8 @@ npm run native:build
 This creates an optimized build without launching it. **The release app uses the
 installed MonoCode database, and changes save there.** No extra flags are needed.
 
-On macOS, open:
-
-```sh
-open "crates/monocode-gpui/target/release/Monocode Native.app"
-```
-
 The app has a separate name and application ID (`dev.usemono.gpui`) so it can be
-installed alongside MonoCode. Local source builds are signed locally, without
-Apple notarization or configured automatic updates. Linux and Windows builds
-produce a standalone executable
+installed alongside MonoCode. Linux builds produce a standalone executable
 under `crates/monocode-gpui/target/release/`. `CARGO_TARGET_DIR` and
 `CARGO_BUILD_TARGET` can change these output paths.
 
@@ -117,15 +105,12 @@ Development stores `monocode.db` under:
 
 | Platform | Development directory |
 | --- | --- |
-| macOS | `~/Library/Application Support/Monocode Development/` |
 | Linux | `$XDG_DATA_HOME/Monocode Development/`, or `~/.local/share/Monocode Development/` |
-| Windows | `%LOCALAPPDATA%\Monocode Development\` |
 
 `MONOCODE_NATIVE_DATA_DIR` overrides this development directory.
 
-Release builds open `com.monocode.desktop/monocode.db` under macOS Application
-Support, Linux's XDG data directory, or Windows' `%APPDATA%`. The app uses the
-existing desktop schema and session IDs. GPUI preferences are saved beside the
+Release builds open `com.monocode.desktop/monocode.db` under Linux's XDG data
+directory. The app uses the existing desktop schema and session IDs. GPUI preferences are saved beside the
 database in `monocode.db.gpui.sqlite3`.
 
 Desktop preferences and workspace state are stored by the native app. A one-time
@@ -139,10 +124,8 @@ the executable from a release build:
 crates/monocode-gpui/target/release/monocode-gpui --check-data
 ```
 
-On Windows, the terminal prefers PowerShell 7 (`pwsh.exe`), then Windows
-PowerShell (`powershell.exe`), with `COMSPEC`/`cmd.exe` as the fallback. A `SHELL`
-environment variable pointing to an installed native executable overrides this
-order. Missing executables and Unix-only shell paths are ignored.
+The terminal follows `SHELL`, falling back to the user's login shell. Missing
+executables and Unix-only shell paths are ignored.
 
 Provider CLI paths can be changed in Settings → Providers. CLI authentication
 continues to use each provider's existing sign-in.

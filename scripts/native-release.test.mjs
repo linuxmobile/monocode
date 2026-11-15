@@ -82,7 +82,7 @@ test("production tags and insecure download bases cannot create native releases"
     assert.throws(() => manifest({ baseUrl }), /HTTPS URL/);
   }
 });
-test("preview sequence fits native Windows version resources", () => {
-  assert.equal(previewVersion("0.16.0-preview.12").windows, "0.16.0.12");
+test("preview sequence fits the native package versions", () => {
+  assert.equal(previewVersion("0.16.0-preview.12").sequence, "12");
   assert.throws(() => previewVersion("0.16.0-preview.65536"));
 });
