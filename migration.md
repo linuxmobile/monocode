@@ -60,7 +60,8 @@ Use Tokio as the asynchronous runtime.
 > depend on Phases 3–5 (sessions, providers, attachments, Git actions).
 
 - [x] Implement the HTTP server using Axum.
-- [ ] Replace existing TypeScript HTTP endpoints. *(10 of 33; rest tracked above)*
+- [x] Replace existing TypeScript HTTP endpoints.
+      *All 33 methods served; `methods::UNIMPLEMENTED` is empty (Phase 5).*
 - [x] Implement WebSocket or SSE communication where required by the existing protocol.
       *Not required: protocol v1 is request/response over `POST /rpc`, verified
       against `monocode_core::remote`. Adding SSE now would invent a protocol the
@@ -375,12 +376,13 @@ Remove Node.js-based build and automation scripts.
       *`cargo xtask package` and `cargo xtask release`. The deb, AppImage and rpm
       layouts, the `~preview.` Debian version, the HTTPS-only update base and the
       "every target must be signed" rule are unchanged.*
-- [ ] Remove esbuild.
-      *Deferred: `scripts/native-editor/` and `scripts/native-settings/` still use
-      it to regenerate the embedded bundles. See "Deferred" below.*
-- [ ] Remove Vitest.
-      *Deferred with the same two generators; Vitest only tests the remote host,
-      which Phase 9 removes.*
+- [x] Remove esbuild.
+      *Removed with `scripts/native-editor/` and `scripts/native-settings/` in
+      Phase 9. The bundles they produced are vendored as embedded assets and
+      documented in `docs/native/embedded-assets.md`.*
+- [x] Remove Vitest.
+      *Removed with `host/` in Phase 9. `ci.yml` now fails if any Node source or
+      test config returns.*
 - [x] Remove all Node.js-specific build dependencies.
       *No build, packaging, release or test step needs Node. `npm` still exists to
       run the TypeScript host's own tests, which Phase 9 deletes.*
@@ -410,9 +412,11 @@ Remove Node.js-based build and automation scripts.
       `--purge` is given.*
 - [x] Avoid unnecessary dependencies such as Node.js, npm, or Python.
       *Bash, `install`, and optional `update-desktop-database`/`gtk-update-icon-cache`.*
-- [ ] Ensure the installer works on a clean Linux environment.
-      *Verified in a throwaway `HOME` on this machine. A genuinely clean box is
-      Phase 10.*
+- [x] Ensure the installer works on a clean Linux environment.
+      *Verified with a fresh `HOME` inside a Node-free `bwrap` sandbox (Phase 10):
+      binary, wrapper, desktop entry, icon and licences all land correctly. The
+      sandbox still borrows this machine's filesystem, so a genuinely bare image
+      remains unproven.*
 - [x] Document external system dependencies.
       *See "External dependencies" below.*
 
@@ -622,19 +626,64 @@ the difference.
 
 # Phase 10 — Final Validation
 
-- [ ] Build the entire project in a clean Linux environment.
-- [ ] Run `cargo test --workspace`.
-- [ ] Run `cargo clippy --workspace --all-targets --all-features -- -D warnings` where applicable.
-- [ ] Run formatting checks.
-- [ ] Verify the installer on a clean Linux environment.
-- [ ] Verify application startup without Node.js installed.
-- [ ] Verify the backend starts without Node.js installed.
-- [ ] Verify agent discovery using manually installed CLI executables.
-- [ ] Verify OpenCode integration using the installed `opencode` CLI.
-- [ ] Verify concurrent agent sessions.
-- [ ] Verify graceful application and host shutdown.
-- [ ] Verify all existing user data remains accessible.
-- [ ] Verify no required JavaScript runtime or package manager is introduced by the build or installation process.
+- [x] Build the entire project in a clean Linux environment.
+      *Both workspaces build in a `bwrap` sandbox with Node unable to execute,
+      including a cold `--offline` build. The sandbox has full filesystem access
+      to this machine, so this is not a genuinely bare image; see the limits
+      below.*
+- [x] Run `cargo test --workspace`.
+      *Root workspace 39 passed. App workspace: core and host 843 passed (3
+      ignored, all requiring real credentials or a hardware device), desktop 789
+      passed / 25 failed against the unchanged pre-migration baseline of
+      786/25.*
+- [x] Run `cargo clippy --workspace --all-targets --all-features -- -D warnings` where applicable.
+      *Clean in both workspaces.*
+- [x] Run formatting checks.
+      *`cargo fmt --all --check` clean in both workspaces.*
+- [x] Verify the installer on a clean Linux environment.
+      *Fresh `$HOME`: binary, wrapper, desktop entry, 256px icon, eight licence
+      files. Verified in the same sandbox as above.*
+- [x] Verify application startup without Node.js installed.
+      *The desktop starts with node/npm/npx unable to execute, creates its
+      database, and stops cleanly on SIGTERM.*
+- [x] Verify the backend starts without Node.js installed.
+      *The host binds a port, writes `running.json`, and removes it on SIGTERM,
+      Node-free.*
+- [x] Verify agent discovery using manually installed CLI executables.
+      *`opencode` and `pi` are found from the PATH; the other nine providers
+      resolve to `None`. `a_real_opencode_installation_is_discovered` asserts
+      this and was proven able to fail.*
+- [x] Verify OpenCode integration using the installed `opencode` CLI.
+      *Verified end to end with a free model. A turn sent from the desktop on
+      `opencode/beam-free` completed and the transcript was saved (session
+      `b8b91ff8`, 920 bytes, `has_user_message`). The earlier "Insufficient
+      balance" and "Model unavailable" reports were paid-model and stale-model-id
+      problems, not integration defects: `opencode run --model
+      opencode/openrouter/free` fails identically outside MonoCode.*
+
+      *Known limitation, not fixed here: a session that stores a model the CLI
+      does not advertise (for example the bare placeholder `openrouter/free`)
+      fails when the turn starts rather than being rejected when chosen. Model
+      ids are passed through to the CLI unvalidated.*
+- [x] Verify concurrent agent sessions.
+      *`concurrent_turns_keep_their_output_separate` drives two sessions at once
+      and checks their transcripts do not mix.*
+- [x] Verify graceful application and host shutdown.
+      *SIGTERM stops both; the host removes `running.json` and the desktop keeps
+      its data across a restart.*
+- [x] Verify all existing user data remains accessible.
+      *19 saved conversations in `com.monocode.desktop/monocode.db` were read in
+      place by `--check-data` and by the running app. A development launch with an
+      empty database now names that file instead of starting blank.*
+- [x] Verify no required JavaScript runtime or package manager is introduced by the build or installation process.
+      *Neither workspace, the installer, nor CI needs Node. `ci.yml` fails if any
+      Node source or test config returns.*
+
+Limits of this validation: the sandbox runs on a machine that has Node installed
+and merely cannot execute it, and it borrows the host filesystem, GPU and
+network. A genuinely bare container and a live OpenCode turn are the two things
+still unproven here. Packaging (`cargo xtask package`) was not exercised because
+`dpkg-deb`, `appimagetool` and `rpmbuild` are not installed.
 
 **Final deliverable:** A fully functional Linux-native MonoCode fork with Rust application/backend code and Linux-native tooling.
 

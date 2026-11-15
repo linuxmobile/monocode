@@ -395,3 +395,103 @@ For long-history interaction, use the isolated fixture from the
 [native guide](README.md#checks-and-fixtures). Check typing and scrolling while a
 separate real session streams, then switch tabs and verify draft/viewport state,
 Stop, and saved history after relaunch. Synthetic history is not sent to providers.
+
+## Phase 10 — final validation of the native-only tree
+
+Run on Linux (Arch, Wayland) after Phase 9 deleted the TypeScript host. Two
+Cargo workspaces exist: the root workspace (`xtask`, `native-sign`) and the app
+workspace (`crates/*`).
+
+### Static checks and tests
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Format, app workspace | `cargo fmt --all --check` | clean |
+| Format, root workspace | `cargo fmt --all --check` | clean |
+| Clippy, app workspace | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | clean |
+| Clippy, root workspace | same, from `xtask/` | clean |
+| Core and host tests | `-p monocode-core -p monocode-host` | 843 passed, 3 ignored |
+| Host tests only | `-p monocode-host` | 177 passed |
+| Root workspace tests | `--workspace` from `xtask/` | 39 passed |
+| Desktop tests | `-p monocode-gpui -- --test-threads=1` | 789 passed, 25 failed, 1 ignored |
+
+The 25 desktop failures predate this migration; the baseline recorded on a
+pristine `linux` checkout was 786 passed / 25 failed, and the same 25 tests fail
+(grouped in `shell::terminal_panes`, `shell::settings`,
+`shell::classic_surface_tests`, `shell::pinned_tabs`, `shell::project_rail`).
+Running the desktop suite without `--test-threads=1` inflates the count to 37
+through unrelated interference, so the serial run is the one to compare.
+
+### No JavaScript runtime is required
+
+`sudo` was unavailable and `docker`, `podman` and `systemd-nspawn` were absent, so
+the checks ran under `bwrap` with `/usr/bin/node` and npm's `cli.js` bound to
+`/dev/null`:
+
+```sh
+bwrap --ro-bind / / --dev /dev --proc /proc --tmpfs /tmp --tmpfs /var/tmp \
+  --bind /dev/null /usr/bin/node \
+  --bind /dev/null /usr/lib/node_modules/npm/bin/npm-cli.js \
+  --bind "$SANDBOX_HOME" "$SANDBOX_HOME" --bind /run/user/1000 /run/user/1000 \
+  --setenv PATH /usr/bin:/bin --setenv HOME "$SANDBOX_HOME" /bin/bash
+```
+
+Inside it, `node --version`, `npm --version` and `npx --version` all fail. This
+is the honest test: a shell's hash table still resolves the name even when the
+target is masked, so `command -v node` is not evidence of anything.
+
+Verified inside the sandbox:
+
+- Both workspaces build (`--offline`, 4m 02s for a cold build).
+- The host and core suites pass, and the root workspace suite passes.
+- `scripts/install.sh` with a fresh `$HOME` writes the binary, wrapper, desktop
+  entry, a 256px icon, eight licence files and `native-install.json`.
+- The desktop starts, creates `Monocode Development/monocode.db`, stops on
+  SIGTERM, and keeps its sessions across a restart.
+- The host starts, writes `running.json`, and removes it on SIGTERM.
+- `scripts/uninstall.sh` removes the installed files and keeps
+  `Monocode Development` and `~/.monocode-host`; `--purge` removes only the host
+  state.
+
+`XDG_DATA_HOME` inherited from the outer shell overrides a sandbox `$HOME`, so
+any sandboxed run must pin it. The first attempt failed this way and the app
+wrote to the real profile instead.
+
+### Agent discovery and the OpenCode boundary
+
+`provider::resolve` finds a manually installed `opencode` at `/usr/bin/opencode`
+and `pi` under `~/.bun/bin`; every other provider resolves to `None` on this
+machine. The `#[ignore]` test `a_real_opencode_installation_is_discovered`
+asserts this, and was proven able to fail by pointing it at `Kind::Devin`.
+
+`opencode serve --hostname=127.0.0.1 --port=<port>` accepts exactly the arguments
+MonoCode sends and answers HTTP 200, so the integration boundary is correct.
+
+A full turn has since been run from the desktop on a free model
+(`opencode/beam-free`): it completed and the transcript was written to the store
+with `has_user_message` set. A free model was used deliberately; the paid
+catalog was never called.
+
+Two failures seen while testing were not integration defects, and both reproduce
+outside MonoCode:
+
+- `opencode run --model opencode/openrouter/free` fails identically in a plain
+  shell. `openrouter/free` is a placeholder that is not in the CLI's catalog, and
+  the real ids have no `opencode/` prefix (`openrouter/google/gemma-4-31b-it:free`).
+- That OpenRouter model then failed upstream with `Provider returned error` even
+  when named correctly.
+
+A model id the CLI does not advertise is only rejected when the turn starts, not
+when it is chosen, because ids are passed to the CLI unvalidated.
+
+### Users' existing conversations
+
+A development build and the release build read different databases
+(`Monocode Development` versus `com.monocode.desktop`). A development launch
+with an empty database now names the file that holds the saved conversations and
+says to use `--monocode-data`, without copying or writing anything.
+
+Checked against the real databases on this machine: the warning appears when the
+opened database is empty and another has conversations, and stays silent with
+`--monocode-data` or when the opened database has sessions of its own. 19
+conversations were readable in place throughout.
