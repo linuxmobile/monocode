@@ -114,6 +114,90 @@ async fn async_main(options: Options, args: &[String]) -> Result<(), String> {
                 Err("Device not found".into())
             }
         }
+        "install" => {
+            let service = monocode_host::service::ServiceOptions {
+                directory: options.directory.clone(),
+                port: options.port,
+                executable: std::env::current_exe()
+                    .map_err(|e| format!("Cannot locate this executable: {e}"))?,
+            };
+            // Reusing a running host means a reconnect never interrupts work.
+            let (connection, mode) = monocode_host::service::install_service(&service)?;
+            if options.json {
+                print_json(
+                    &serde_json::json!({
+                        "port": connection.port,
+                        "pid": connection.pid,
+                        "mode": mode.to_string(),
+                    }),
+                    true,
+                );
+            } else {
+                println!(
+                    "Host is running on 127.0.0.1:{} (PID {}), managed by {mode}.",
+                    connection.port, connection.pid
+                );
+            }
+            Ok(())
+        }
+        "status" => {
+            match monocode_host::service::connection_info(&options.directory) {
+                Ok(connection) => {
+                    if options.json {
+                        print_json(
+                            &serde_json::json!({
+                                "port": connection.port,
+                                "pid": connection.pid,
+                            }),
+                            true,
+                        );
+                    } else {
+                        println!(
+                            "Host is running (PID {}, port {})",
+                            connection.pid, connection.port
+                        );
+                    }
+                }
+                Err(_) => println!("Host is stopped"),
+            }
+            Ok(())
+        }
+        "stop" => {
+            monocode_host::service::lifecycle(&options.directory, "stop")?;
+            println!("Host is stopping");
+            Ok(())
+        }
+        "uninstall" => {
+            let notes = monocode_host::service::uninstall_service()?;
+            // A host started outside the service manager is still running, so
+            // stop it too; the state file disappearing is the confirmation.
+            let _ = monocode_host::service::lifecycle(&options.directory, "stop");
+            let state = options.directory.join("running.json");
+            for _ in 0..200 {
+                if !state.exists() {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            println!(
+                "{}",
+                if state.exists() {
+                    "The host service was removed, but the host is still running. Run stop, or end its process."
+                } else {
+                    "The host is stopped and will not start automatically."
+                }
+            );
+            // Removing the data directory would erase sessions and credentials,
+            // which is the user's decision, not an uninstall's.
+            println!(
+                "Sessions, logs and device credentials are kept in {}. Delete that directory only if you want to erase them.",
+                options.directory.display()
+            );
+            for note in notes {
+                println!("{note}");
+            }
+            Ok(())
+        }
         "serve" => serve(store, options).await,
         "version" => {
             println!(
@@ -134,6 +218,10 @@ const HELP: &str = "\
 Usage: monocode-host <command> [options]
 
 Commands:
+  install           Install and start the host, surviving logout
+  status            Report whether the host is running
+  stop              Stop a running host
+  uninstall         Remove the service and stop the host
   serve             Serve this machine to a paired desktop
   pair              Issue a device credential for a desktop
   devices           List paired devices

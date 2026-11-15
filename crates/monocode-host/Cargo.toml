@@ -18,6 +18,8 @@ path = "src/main.rs"
 monocode-core = { path = "../monocode-core" }
 serde.workspace = true
 serde_json.workspace = true
+# The lifecycle probe and stop calls reuse the same client as core's remote.
+ureq = "2.12"
 rusqlite = { version = "0.40.2", features = ["bundled", "hooks"], default-features = false }
 # The host is the only component that needs a server and an async runtime.
 tokio = { version = "1", features = ["rt-multi-thread", "net", "macros", "signal", "time", "sync"] }

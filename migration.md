@@ -327,14 +327,32 @@ Do not introduce a different database unless there is a measurable architectural
 
 # Phase 6 — Linux Service Management
 
-- [ ] Replace `host/service.ts`.
-- [ ] Remove Node-specific detached-process handling.
-- [ ] Implement Linux-native daemon lifecycle management.
-- [ ] Support systemd user services where appropriate.
-- [ ] Implement installation, startup, shutdown, and removal.
-- [ ] Handle service failures and restart behavior.
-- [ ] Avoid requiring root privileges for ordinary user-level functionality.
-- [ ] Ensure clean shutdown and resource cleanup.
+- [x] Replace `host/service.ts`.
+      *`crates/monocode-host/src/service.rs`, plus `install`, `status`, `stop`
+      and `uninstall` on the host binary.*
+- [x] Remove Node-specific detached-process handling.
+      *A `setsid(2)` child, with `stdout`/`stderr` appended to `host.log`. No
+      Node, no shell, no `npx`.*
+- [x] Implement Linux-native daemon lifecycle management.
+      *Install, start, status, stop and uninstall. Installing again reuses a
+      host that already answers, so reconnecting never interrupts a turn.*
+- [x] Support systemd user services where appropriate.
+      *Used when `/run/systemd/system` exists. The unit is rewritten when its
+      directory or port changes and restarted, since `enable --now` leaves an
+      active unit running with its old arguments.*
+- [x] Implement installation, startup, shutdown, and removal.
+      *`Restart=on-failure` with a 5s delay; verified by killing the host and
+      watching systemd bring it back.*
+- [x] Handle service failures and restart behavior.
+      *A unit that installs but does not answer names `host.log` in the error,
+      and every start is confirmed through the lifecycle endpoint rather than
+      trusting `running.json`.*
+- [x] Avoid requiring root privileges for ordinary user-level functionality.
+      *A user unit plus lingering. Where lingering needs an administrator, the
+      error prints the exact `sudo loginctl enable-linger` command.*
+- [x] Ensure clean shutdown and resource cleanup.
+      *`stop` goes through the lifecycle endpoint, which removes `running.json`
+      and releases the port. Uninstalling never deletes the data directory.*
 
 # Phase 7 — Build System and Development Tooling
 
