@@ -91,9 +91,7 @@ impl Installation {
 
     pub fn target(&self) -> Result<String, String> {
         let os = match std::env::consts::OS {
-            "macos" => "darwin",
             "linux" => "linux",
-            "windows" => "windows",
             _ => return Err("Updates are unavailable on this platform".into()),
         };
         Ok(format!(

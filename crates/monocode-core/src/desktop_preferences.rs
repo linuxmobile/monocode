@@ -704,9 +704,7 @@ mod tests {
             return;
         };
         let linux = dir.join("localstorage/tauri_localhost_0.localstorage");
-        let macos = crate::accounts::home()
-            .map(|home| home.join("Library/WebKit/com.monocode.desktop/WebsiteData/Default"));
-        if !linux.is_file() && macos.as_ref().is_none_or(|root| !root.is_dir()) {
+        if !linux.is_file() {
             return;
         }
         let preferences = DesktopPreferences::load(dir);

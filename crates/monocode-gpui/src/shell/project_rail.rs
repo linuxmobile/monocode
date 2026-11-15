@@ -180,7 +180,7 @@ impl Shell {
     }
     pub(super) fn project_rail_frame(&self, cx: &mut Context<Self>) -> AnyElement {
         let width = self.project_rail_drawn_width();
-        let frame = div()
+        div()
             .id("project-rail-frame")
             .debug_selector(|| "project-rail-frame".into())
             .relative()
@@ -232,8 +232,7 @@ impl Shell {
                     )
                 },
             )
-            .into_any_element();
-        frame
+            .into_any_element()
     }
     pub(super) fn project_rail(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let compact = !self.workspace.project_rail_open && self.settings.is_none();

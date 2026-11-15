@@ -808,7 +808,6 @@ fn process_running(pid: u32) -> bool {
 }
 
 /// Without a cheap check, another process's turn stays shared.
-
 #[derive(Serialize, Deserialize)]
 struct TurnReview {
     cwd: String,

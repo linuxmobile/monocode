@@ -13,11 +13,8 @@ fn config(version: &str) -> Config {
 }
 
 #[test]
-fn signed_tauri_key_and_packages_work_for_each_native_target() {
+fn signed_key_and_packages_work_for_each_native_target() {
     for target in [
-        "darwin-aarch64-app",
-        "darwin-x86_64-app",
-        "windows-x86_64-nsis",
         "linux-x86_64-appimage",
         "linux-x86_64-deb",
         "linux-x86_64-rpm",
@@ -49,7 +46,7 @@ fn modified_feed_cannot_redirect_a_valid_package_or_invent_a_new_version() {
     assert!(verify_feed(
         &serde_json::to_vec(&envelope).unwrap(),
         &config("0.16.0-preview.1"),
-        "darwin-aarch64-app"
+        "linux-x86_64-deb"
     )
     .unwrap_err()
     .contains("signature verification failed"));
@@ -57,7 +54,7 @@ fn modified_feed_cannot_redirect_a_valid_package_or_invent_a_new_version() {
 #[test]
 fn equal_older_and_final_versions_are_never_downgraded_to_a_preview() {
     for current in ["0.16.0-preview.2", "0.16.0-preview.10", "0.16.0", "0.17.0"] {
-        assert!(verify_feed(FEED, &config(current), "darwin-aarch64-app")
+        assert!(verify_feed(FEED, &config(current), "linux-x86_64-deb")
             .unwrap()
             .is_none());
     }
@@ -65,7 +62,7 @@ fn equal_older_and_final_versions_are_never_downgraded_to_a_preview() {
 #[test]
 fn another_architecture_is_not_used_when_a_target_is_missing() {
     assert!(
-        verify_feed(FEED, &config("0.16.0-preview.1"), "windows-aarch64-nsis")
+        verify_feed(FEED, &config("0.16.0-preview.1"), "linux-aarch64-deb")
             .unwrap_err()
             .contains("No native update package")
     );
@@ -80,7 +77,7 @@ fn wrong_application_and_channel_are_rejected_even_in_a_signed_payload() {
         assert!(select(
             serde_json::from_value(manifest).unwrap(),
             &config("0.16.0-preview.1"),
-            "darwin-aarch64-app"
+            "linux-x86_64-deb"
         )
         .unwrap_err()
         .contains("different application or release channel"));
@@ -107,7 +104,7 @@ fn unsigned_tauri_production_feed_is_never_accepted_as_native() {
     assert!(verify_feed(
         br#"{"version":"99.0.0","platforms":{}}"#,
         &config("0.16.0-preview.1"),
-        "darwin-aarch64-app"
+        "linux-x86_64-deb"
     )
     .is_err());
 }

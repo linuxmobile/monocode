@@ -1,5 +1,4 @@
 use super::ssh_askpass::Askpass;
-use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -231,7 +230,6 @@ fn capture(mut reader: impl Read + Send + 'static) -> std::thread::JoinHandle<Ve
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HostPlatform {
     Unix,
-    Windows,
 }
 
 const PLATFORM_PROBE: &[&str] = &["echo", "MONOCODE_PLATFORM", "$env:OS", "%OS%", "$OS"];
@@ -239,18 +237,15 @@ const PLATFORM_PROBE: &[&str] = &["echo", "MONOCODE_PLATFORM", "$env:OS", "%OS%"
 fn parse_platform(output: &str) -> Result<HostPlatform, String> {
     let marker = output
         .rsplit_once("MONOCODE_PLATFORM")
-        .ok_or("Could not identify the remote shell. Use cmd.exe, PowerShell, or a Unix shell.")?
+        .ok_or("Could not identify the remote shell. Use a Unix shell.")?
         .1;
-    Ok(
-        if marker
-            .split_whitespace()
-            .any(|word| word.eq_ignore_ascii_case("Windows_NT"))
-        {
-            HostPlatform::Windows
-        } else {
-            HostPlatform::Unix
-        },
-    )
+    if marker
+        .split_whitespace()
+        .any(|word| word.eq_ignore_ascii_case("Windows_NT"))
+    {
+        return Err("MonoCode Host runs on Linux hosts only".into());
+    }
+    Ok(HostPlatform::Unix)
 }
 
 pub fn detect_platform(
@@ -270,19 +265,6 @@ pub fn detect_platform(
     parse_platform(&output)
 }
 
-fn powershell_encoded(script: &str) -> String {
-    let bytes: Vec<u8> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();
-    base64::engine::general_purpose::STANDARD.encode(bytes)
-}
-
-/// Keep the remote command below cmd.exe's length limit. The actual script is
-/// read from UTF-8 stdin as a single block, rather than evaluated line by line.
-fn powershell_reader() -> String {
-    // Prefer this shell's built-in modules if the SSH environment inherited
-    // PowerShell 7 module paths through an intermediate process.
-    powershell_encoded("$env:PSModulePath = $PSHOME + '\\Modules;' + $env:PSModulePath; $ErrorActionPreference = 'Stop'; [Console]::InputEncoding = [Text.UTF8Encoding]::new($false); [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); try { & ([ScriptBlock]::Create([Console]::In.ReadToEnd())) } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }")
-}
-
 pub fn run_script(
     target: &SshTarget,
     platform: HostPlatform,
@@ -290,26 +272,8 @@ pub fn run_script(
     job: &Arc<Job>,
     askpass: &Askpass,
 ) -> Result<String, String> {
-    if platform == HostPlatform::Windows {
-        let encoded = powershell_reader();
-        run_remote_command(
-            target,
-            script,
-            job,
-            askpass,
-            command(target, true),
-            &[
-                "powershell.exe",
-                "-NoLogo",
-                "-NoProfile",
-                "-NonInteractive",
-                "-EncodedCommand",
-                &encoded,
-            ],
-        )
-    } else {
-        run_script_with_command(target, script, job, askpass, command(target, true))
-    }
+    let _ = platform;
+    run_script_with_command(target, script, job, askpass, command(target, true))
 }
 
 fn run_script_with_command(
@@ -379,14 +343,9 @@ fn run_remote_command(
 pub fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
-fn powershell_quote(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "''"))
-}
-
 pub fn bootstrap_script(platform: HostPlatform) -> String {
     let template = match platform {
         HostPlatform::Unix => include_str!("remote_bootstrap.sh"),
-        HostPlatform::Windows => include_str!("remote_bootstrap.ps1"),
     };
     bootstrap_script_from_template(platform, template)
 }
@@ -395,15 +354,11 @@ fn bootstrap_script_from_template(platform: HostPlatform, template: &str) -> Str
     let version = env!("CARGO_PKG_VERSION");
     let url = format!("https://github.com/hardbeat920/monocode/releases/download/v{version}");
     match platform {
-        // include_str! preserves checkout line endings, including Windows CRLF.
+        // include_str! preserves checkout line endings.
         HostPlatform::Unix => template
             .replace("\r\n", "\n")
             .replace("@@VERSION@@", &shell_quote(version))
             .replace("@@RELEASE@@", &shell_quote(&url)),
-        HostPlatform::Windows => template
-            .replace("@@VERSION@@", &powershell_quote(version))
-            .replace("@@RELEASE@@", &powershell_quote(&url))
-            .replace("@@ACL@@", include_str!("windows-acl.ps1")),
     }
 }
 
@@ -413,16 +368,15 @@ pub fn upgrade_script(platform: HostPlatform, port: u16) -> String {
         HostPlatform::Unix => {
             format!("MONOCODE_HOST_FORCE_UPGRADE=1\nMONOCODE_HOST_PORT={port}\n{script}")
         }
-        HostPlatform::Windows => format!(
-            "$env:MONOCODE_HOST_FORCE_UPGRADE = '1'\n$env:MONOCODE_HOST_PORT = '{port}'\n{script}"
-        ),
     }
 }
 
 pub fn pairing_script(platform: HostPlatform, name: &str) -> String {
     match platform {
-        HostPlatform::Unix => format!("set -eu\n\"$HOME/.monocode-host/bin/monocode-host\" pair --name {} --json\n", shell_quote(name)),
-        HostPlatform::Windows => format!("$ErrorActionPreference = 'Stop'\n$base = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.monocode-host'\n$runtime = [IO.File]::ReadAllText((Join-Path $base 'runtime-path')).Trim()\n& (Join-Path $runtime 'node.exe') (Join-Path $runtime 'host.mjs') pair --name {} --json\nif ($LASTEXITCODE -ne 0) {{ throw 'Host pairing failed.' }}\n", powershell_quote(name)),
+        HostPlatform::Unix => format!(
+            "set -eu\n\"$HOME/.monocode-host/bin/monocode-host\" pair --name {} --json\n",
+            shell_quote(name)
+        ),
     }
 }
 
@@ -803,30 +757,22 @@ mod tests {
             upgrade_script(HostPlatform::Unix, 3774).starts_with("MONOCODE_HOST_FORCE_UPGRADE=1")
         );
         assert!(!upgrade_script(HostPlatform::Unix, 3774).contains('\r'));
-        assert!(upgrade_script(HostPlatform::Windows, 3774)
-            .starts_with("$env:MONOCODE_HOST_FORCE_UPGRADE = '1'"));
     }
     #[test]
-    fn remote_platform_probe_handles_cmd_powershell_and_unix() {
-        assert_eq!(
-            parse_platform("MONOCODE_PLATFORM $env:OS Windows_NT $OS\r\n").unwrap(),
-            HostPlatform::Windows
-        );
-        assert_eq!(
-            parse_platform("MONOCODE_PLATFORM\r\nWindows_NT\r\n%OS%\r\n").unwrap(),
-            HostPlatform::Windows
-        );
+    fn remote_platform_probe_accepts_unix_and_refuses_windows() {
         assert_eq!(
             parse_platform("MONOCODE_PLATFORM :OS %OS%\n").unwrap(),
             HostPlatform::Unix
         );
         assert!(parse_platform("unrecognized shell").is_err());
-        assert!(powershell_reader().len() < 4096);
-        let script = bootstrap_script(HostPlatform::Windows);
+        assert!(
+            parse_platform("MONOCODE_PLATFORM $env:OS Windows_NT $OS\r\n").is_err(),
+            "a Windows host cannot run the host"
+        );
+        let script = bootstrap_script(HostPlatform::Unix);
         assert!(!script.contains("@@"));
         assert!(script.contains("checksum mismatch"));
-        assert!(script.contains("Protect-MonoCodeDirectory"));
-        assert!(pairing_script(HostPlatform::Windows, "Nick's $PC").contains("'Nick''s $PC'"));
+        assert!(pairing_script(HostPlatform::Unix, "Nick's $PC").contains("'Nick'\\''s $PC'"));
     }
     #[test]
     fn device_names_are_bounded_single_lines() {

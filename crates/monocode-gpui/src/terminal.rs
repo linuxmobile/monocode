@@ -1380,7 +1380,6 @@ fn working_dir(cwd: &str) -> std::path::PathBuf {
 }
 /// pty.rs's foreground_label: the command holding the terminal, unless it
 /// is the shell itself.
-
 fn foreground_label(master_fd: i32, shell_pid: u32) -> Option<String> {
     if master_fd < 0 {
         return None;

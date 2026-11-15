@@ -102,7 +102,6 @@ struct Process {
 }
 
 /// Kernel process birth time prevents PID reuse from authorizing a stop.
-
 pub fn identity(_pid: u32) -> Option<String> {
     None
 }

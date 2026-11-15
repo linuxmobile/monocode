@@ -95,7 +95,6 @@ fn pick_mono(installed: &[String], system: impl FnOnce() -> Option<String>) -> O
 }
 
 /// What fontconfig maps the `monospace` alias to, as WebKitGTK does.
-
 fn system_mono() -> Option<String> {
     let output = std::process::Command::new("fc-match")
         .args(["-f", "%{family[0]}", "monospace"])

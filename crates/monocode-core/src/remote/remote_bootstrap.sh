@@ -10,7 +10,7 @@ FORCE_UPGRADE=${MONOCODE_HOST_FORCE_UPGRADE:-0}
 HOST_PORT=${MONOCODE_HOST_PORT:-3774}
 
 if [ ! -x "$ENTRY" ] || [ "$FORCE_UPGRADE" = 1 ]; then
-  case "$(uname -s)" in Darwin) OS=darwin ;; Linux) OS=linux ;; *) echo 'MonoCode Host supports Linux and macOS.' >&2; exit 1 ;; esac
+  case "$(uname -s)" in Linux) OS=linux ;; *) echo 'MonoCode Host supports Linux hosts only.' >&2; exit 1 ;; esac
   case "$(uname -m)" in arm64|aarch64) ARCH=arm64 ;; x86_64|amd64) ARCH=x64 ;; *) echo 'Unsupported host architecture.' >&2; exit 1 ;; esac
   FILE="monocode-host-$OS-$ARCH.tar.gz"
   mkdir -p "$BASE/runtime" "$BASE/bin"

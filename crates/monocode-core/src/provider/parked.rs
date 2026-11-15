@@ -144,7 +144,6 @@ impl Drop for Wire {
     /// Close stdin and let the provider exit on its own before any signal, on
     /// a background thread: `process::retire_pid` explains why a hard kill can
     /// sign Claude out. Pool locks and turn completion never wait on this.
-
     fn drop(&mut self) {
         self.stdin.sender.take();
         // Disconnect before joining so a bounded stdout sender cannot deadlock.

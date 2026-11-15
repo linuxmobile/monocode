@@ -37,7 +37,7 @@ pub(crate) fn expand_home(path: &Path) -> PathBuf {
             .map(PathBuf::from)
             .unwrap_or_else(|| path.to_path_buf());
     }
-    let rest = text.strip_prefix("~/").or_else(|| None);
+    let rest = text.strip_prefix("~/");
     if let Some(rest) = rest {
         if let Some(home) = dirs_home() {
             return PathBuf::from(home).join(rest);
@@ -237,7 +237,6 @@ fn load_login_shell_env() -> HashMap<String, String> {
 
 /// `-lic`, not `-lc`: zsh reads `.zshrc` only for interactive shells, and
 /// version managers initialize from there.
-
 fn load_unix_login_shell_env() -> HashMap<String, String> {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
     let mut cmd = Command::new(&shell);

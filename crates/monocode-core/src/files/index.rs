@@ -376,23 +376,17 @@ fn path_has_skipped_dir(relative: &str) -> bool {
         .any(skip_walk_dir_name)
 }
 
-/// Directories the OS guards behind a consent prompt. macOS pops "would like to
-/// access data from other apps" the first time a process reads another app's
-/// container, and the grant is per-folder — so a walk that brushes past a few of
-/// them prompts again on every launch. Nothing in here is a user project, so the
-/// indexer treats them as if they did not exist.
+/// Directories the OS guards behind a consent prompt. The desktop portal asks
+/// before another application reads a folder it owns, so the indexer treats
+/// those folders as if they did not exist.
 fn is_private_dir(path: &Path) -> bool {
     if path.extension().is_some_and(|ext| ext == "app") {
         return true;
     }
-    if !false {
-        return false;
-    }
     let guarded = [
-        dirs_home().map(|home| PathBuf::from(home).join("Library")),
-        dirs_home().map(|home| PathBuf::from(home).join(".Trash")),
-        Some(PathBuf::from("/Library")),
-        Some(PathBuf::from("/System")),
+        dirs_home().map(|home| PathBuf::from(home).join(".local/share/Trash")),
+        Some(PathBuf::from("/snap")),
+        Some(PathBuf::from("/var/lib/flatpak")),
     ];
     guarded
         .iter()

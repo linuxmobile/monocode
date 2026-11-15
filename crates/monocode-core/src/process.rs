@@ -50,10 +50,8 @@ pub fn terminate(child: &mut std::process::Child) {
 }
 
 /// How long a provider whose stdin was closed may take to exit by itself.
-
 const EXIT_GRACE: std::time::Duration = std::time::Duration::from_millis(1500);
 /// How long the group leader may take to shut down after SIGTERM.
-
 const TERM_GRACE: std::time::Duration = std::time::Duration::from_secs(2);
 
 /// Stop a provider child without cutting off a credential write, on a
@@ -77,7 +75,6 @@ pub fn retire(mut child: std::process::Child) {
 
 /// Blocking form of [`retire`] for a child whose `Child` value cannot be
 /// moved. `after` runs once the process is gone (to join pipe readers).
-
 pub(crate) fn retire_pid(pid: u32, after: impl FnOnce()) {
     let pid = pid as libc::pid_t;
     let exited = |within: std::time::Duration| {

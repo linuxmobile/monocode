@@ -56,7 +56,6 @@ fn success(command: &mut Command, message: &str) -> Result<(), String> {
 
 /// Prepare first, then swap on the same filesystem, retaining the original if
 /// the second rename fails. A failed rollback leaves its backup for recovery.
-
 fn replace(prepared: &Path, target: &Path, backup: &Path) -> Result<(), String> {
     fs::rename(target, backup).map_err(|e| e.to_string())?;
     if let Err(error) = fs::rename(prepared, target) {

@@ -281,18 +281,18 @@ mod tests {
     fn maps_nested_search_and_workspace_results_without_exposing_host_paths() {
         let (env, args) = host_arguments(
             "search_project",
-            json!({"options":{"cwd":"remote://windows/C:/code", "query":"needle"}}),
+            json!({"options":{"cwd":"remote://host/home/code", "query":"needle"}}),
         )
         .unwrap();
-        assert_eq!(args["options"]["cwd"], "C:/code");
+        assert_eq!(args["options"]["cwd"], "/home/code");
         assert_eq!(
             client_result(
                 "search_project",
                 &env,
                 &args,
-                json!({"matches":[{"path":"C:/code/a.txt"}]})
+                json!({"matches":[{"path":"/home/code/a.txt"}]})
             )["matches"][0]["path"],
-            "remote://windows/C:/code/a.txt"
+            "remote://host/home/code/a.txt"
         );
         let args = json!({"cwd":"/code"});
         assert_eq!(

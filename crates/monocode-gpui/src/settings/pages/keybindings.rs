@@ -622,8 +622,7 @@ impl SettingsView {
 fn default_shortcuts(row: &Binding) -> Vec<String> {
     let shortcut = row
         .keys
-        .replace('⌘', "ctrl-")
-        .replace('⌃', "ctrl-")
+        .replace(['⌘', '⌃'], "ctrl-")
         .replace('⌥', "alt-")
         .replace('⇧', "shift-")
         .replace('↑', "up")
