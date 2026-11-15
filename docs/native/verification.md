@@ -496,3 +496,38 @@ Checked against the real databases on this machine: the warning appears when the
 opened database is empty and another has conversations, and stays silent with
 `--monocode-data` or when the opened database has sessions of its own. 19
 conversations were readable in place throughout.
+
+### Packaging
+
+`cargo xtask package` was run against a real release binary. Both kinds assemble
+their tree correctly and stop only where an external packer is missing:
+
+```sh
+MONOCODE_NATIVE_VERSION=0.16.0-preview.1 \
+  cargo run --manifest-path xtask/Cargo.toml -p xtask --quiet -- \
+  package linux /path/to/target/release/monocode-gpui /tmp/pkgtest
+# Could not run dpkg-deb: No such file or directory
+
+MONOCODE_NATIVE_VERSION=0.16.0-preview.1 ... package rpm ... /tmp/pkgrpm
+# Could not run rpmbuild: No such file or directory
+```
+
+What was verified from the assembled tree:
+
+- `DEBIAN/control` has the expected `Version: 0.16.0~preview.1`, the dependency
+  list and `pkexec | policykit-1`.
+- `usr/lib/monocode-native/monocode-gpui` reports `Monocode Native
+  0.16.0-preview.1`, and the `usr/bin/monocode-native` wrapper execs that path.
+- `native-install.json` records the app id and kind, the desktop entry is valid,
+  and eight licence files are present.
+- The rpm side writes `SPECS/monocode-native.spec` and the same source tree.
+
+The version gate works and was exercised by accident: a binary reporting
+`0.16.0` was refused for a `0.16.0-preview.1` package, and a bare `0.16.0` was
+rejected because a native preview version is required. `MONOCODE_NATIVE_VERSION`
+is read with `option_env!`, so the binary must be rebuilt for the version to
+match.
+
+Neither `dpkg-deb` nor `rpmbuild` is installed on this machine, so no `.deb` or
+`.rpm` file has ever been produced here, and nothing was installed from a
+package. The Arch package is built separately with `pkgbuild`.
