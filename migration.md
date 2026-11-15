@@ -124,20 +124,56 @@ MonoCode is responsible only for detecting, launching, communicating with, and s
 
 ## 3.2 Provider implementation
 
-- [ ] Replace `host/providers.ts` with native Rust implementations.
-- [ ] Replace TypeScript provider adapters currently imported from `src/integrations/harness/providers/`.
-- [ ] Audit every provider's actual CLI interface and communication protocol.
-- [ ] Prefer direct executable invocation.
-- [ ] Implement provider discovery through the user's `PATH`.
-- [ ] Support custom executable paths where appropriate.
-- [ ] Detect missing executables and provide clear error messages.
-- [ ] Implement provider availability and version detection.
-- [ ] Implement provider-specific argument construction.
-- [ ] Implement stdin/stdout communication.
-- [ ] Implement event parsing and normalization.
-- [ ] Implement cancellation and process supervision.
-- [ ] Preserve existing capabilities such as approval requests, tool events, session status, and streaming responses.
-- [ ] Add integration tests using fake executables.
+> **Status: complete in `monocode-core`.** All eleven providers are implemented
+> natively in ~12.2k LOC under `crates/monocode-core/src/provider/`, and the
+> desktop app already runs every one of them. Phases 1–2 verified rather than
+> rewrote this layer; the audit below records the evidence for each item.
+>
+> What is *not* done is wiring `provider::run` into the Rust remote host. That
+> needs the session state machine (`commands.dispatch`, create/send/compact with
+> idempotent receipts), which is Phase 4. Until then the host keeps refusing
+> `commands.dispatch` instead of guessing.
+
+- [x] Replace `host/providers.ts` with native Rust implementations.
+      *`provider::run` / `run_with_controls` cover all eleven kinds. The TS file
+      is a barrel importing 27.2k LOC of adapters; it goes with `host/` in Phase 9.*
+- [x] Replace TypeScript provider adapters currently imported from `src/integrations/harness/providers/`.
+      *All eleven TS adapter directories have a native counterpart. The TS copies
+      remain only because `host/` still ships; they are removed together.*
+- [x] Audit every provider's actual CLI interface and communication protocol.
+      *Confirmed genuinely heterogeneous, not one shared parser: Codex drives
+      `codex app-server`; the ACP family (`acp.rs`) speaks JSON-RPC over stdio;
+      OpenCode has its own `client.rs`/`events.rs`; Devin has a JSONC parser. The
+      dispatch in `provider.rs` selects per provider rather than assuming a
+      common protocol.*
+- [x] Prefer direct executable invocation.
+      *Every child is `Command::new(binary).args(...)` — no shell, no wrapper script.*
+- [x] Implement provider discovery through the user's `PATH`.
+      *`resolve_auto` walks the GUI-restored `PATH` plus common user and system
+      install locations. `discovery::matches` then verifies each candidate's
+      `--help` contract, so an unrelated program that happens to be named `pi`,
+      `grok`, `fx` or `agent` is not mistaken for the provider.*
+- [x] Support custom executable paths where appropriate.
+      *`cli::configured` wins over auto-discovery; `MONOCODE_<KIND>_BINARY`
+      overrides before that. An explicit path errors at launch instead of
+      silently falling back to a different binary.*
+- [x] Detect missing executables and provide clear error messages.
+- [x] Implement provider availability and version detection.
+- [x] Implement provider-specific argument construction.
+- [x] Implement stdin/stdout communication.
+- [x] Implement event parsing and normalization.
+      *One `Event` enum (`Text`, `Reasoning`, `Tool`, `Approval`, `Question`,
+      `Status`) normalizes eleven different wire formats.*
+- [x] Implement cancellation and process supervision.
+      *Cancellation reaps the child and its descendants (test:
+      `cancellation_reaps_child_and_descendant_promptly`).*
+- [x] Preserve existing capabilities such as approval requests, tool events, session status, and streaming responses.
+      *Carried by `Event::Approval`, `Event::Tool`, `Event::Status` and the
+      streaming delta path; exercised by the 82 provider tests.*
+- [x] Add integration tests using fake executables.
+      *Several suites drive real processes from temporary scripts and assert on
+      the wire: `provider/text_tests.rs`, `provider/follow_up.rs`,
+      `accounts/tests.rs`, plus the replay-based perf harness.*
 
 ### Important
 
