@@ -4,47 +4,48 @@ MonoCode is early and I’m the only maintainer, so small and focused lands much
 
 Please don’t open PRs that add a new provider right now. The existing harnesses still need to agree on a few patterns, and a new adapter would copy whatever is there today. See [New providers](#new-providers).
 
-## PR policy during the GPUI preview
+## Project scope
 
-The Rust + GPUI preview is developed on `main` alongside the production React/Tauri app. Development is focused on the native preview while the production app remains supported.
+MonoCode is now a Rust + GPUI desktop app targeting Linux on Wayland. The former
+React/Tauri application has been removed from the repository. Keep changes
+focused on `crates/monocode-core`, `crates/monocode-gpui` and the headless
+remote host in `host/`.
 
-- Bug fixes, security fixes, documentation improvements, and changes useful to both apps are still welcome on `main`.
-- Larger Tauri-specific features and refactors are temporarily deferred during the migration.
-- Target GPUI contributions at `main`. See [the native guide](docs/native/README.md) for setup and checks.
-
-Before starting a larger change, open an issue so we can agree on the scope and target branch and avoid duplicated work. Existing PRs will be reviewed individually.
+Before starting a larger change, open an issue so we can agree on the scope and
+avoid duplicated work.
 
 ## Get it running
 
-You need Node.js 20+, a current stable Rust toolchain, and at least one provider CLI installed and logged in. See [provider setup](docs/providers.md) for installation and login instructions.
+You need Node.js 22+, a current stable Rust toolchain, and at least one provider
+CLI installed and logged in. See [provider setup](docs/providers.md) for
+installation and login instructions.
 
-macOS, Linux, and Windows are supported targets. See [building from source](docs/building.md) for platform prerequisites and packaging commands.
+See [building from source](docs/building.md) for Linux/Wayland prerequisites and
+packaging commands.
 
 ```bash
-npm install
-npm run tauri dev
+npm run native:dev
 ```
 
 ## Where things live
 
-- `src/app/` - application composition, startup behavior, window shell, and release/update UI
-- `src/features/` - product behavior grouped by feature, with UI, model, data access, hooks, and tests kept together
-- `src/integrations/harness/` - the provider-independent harness core and one folder per provider adapter
-- `src/platform/tauri/` - browser-to-Tauri adapters for filesystem, PTY, clipboard, and platform behavior
-- `src/shared/` - reusable UI, hooks, and small utilities that contain no feature behavior
-- `src-tauri/src/` - the Rust side: PTYs, filesystem and git, session storage, native window
+- `crates/monocode-core/` - provider transports, persistence, accounts, Git/files, remote connections and shared services
+- `crates/monocode-gpui/` - native shell, composer, transcript, editor, settings and platform UI
+- `host/` - the headless remote host, its transport code and shared TypeScript models
+- `mobile/` - the separate Expo mobile app
+- `scripts/` - native development, packaging and embedded-asset generators
 
-`src/integrations/harness/` is the most useful place to start if you want to fix something real. Each folder under `providers/` has an adapter (`claudeAdapter.ts`) that implements the shared `HarnessAdapter` lifecycle from `core/registry.ts`, and a protocol module (`claudeProtocol.ts`) that translates the CLI’s output into MonoCode’s own event types. The protocol modules are pure functions with unit tests beside them, so you can fix a Codex parsing bug with only Claude Code installed. That’s for the providers we already ship - please don’t add a new one yet.
+Provider protocol work belongs in `crates/monocode-core`. The native UI lives in
+`crates/monocode-gpui`; keep provider I/O, parsing, file access and persistence
+off the UI thread.
 
-## Experimental GPUI work
+## Embedded editor and settings assets
 
-The production React/Tauri app continues to use the commands above. GPUI work
-lives in `crates/monocode-core` and `crates/monocode-gpui`, with an independent
-Cargo workspace and lockfile. Use `npm run native:dev` to develop,
-`npm run native:build` to package an optimized build, and
-`npm run native:check` for its checks. Keep production UI behavior, dependencies,
-CI and release/update distribution intact while the native port is tested.
-See the [native guide](docs/native/README.md) and [architecture](docs/native/migration.md).
+The native editor embeds generated analysis and formatting bundles. After
+changing their sources or dependencies, run `npm ci` and `npm run build` inside
+`scripts/native-editor/`. Generated bundles and their license notices belong in
+the repository. The settings arcade bundle is built with
+`node scripts/native-settings/build-arcade.mjs`.
 
 ## Before you push
 
@@ -52,20 +53,18 @@ See the [native guide](docs/native/README.md) and [architecture](docs/native/mig
 npm run check
 ```
 
-That runs what CI runs: vitest, `tsc --noEmit`, `cargo fmt`, `cargo clippy`, and `cargo test`. If it’s green locally it should be green on GitHub. `npm run check:web` and `npm run check:rust` run the two halves separately when you only touched one side.
-
-For transcript layout and scrolling changes, also run the real-browser tests:
-
-```bash
-npx playwright install chromium webkit
-npm run test:browser
-```
-
-These render the actual transcript and stylesheet in Chromium and WebKit, checking scroll geometry that the DOM-mocked unit tests cannot exercise. They start an isolated Vite server on port 1435 and need no provider or Tauri app.
+That runs the host typecheck and tests, the native script tests, Rust formatting,
+strict Clippy, and the native tests. `npm run check:host` and
+`npm run native:check` run the two halves separately.
 
 ## New providers
 
-I’m pausing new harnesses until the current ones share the same patterns - session lifecycle, catalog probes, usage, approvals, and how slash commands and skills are wired. A PR that adds another provider will be closed for now, even if the work is good. Fixes, tests, and protocol bugs on Claude, Codex, Cursor, Grok, OpenCode, Antigravity, Pi, omp, fx, Hermes Agent, and Devin are still the best kind of contribution.
+I’m pausing new harnesses until the current ones share the same patterns -
+session lifecycle, catalog probes, usage, approvals, and how slash commands and
+skills are wired. A PR that adds another provider will be closed for now, even
+if the work is good. Fixes, tests, and protocol bugs on Claude, Codex, Cursor,
+Grok, OpenCode, Antigravity, Pi, omp, fx, Hermes Agent, and Devin are still the
+best kind of contribution.
 
 When the pause lifts, this section goes away.
 

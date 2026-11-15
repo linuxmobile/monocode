@@ -1,7 +1,7 @@
 # Monocode Native preview
 
-Monocode Native is the experimental Rust + GPUI app. The production app still
-uses React/Tauri. Native builds have their own Cargo workspace and lockfile.
+Monocode Native is the Rust + GPUI app for Linux on Wayland. Native builds have
+their own Cargo workspace and lockfile.
 
 ## Requirements
 
@@ -99,6 +99,18 @@ under `crates/monocode-gpui/target/release/`. `CARGO_TARGET_DIR` and
 The **Monocode Native Preview** GitHub Actions workflow runs checks and build
 verification.
 
+Update packages and the update feed are signed with the Minisign key the
+updater trusts. `crates/native-sign` writes the signatures, so no additional
+signing tool is needed:
+
+```sh
+MONOCODE_NATIVE_SIGNING_PRIVATE_KEY="$(base64 -w0 key.txt)" \
+MONOCODE_NATIVE_SIGNING_KEY_PASSWORD=... \
+cargo run --release --package native-sign -- path/to/package
+```
+
+The signature is written next to the package as `package.sig`.
+
 ## Data and configuration
 
 Development stores `monocode.db` under:
@@ -116,18 +128,9 @@ Support, Linux's XDG data directory, or Windows' `%APPDATA%`. The app uses the
 existing desktop schema and session IDs. GPUI preferences are saved beside the
 database in `monocode.db.gpui.sqlite3`.
 
-Supported desktop preferences and workspace state are read from the installed
-app's webview localStorage on macOS and Linux. The Windows WebView2 reader is
-implemented and covered by synthetic fixtures on Linux; reading a real Windows
-profile remains unverified. Native preference edits are stored separately.
-Some desktop layout concepts still need native support; see
-[preview limitations](parity.md).
-
-The Windows reader always opens a temporary copy of localStorage. Copying while
-Tauri is writing is best-effort: an inconsistent copy can leave desktop
-preferences incomplete or unavailable for that launch. Close Tauri before
-starting GPUI for the first time. See [verification](verification.md) for
-recorded checks.
+Desktop preferences and workspace state are stored by the native app. A one-time
+importer can read supported settings from an existing MonoCode installation on
+first launch. See [verification](verification.md) for recorded checks.
 
 To inspect the installed database without opening a window or changing it, use
 the executable from a release build:

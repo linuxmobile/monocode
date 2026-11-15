@@ -56,28 +56,53 @@ export function nativeManifest({ version, baseUrl, artifacts, notes = "" }) {
   };
 }
 
+/// The signing key and the update public key keep their historic names so the
+/// release secrets stay valid, with native names taking precedence.
+function signingKey(env) {
+  return env.MONOCODE_NATIVE_SIGNING_PRIVATE_KEY || env.TAURI_SIGNING_PRIVATE_KEY || "";
+}
+
+function updatePublicKey(env) {
+  return env.MONOCODE_NATIVE_UPDATER_PUBKEY || env.TAURI_UPDATER_PUBKEY || "";
+}
+
 export async function prepareNativeRelease(directory, env = process.env) {
   const version = env.MONOCODE_NATIVE_VERSION;
   previewVersion(version);
-  if (!env.TAURI_SIGNING_PRIVATE_KEY || !env.TAURI_UPDATER_PUBKEY)
-    throw new Error(
-      "The existing Tauri signing key and public key are required",
-    );
+  if (!signingKey(env) || !updatePublicKey(env))
+    throw new Error("The native signing key and update public key are required");
   directory = resolve(directory);
   const records = [];
   const files = [];
   const sign = async (filename) => {
     const result = spawnSync(
-      process.execPath,
-      ["node_modules/@tauri-apps/cli/tauri.js", "signer", "sign", filename],
+      "cargo",
+      [
+        "run",
+        "--quiet",
+        "--release",
+        "--package",
+        "native-sign",
+        "--",
+        filename,
+      ],
       {
-        env: { ...env, CI: "true" },
+        env: {
+          ...env,
+          CI: "true",
+          MONOCODE_NATIVE_SIGNING_PRIVATE_KEY: signingKey(env),
+          MONOCODE_NATIVE_SIGNING_KEY_PASSWORD:
+            env.MONOCODE_NATIVE_SIGNING_KEY_PASSWORD ||
+            env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD ||
+            "",
+          MONOCODE_NATIVE_UPDATER_PUBKEY: updatePublicKey(env),
+        },
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
     if (result.error || result.status !== 0)
-      throw new Error(`Could not sign ${basename(filename)}`);
+      throw new Error(`Could not sign ${basename(filename)}: ${result.stderr || result.error}`);
     return (await readFile(`${filename}.sig`, "utf8")).trim();
   };
   for (const metadata of (await readdir(directory)).filter((name) =>

@@ -91,7 +91,7 @@ function Expand-Archive([string] $LiteralPath, [string] $DestinationPath) {
 }`
 }
 `;
-  const script = readFileSync("src-tauri/src/remote_bootstrap.ps1", "utf8")
+  const script = readFileSync("crates/monocode-core/src/remote/remote_bootstrap.ps1", "utf8")
     .replace(
       "$base = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.monocode-host'",
       `$base = ${psQuote(base)}`,

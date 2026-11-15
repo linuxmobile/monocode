@@ -13,16 +13,16 @@ import { HostChildBackend } from "./child-backend";
 import { HostStore } from "./store";
 import { HostEngine } from "./engine";
 import { hostProviders } from "./providers";
-import { discoverCodexModels } from "../src/integrations/harness/providers/codex/codexCatalog";
-import { discoverClaudeModels } from "../src/integrations/harness/providers/claude/claudeCatalog";
+import { discoverCodexModels } from "./src/integrations/harness/providers/codex/codexCatalog";
+import { discoverClaudeModels } from "./src/integrations/harness/providers/claude/claudeCatalog";
 import {
   discoverPiModels,
   discoverOmpModels,
-} from "../src/integrations/harness/providers/pi/piCatalog";
+} from "./src/integrations/harness/providers/pi/piCatalog";
 import {
   acquireHarnessBridge,
   configureChildBackend,
-} from "../src/integrations/harness/core/child";
+} from "./src/integrations/harness/core/child";
 
 const fixtureHome = vi.hoisted(() => ({ path: "" }));
 vi.mock("node:os", async (importOriginal) => {

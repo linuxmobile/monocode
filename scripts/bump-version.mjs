@@ -45,15 +45,4 @@ replaceFirst(
   /^(version = ")[^"]+(")/m,
   `$1${version}$2`,
 );
-replaceFirst(
-  join(root, "src-tauri/tauri.conf.json"),
-  /("version": ")[^"]+(")/,
-  `$1${version}$2`,
-);
-replaceFirst(
-  join(root, "Cargo.lock"),
-  /(name = "monocode"\nversion = ")[^"]+(")/,
-  `$1${version}$2`,
-);
-
 console.log(`version ${version}`);

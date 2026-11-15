@@ -1,0 +1,15 @@
+[package]
+name = "native-sign"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[dependencies]
+# The native updater verifies Minisign signatures with the same format.
+minisign = "0.10"
+base64 = "0.22"
+
+[dev-dependencies]
+minisign-verify = "0.2.5"
+tempfile = "3"

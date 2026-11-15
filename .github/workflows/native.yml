@@ -9,6 +9,7 @@ on:
       - 'crates/monocode-core/**'
       - 'crates/monocode-gpui/**'
       - 'crates/mobile-link/**'
+      - 'crates/native-sign/**'
       - 'vendor/gpui-pre*/**'
       - 'scripts/*native*'
       - 'scripts/native-editor/**'
@@ -48,6 +49,7 @@ jobs:
       - run: npm run native:test:dev
       - run: cargo clippy --manifest-path crates/monocode-gpui/Cargo.toml --locked -p monocode-core --all-targets --profile native-dev -- -D warnings
       - run: cargo test --manifest-path crates/monocode-gpui/Cargo.toml --locked -p monocode-core --profile native-dev
+      - run: cargo test --locked --package native-sign
 
   desktop:
     name: Monocode Native (macOS)

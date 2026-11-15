@@ -121,7 +121,7 @@ async function linuxTree(directory, binary, kind) {
   const icons = join(directory, "usr/share/icons/hicolor/256x256/apps");
   await mkdir(icons, { recursive: true });
   await cp(
-    join(root, "public/monocode.png"),
+    join(root, "assets/icons/monocode.png"),
     join(icons, "monocode-native.png"),
   );
   return { app, desktop };
@@ -275,7 +275,7 @@ export async function packageNative({
       desktop.replace("Exec=monocode-native %F", "Exec=monocode-gpui %F"),
     );
     await cp(
-      join(root, "public/monocode.png"),
+      join(root, "assets/icons/monocode.png"),
       join(appDir, "monocode-native.png"),
     );
     await writeFile(
@@ -348,7 +348,7 @@ export async function packageNative({
     const script = template
       .replaceAll("@STAGE@", quote(stage))
       .replaceAll("@OUTFILE@", quote(installer))
-      .replaceAll("@ICON@", quote(join(root, "src-tauri/icons/icon.ico")))
+      .replaceAll("@ICON@", quote(join(root, "assets/icons/icon.ico")))
       .replaceAll("@VERSION@", version)
       .replaceAll("@WINDOWS_VERSION@", parsed.windows);
     const nsi = join(work, "installer.nsi");

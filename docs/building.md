@@ -1,105 +1,76 @@
 # Build from source
 
-MonoCode supports macOS, Linux, and Windows. You need Node.js 20+ and a current stable Rust toolchain. Install and sign in to at least one agent CLI using [provider setup](providers.md).
+MonoCode is a Rust + GPUI desktop app. This branch targets Linux on Wayland.
+You need Node.js 22+, a current stable Rust toolchain, and at least one agent CLI
+installed and signed in using [provider setup](providers.md).
 
-## Platform prerequisites
+The GPUI app has its own Cargo workspace and lockfile under
+`crates/monocode-gpui/`. It does not need the repository's npm dependencies for a
+normal build.
 
-On Linux, install the standard Tauri prerequisites, including `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libsoup-3.0-dev`, and `libjavascriptcoregtk-4.1-dev` on Debian/Ubuntu. The setup helpers below install the native dependencies and packaging tools for their distributions.
+## Linux prerequisites
 
-On Windows, the packaging script uses `stable-x86_64-pc-windows-msvc`. The installer bootstraps the [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) runtime when it is missing.
+Install a C toolchain plus the Wayland, font, audio and D-Bus development
+headers. On Debian/Ubuntu:
+
+```bash
+sudo apt-get update
+sudo apt-get install --no-install-recommends -y \
+  build-essential clang cmake ninja-build pkg-config \
+  libfontconfig1-dev libfreetype6-dev libxkbcommon-dev \
+  libwayland-dev libegl1-mesa-dev libvulkan-dev \
+  libasound2-dev libdbus-1-dev
+```
+
+Run under a Wayland session. Wayland is the supported display path on this
+branch.
 
 ## Run locally
 
 From the repository root:
 
 ```bash
-npm install
-npm run tauri dev
+npm install          # only needed for host checks and bundled asset generators
+npm run native:dev   # launch with a separate development database
 ```
 
-## Ubuntu / Debian packages
-
-On an Ubuntu/Debian workstation, the repository can install the native Tauri prerequisites and build distributable Linux packages directly:
+To open a particular project:
 
 ```bash
-npm run setup:linux:deb
-npm ci
-npm run build:linux
+npm run native:dev -- --cwd /path/to/project
 ```
 
-The Linux build emits `.deb` and AppImage bundles under `target/release/bundle/`, in the `deb/` and `appimage/` directories. `build:linux` repacks the AppImage so it uses the host WebKitGTK 4.1 stack instead of bundled Ubuntu libraries. See [Linux installation](install.md) for runtime dependencies and package instructions.
+Type `r` then Enter in the terminal to rebuild and restart. The current app stays
+open until the new build succeeds. Ctrl+C stops the app and runner. There is no
+hot reload or automatic rebuild on save.
 
-## Fedora / Enterprise Linux packages
-
-On Fedora or Enterprise Linux 10 (registered RHEL, Rocky, Alma, CentOS Stream, Oracle):
+## Build
 
 ```bash
-npm run setup:linux:fedora
-npm ci
-npm run build:fedora
+npm run native:build
 ```
 
-On EL 10, the setup helper enables EPEL 10 and CRB automatically, since the development packages need CRB. On Oracle Linux it enables `ol10_codeready_builder` and `ol10_developer_EPEL`. Fedora does not need these extra repositories.
+The executable is written under
+`crates/monocode-gpui/target/release/monocode-gpui`. The release app reads and
+writes your installed MonoCode data, so back up your data with the app closed
+before testing.
 
-The build emits a `.rpm` under `target/release/bundle/rpm/`, installable with:
+Linux packaging for this branch is built by the
+[native release workflow](../.github/workflows/native-release.yml) and produces
+`.deb`, `.rpm` and AppImage artifacts. See [Linux installation](install.md).
+
+## Checks
 
 ```bash
-sudo dnf install ./target/release/bundle/rpm/MonoCode-*.rpm
+npm run check
 ```
 
-EL 9 and older are unsupported (`webkit2gtk4.1-devel` only exists in EPEL 10). The published release `.rpm` is built on Enterprise Linux 10 so it loads on Fedora and EL 10. See [Linux installation](install.md#fedora--enterprise-linux-packages) for release package installation and runtime repository setup.
+This runs the host typecheck and tests, the native script tests, Rust formatting,
+strict Clippy and the native test suites. Use `npm run check:host` or
+`npm run native:check` to run one half.
 
-## Windows packages
+## Remote host
 
-```bash
-npm ci
-npm run build:windows
-```
-
-The Windows build emits an NSIS installer under `target/release/bundle/nsis/`.
-
-## Tauri configuration
-
-- [src-tauri/tauri.conf.json](../src-tauri/tauri.conf.json) contains the shared application and bundle configuration.
-- [src-tauri/tauri.linux.conf.json](../src-tauri/tauri.linux.conf.json) loads automatically for Linux development and builds.
-- [src-tauri/tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json) loads automatically for Windows development and builds.
-
-## Beta releases and updates
-
-Prerelease tags such as `v0.9.1-beta.1` publish to `beta/latest.json`, and beta builds use that feed even when a stable updater endpoint is configured. Beta releases leave the stable feed and macOS download links unchanged.
-
-To trial AppImage updates, install a beta AppImage in a writable directory, publish a newer beta, and verify the update downloads, installs, and relaunches successfully before publishing a stable version.
-
-The [release workflow](../.github/workflows/release.yml) packages the platform builds and publishes the updater feed. [scripts/release-channel.cjs](../scripts/release-channel.cjs) selects the stable or beta feed.
-
-Read [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines and checks. The experimental remote host has its own [build and packaging instructions](remote-access.md#release-packaging).
-
-## Monocode Native preview
-
-The experimental GPUI app uses a separate Cargo workspace. The production
-commands above continue to build React/Tauri.
-
-Requires Node.js 22+, stable Rust, and Xcode with macOS components on macOS.
-Native commands do not need npm dependencies installed.
-
-```sh
-npm run native:dev     # launch with a separate development database
-npm run native:build   # create an optimized app using installed MonoCode data
-npm run native:check   # run native checks
-```
-
-Type `r` then Enter in the development terminal to rebuild and restart. There is
-no hot reload or automatic rebuild on save. Ctrl+C stops the runner and app.
-
-The build command does not launch the app. On macOS, open the result with:
-
-```sh
-open "crates/monocode-gpui/target/release/Monocode Native.app"
-```
-
-The release app reads and writes your installed MonoCode data. It is locally
-signed, without notarization or automatic updates. Linux/Windows GUI builds
-remain unverified.
-
-See the [native guide](native/README.md) for data paths, output locations,
-fixtures and preview limitations.
+The headless remote host lives in [`host/`](../host/) and is built from the same
+repository. See [remote access](remote-access.md) for its packaging and
+deployment instructions.

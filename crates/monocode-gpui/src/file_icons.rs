@@ -1,5 +1,5 @@
 //! FileTypeIcon.tsx's Material Icon Theme lookup, from the same
-//! react-material-icon-theme 1.2.0 tables (scripts/generate-material-icons.mjs).
+//! react-material-icon-theme 1.2.0 tables (assets/material-icons.json).
 use gpui::{AnyElement, img, prelude::*, px};
 use serde::Deserialize;
 use std::{collections::HashMap, sync::OnceLock};

@@ -23,7 +23,7 @@ const options = {
       // Shared frontend helpers resolve from the repository root. Keep their
       // editor extensions on this bundle's package instances as well.
       build.onResolve({ filter: /^@(codemirror|lezer|replit)\// }, args => ({ path: fileURLToPath(import.meta.resolve(args.path)) }));
-      build.onResolve({ filter: /platform\/tauri\/fs$/ }, () => ({ path: "basename", namespace: "native" }));
+      build.onResolve({ filter: /platform\/native\/fs$/ }, () => ({ path: "basename", namespace: "native" }));
       build.onLoad({ filter: /.*/, namespace: "native" }, () => ({ contents: 'export const basename = path => path.replace(/\\\\/g, "/").replace(/\\/+$/, "").split("/").pop() || "/";' }));
     },
   }],
@@ -35,7 +35,7 @@ const sandbox = vm.createContext({});
 vm.runInContext(await readFile(asset, "utf8"), sandbox);
 const sample = JSON.parse(await sandbox.monocodeAnalyze("test.json", '{"bad": }', "{}"));
 if (!sample.diagnostics.length || !sample.changes.length) throw new Error("Native analysis smoke check failed");
-const largeSource = await readFile(path.join(root, "src/app/App.tsx"), "utf8");
+const largeSource = await readFile(path.join(root, "host/src/features/sessions/model/session.ts"), "utf8");
 const largeAnalysis = JSON.parse(await sandbox.monocodeAnalyze("App.tsx", largeSource, `${largeSource}\nexport const previousHighlightTail = "tail";\n`));
 if (!largeAnalysis.tokens.some(token => token.to > largeSource.length - 1024)) throw new Error("Large-file highlighting stops before the end of App.tsx");
 if (!largeAnalysis.changes.some(change => change.original.includes("previousHighlightTail") && change.tokens.some(token => token.kind === "var(--syntax-string)"))) throw new Error("Large-file baseline highlighting stops before its final change");
@@ -46,7 +46,7 @@ if (search.matches.length !== 2 || search.matches[0].insert !== "hello!") throw 
 const formatter = vm.createContext({});
 vm.runInContext(await readFile(asset.replace("native-editor.js", "native-format.js"), "utf8"), formatter);
 if (JSON.parse(await formatter.monocodeFormat("a.json", '{"a":1}', 0)).formatted !== '{ "a": 1 }\n') throw new Error("Format smoke check failed");
-const paletteBuild = await build({ ...options, entryPoints: [], stdin: { contents: 'import { WORKSPACE_THEMES } from "../../src/features/settings/model/workspaceThemes"; globalThis.palettes = Object.fromEntries(WORKSPACE_THEMES.map(t => [t.id, { dark: { ...t.dark.syntax, heading: t.dark.heading }, light: { ...t.light.syntax, heading: t.light.heading } }]));', resolveDir: here }, write: false });
+const paletteBuild = await build({ ...options, entryPoints: [], stdin: { contents: 'import { WORKSPACE_THEMES } from "../../host/src/features/settings/model/workspaceThemes"; globalThis.palettes = Object.fromEntries(WORKSPACE_THEMES.map(t => [t.id, { dark: { ...t.dark.syntax, heading: t.dark.heading }, light: { ...t.light.syntax, heading: t.light.heading } }]));', resolveDir: here }, write: false });
 const palettes = vm.createContext({});
 vm.runInContext(paletteBuild.outputFiles[0].text, palettes);
 await writeFile(asset.replace("native-editor.js", "editor-palettes.json"), JSON.stringify(palettes.palettes, null, 2) + "\n");

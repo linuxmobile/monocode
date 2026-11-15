@@ -1,5 +1,9 @@
 # Native verification
 
+> Historical note: references to the production React/Tauri app, its frontend,
+> Rust workspace and packaging below describe checks made before that app was
+> removed from the repository. They are kept as a record of the migration.
+
 Status recorded on October 22, 2026, on macOS Apple Silicon. These are local
 results, not a release certification. Later dated sections supplement this
 snapshot. See [preview limitations](parity.md) for

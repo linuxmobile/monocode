@@ -1,7 +1,7 @@
 # Native preview limitations
 
 The native app is still experimental. A feature being present in source does not
-establish runtime or platform parity with the production React/Tauri app. See
+establish runtime or platform parity with the previous desktop app. See
 [verification](verification.md) for recorded checks.
 
 ## Providers
@@ -44,7 +44,7 @@ approval for every edit. Native Supervised mode does not add that guarantee.
 | Monos | Existing-data checks, live heartbeat and background delegation checks, native visual/document accessibility, floating-document interactions and durable orchestration recovery |
 | Remote connections | Real-machine installation/update, existing-data restoration and cross-platform checks; the existing host's feature limits still apply |
 | Integrations | Completion/approval notifications, sounds and Dock badges; Quick Composer attachments/shortcut checks, MCP/skills checks and remaining app-control endpoints. macOS reminder delivery and click routing passed on Oct 22 |
-| Shared data | Concurrent Tauri/native use with active scheduled tasks or phone connections remains unverified and deferred |
+| Shared data | Concurrent desktop and remote-host use with active scheduled tasks or phone connections remains unverified and deferred |
 
 ## Platform and distribution
 

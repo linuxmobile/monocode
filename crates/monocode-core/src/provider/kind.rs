@@ -144,17 +144,15 @@ impl Kind {
 mod tests {
     use super::*;
     #[test]
-    fn registry_matches_the_react_harnesses() {
-        let source = include_str!("../../../../src/integrations/harness/core/register.ts");
+    fn registry_knows_every_harness() {
         for kind in Kind::ALL {
             assert_eq!(Kind::parse(kind.id()), Some(kind));
-            assert!(source.contains(&format!("../providers/{}/", kind.id())));
         }
         assert_eq!(Kind::parse("unknown"), None);
         assert_eq!(Kind::Cursor.binary_name(), "cursor-agent");
     }
     #[test]
-    fn unavailable_hint_matches_the_react_copy() {
+    fn unavailable_hint_names_the_harness() {
         assert_eq!(
             Kind::Antigravity.unavailable_hint(),
             "Antigravity ACP server (agy_acp_server.par) not found. Install it, or restart MonoCode if it is already installed."
@@ -169,24 +167,9 @@ mod tests {
         );
     }
     #[test]
-    fn hints_match_the_react_source() {
-        let source = include_str!("../../../../src/integrations/harness/core/availability.ts");
+    fn every_harness_has_an_install_name() {
         for kind in Kind::ALL {
-            assert!(
-                source.contains(&format!("\"{}\"", kind.install_name())),
-                "React is missing the install name for {}",
-                kind.id()
-            );
-            if let Some(install) = kind.install_command() {
-                assert!(
-                    source.contains(install),
-                    "React is missing the install command for {}",
-                    kind.id()
-                );
-            }
+            assert!(!kind.install_name().is_empty(), "{}", kind.id());
         }
-        assert!(source.contains(
-            "not found${how}. Install it, or restart MonoCode if it is already installed."
-        ));
     }
 }

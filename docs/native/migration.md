@@ -1,8 +1,8 @@
 # Native architecture
 
-The GPUI app is an experimental preview alongside the production React/Tauri
-app. The existing implementation in `src/` and `src-tauri/` is the behavior
-reference. Production builds, CI, releases and updater feeds continue to use Tauri.
+MonoCode is a Rust + GPUI desktop app targeting Linux on Wayland. The former
+React/Tauri implementation has been removed; the native app is the only desktop
+client.
 
 ## Code layout
 
@@ -11,14 +11,15 @@ reference. Production builds, CI, releases and updater feeds continue to use Tau
 | `crates/monocode-core/` | Provider transports, persistence, accounts, Git/files, remote connections and shared services |
 | `crates/monocode-gpui/` | Native shell, composer, transcript, editor, settings and platform UI |
 | `crates/monocode-gpui/Cargo.toml` | Independent native Cargo workspace, profiles and dependency patches |
+| `host/` | Headless remote host and the shared TypeScript models it serves |
 | `scripts/dev-native.mjs` | Development build and manual restart runner |
 | `scripts/build-native.mjs` | Optimized build and macOS packaging |
 | `scripts/native-editor/`, `scripts/native-settings/` | Generators for embedded JavaScript assets |
 | `vendor/gpui-pre*/` | Pinned framework and platform patches |
 
-`monocode-core` has no Tauri or GPUI dependency. Keep provider and storage
-behavior in core services, with UI work in GPUI views. Development uses isolated
-data; release builds use the installed desktop database. See the
+`monocode-core` has no GPUI dependency. Keep provider and storage behavior in
+core services, with UI work in GPUI views. Development uses isolated data;
+release builds use the installed desktop database. See the
 [native guide](README.md#data-and-configuration) for paths and commands.
 
 Provider transports use Codex app-server, Claude stream-json, OpenCode HTTP/SSE,
@@ -45,7 +46,7 @@ headless Metal regression is documented in [verification](verification.md).
 
 The vendored framework/platform crates remove the unused `zed-scap` dependency.
 The native build rejects lockfiles that reintroduce it, and the `screen-capture`
-feature remains disabled. Preserve these guards and the licenses in [NOTICE](../../NOTICE).
+feature remains disabled. Preserve these guards and the licenses in
+[NOTICE](../../NOTICE).
 
-See [preview limitations](parity.md) for current release work. Tauri remains the
-production app until an explicit cutover.
+See [preview limitations](parity.md) for remaining work.

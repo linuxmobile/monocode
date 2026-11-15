@@ -8,7 +8,9 @@ fn verify() -> Result<(), String> {
             .nth(1)
             .ok_or("Expected an artifact directory")?,
     );
-    let key = env::var("TAURI_UPDATER_PUBKEY").map_err(|_| "Missing update public key")?;
+    let key = env::var("MONOCODE_NATIVE_UPDATER_PUBKEY")
+        .or_else(|_| env::var("TAURI_UPDATER_PUBKEY"))
+        .map_err(|_| "Missing update public key")?;
     let expected =
         env::var("MONOCODE_NATIVE_VERSION").map_err(|_| "Missing native release version")?;
     let config = Config::new(

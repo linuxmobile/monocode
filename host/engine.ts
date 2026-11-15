@@ -6,13 +6,13 @@ import { renameHostWorktreeBranch, resolveHostWorktree } from "./git-worktrees";
 import {
   applyHarnessEvent,
   stopStreaming,
-} from "../src/integrations/harness/core/apply";
-import { resolveModel } from "../src/features/sessions/model/models";
-import { isVisionImage } from "../src/features/sessions/model/attachments";
+} from "./src/integrations/harness/core/apply";
+import { resolveModel } from "./src/features/sessions/model/models";
+import { isVisionImage } from "./src/features/sessions/model/attachments";
 import type {
   HarnessEvent,
   HarnessSessionInput,
-} from "../src/integrations/harness/core/types";
+} from "./src/integrations/harness/core/types";
 import {
   HARNESS_LABEL,
   RUNTIME_MODES,
@@ -20,15 +20,15 @@ import {
   formatSessionTitle,
   titleFromPrompt,
   type Session,
-} from "../src/features/sessions/model/session";
-import { namedWorktreeBranch } from "../src/features/source-control/model/worktrees";
+} from "./src/features/sessions/model/session";
+import { namedWorktreeBranch } from "./src/features/source-control/model/worktrees";
 import {
   isRemoteProvider,
   type HostCommand,
   type HostSession,
   type CommandReceipt,
   type RemoteProvider,
-} from "../src/features/connections/model/protocol";
+} from "./src/features/connections/model/protocol";
 import type { HostProvider } from "./providers";
 import { HostStore } from "./store";
 import { parseRemoteAttachments, resolveAttachments } from "./attachments";
