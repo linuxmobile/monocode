@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/native-sign"]
-exclude = ["vendor/portable-pty", "vendor/gpui-pre", "vendor/gpui-pre-linux", "crates/monocode-core", "crates/monocode-gpui"]
+exclude = ["vendor/portable-pty", "vendor/gpui-pre", "vendor/gpui-pre-linux", "crates/monocode-core", "crates/monocode-gpui", "crates/monocode-host"]
 
 [workspace.package]
 version = "0.16.0"

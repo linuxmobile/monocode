@@ -1,0 +1,32 @@
+[package]
+workspace = "../monocode-gpui"
+name = "monocode-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "monocode-host"
+path = "src/main.rs"
+
+[dependencies]
+monocode-core = { path = "../monocode-core" }
+serde.workspace = true
+serde_json.workspace = true
+rusqlite = { version = "0.40.2", features = ["bundled", "hooks"], default-features = false }
+# The host is the only component that needs a server and an async runtime.
+tokio = { version = "1", features = ["rt-multi-thread", "net", "macros", "signal", "time", "sync"] }
+axum = { version = "0.8", features = ["tokio", "http1", "json"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["limit", "timeout"] }
+uuid = { version = "1", features = ["v4"] }
+sha2 = "0.10"
+rand = "0.9"
+base64 = "0.22"
+log = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
+ureq = "2.12"
+serde_json.workspace = true

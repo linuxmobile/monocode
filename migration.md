@@ -40,27 +40,36 @@ Implement the backend entirely in Rust.
 
 ## 2.1 Core architecture
 
-- [ ] Define clear boundaries between `monocode-core`, `monocode-gpui`, and the host.
-- [ ] Reuse existing Rust domain models wherever possible.
-- [ ] Move shared data structures and protocol definitions into appropriate Rust crates.
-- [ ] Use Serde for serialization and deserialization.
-- [ ] Avoid duplicated data models and protocol definitions.
-- [ ] Establish consistent error handling.
-- [ ] Establish structured logging and instrumentation.
-- [ ] Avoid unnecessary abstractions and excessive dependencies.
+- [x] Define clear boundaries between `monocode-core`, `monocode-gpui`, and the host.
+- [x] Reuse existing Rust domain models wherever possible.
+- [x] Move shared data structures and protocol definitions into appropriate Rust crates.
+- [x] Use Serde for serialization and deserialization.
+- [x] Avoid duplicated data models and protocol definitions.
+- [x] Establish consistent error handling.
+- [x] Establish structured logging and instrumentation.
+- [x] Avoid unnecessary abstractions and excessive dependencies.
 
 ## 2.2 Async runtime and networking
 
 Use Tokio as the asynchronous runtime.
 
-- [ ] Implement the HTTP server using Axum.
-- [ ] Replace existing TypeScript HTTP endpoints.
-- [ ] Implement WebSocket or SSE communication where required by the existing protocol.
-- [ ] Preserve existing API behavior unless an improvement is justified.
-- [ ] Implement graceful server shutdown.
-- [ ] Implement connection lifecycle management.
-- [ ] Avoid blocking Tokio worker threads.
-- [ ] Implement proper cancellation and timeout handling.
+> **Status: server implemented, endpoints partially ported.**
+> `crates/monocode-host` provides the Axum/Tokio server, auth, lifecycle and
+> graceful shutdown, and serves 10 of the 33 methods from `monocode-core`. The
+> remaining 23 are listed in `methods::UNIMPLEMENTED` and refuse explicitly; they
+> depend on Phases 3–5 (sessions, providers, attachments, Git actions).
+
+- [x] Implement the HTTP server using Axum.
+- [ ] Replace existing TypeScript HTTP endpoints. *(10 of 33; rest tracked above)*
+- [x] Implement WebSocket or SSE communication where required by the existing protocol.
+      *Not required: protocol v1 is request/response over `POST /rpc`, verified
+      against `monocode_core::remote`. Adding SSE now would invent a protocol the
+      client does not speak.*
+- [x] Preserve existing API behavior unless an improvement is justified.
+- [x] Implement graceful server shutdown.
+- [x] Implement connection lifecycle management.
+- [x] Avoid blocking Tokio worker threads.
+- [x] Implement proper cancellation and timeout handling.
 
 ## 2.3 Process management
 

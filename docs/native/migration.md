@@ -12,7 +12,7 @@ client.
 | `crates/monocode-gpui/` | Native shell, composer, transcript, editor, settings and platform UI |
 | `crates/monocode-gpui/Cargo.toml` | Independent native Cargo workspace, profiles and dependency patches |
 | `host/` | Headless remote host and the shared TypeScript models it serves |
-| `crates/monocode-host/` | *(planned)* Native replacement for `host/`; see [`docs/migration-audit.md`](../migration-audit.md) |
+| `crates/monocode-host/` | Native replacement for `host/`: Axum server, device pairing, host database |
 | `scripts/dev-native.mjs` | Development build and manual restart runner |
 | `scripts/build-native.mjs` | Optimized build |
 | `scripts/native-editor/`, `scripts/native-settings/` | Generators for embedded JavaScript assets |
@@ -74,6 +74,34 @@ convention inside core until a crate-wide migration to typed errors is decided:
 Provider transports use Codex app-server, Claude stream-json, OpenCode HTTP/SSE,
 ACP for Cursor/Grok/Antigravity/fx/Hermes/Devin, and Pi/omp RPC. They reuse the
 providers' CLI authentication and conversation IDs.
+
+## The remote host
+
+`crates/monocode-host` serves one machine to a paired desktop. It replaces the
+TypeScript `host/` and speaks the same protocol version 1, so
+`monocode_core::remote` is the reference client for any change here.
+
+- **Transport.** Axum over Tokio, bound to loopback. `POST /rpc` carries the
+  protocol; `POST /lifecycle` is local administration (`status`, `stop`) and
+  requires the secret from `running.json`, which is deliberately not a paired
+  device credential.
+- **Security.** Any request carrying an `Origin` header is refused, only those
+  two paths exist, and every call needs a paired token. Reading the body
+  re-authenticates, because a device can be revoked mid-request.
+- **Data.** `<data-dir>/host.db`, schema-compatible with the previous host so
+  an existing database and its `environmentId` survive the migration. Tokens
+  are stored only as SHA-256 hashes; `pair` is the one moment the token exists
+  in clear.
+- **Honesty about scope.** Methods in `methods::METHODS` are served and are
+  advertised as capabilities. Methods still being ported are listed in
+  `UNIMPLEMENTED` and answer `The host cannot serve … yet`. A test asserts the
+  two lists never overlap and that every advertised method has a handler, so a
+  capability cannot claim more than the server does.
+- **Shutdown.** SIGTERM, Ctrl-C, and `lifecycle`/`stop` all drain connections,
+  remove `running.json`, and exit; there is no `kill -9` path.
+
+Startup, port and pairing match the previous host: `monocode-host serve`
+listens on `127.0.0.1:3774` by default, and `--data-dir` moves the state.
 
 ## Rendering and responsiveness
 

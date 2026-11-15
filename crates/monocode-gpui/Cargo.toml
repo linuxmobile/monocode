@@ -57,7 +57,7 @@ gpui-kit = { version = "0.9.1", features = ["gpui-fast", "test-support"] }
 # Experimental native builds resolve separately from the production Tauri app.
 [workspace]
 resolver = "2"
-members = [".", "../monocode-core"]
+members = [".", "../monocode-core", "../monocode-host"]
 
 [workspace.package]
 version = "0.16.0"
