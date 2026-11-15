@@ -103,6 +103,31 @@ TypeScript `host/` and speaks the same protocol version 1, so
 Startup, port and pairing match the previous host: `monocode-host serve`
 listens on `127.0.0.1:3774` by default, and `--data-dir` moves the state.
 
+## Process management
+
+Provider children are owned by `monocode_core::process`. It is synchronous on
+purpose: provider I/O is stdin/stdout over a pipe, so a dedicated reader, writer
+and stderr thread per child is cheaper and simpler than moving the whole core
+onto an async runtime. The host keeps its async runtime and moves only blocking
+work to the blocking pool.
+
+- `isolate` puts each child in its own process group and clears the inherited
+  signal mask. A GUI executor can leave `SIGCHLD` blocked, and `exec` preserves
+  that mask, so a provider started under it would never reap its own children.
+- Closing stdin is the polite stop. `retire` then waits `EXIT_GRACE`, sends
+  `SIGTERM` to the leader, waits `TERM_GRACE`, and finally `SIGKILL`s the group.
+  The windows exist because Claude Code writes a rotated OAuth token on exit;
+  killing it early loses the token and signs the user out.
+- A child that calls `setsid` forms its own group and is outside that guarantee
+  by construction. Everything else in the leader's group dies with it;
+  `shutdown_all` runs the same escalation for every registered child on quit.
+- No provider is launched through a shell. `Command::new` receives the binary
+  and an argument vector; the only `-c` in the tree is git's own flag.
+- Core runs only fixed argument lists (`models --json`, `status --json`) and
+  never executes caller-supplied arguments, so it needs no exec allowlist. An
+  allowlist belongs wherever untrusted arguments arrive, which is the host, and
+  one must exist before the host exposes provider execution.
+
 ## Rendering and responsiveness
 
 Keep provider I/O, parsing, file access and persistence off the UI thread.

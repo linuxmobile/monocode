@@ -233,6 +233,17 @@ mod tests {
         isolate(&mut command);
         command.spawn().unwrap()
     }
+
+    /// Like [`spawn`], but with stdout captured, for the streaming tests.
+    fn spawn_capturing(script: &str) -> std::process::Child {
+        let mut command = Command::new("/bin/sh");
+        command
+            .args(["-c", script])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped());
+        isolate(&mut command);
+        command.spawn().unwrap()
+    }
     #[test]
     // `retire_pid` reaps the child with waitpid.
     #[allow(clippy::zombie_processes)]
@@ -306,5 +317,94 @@ mod tests {
                 String::from_utf8_lossy(&output.stdout)
             );
         }
+    }
+
+    /// Streaming: a child's stdout reaches the parent line by line while it is
+    /// still running, rather than only after it exits. Session output would
+    /// otherwise appear as one burst when the agent finishes.
+    #[test]
+    fn output_streams_while_the_child_is_still_running() {
+        use std::io::{BufRead, BufReader};
+        let mut child = spawn_capturing("echo first; sleep 0.6; echo second");
+        let stdout = child.stdout.take().unwrap();
+        let started = Instant::now();
+        let mut lines = BufReader::new(stdout).lines();
+
+        let first = lines.next().unwrap().unwrap();
+        let first_at = started.elapsed();
+        assert_eq!(first, "first");
+        assert!(
+            first_at < Duration::from_millis(400),
+            "the first line arrived only after {first_at:?}, not while running"
+        );
+
+        let second = lines.next().unwrap().unwrap();
+        assert_eq!(second, "second");
+        assert!(started.elapsed() >= Duration::from_millis(400));
+        let _ = child.wait();
+    }
+
+    /// Each child keeps its own pipe and group, so two sessions streaming at
+    /// once cannot interleave their output or kill each other.
+    #[test]
+    fn two_children_stream_independently() {
+        use std::io::{BufRead, BufReader};
+        let mut one = spawn_capturing("for i in 1 2 3; do echo one-$i; done");
+        let mut two = spawn_capturing("for i in 1 2 3; do echo two-$i; done");
+        let read = |child: &mut std::process::Child| {
+            let stdout = child.stdout.take().unwrap();
+            BufReader::new(stdout)
+                .lines()
+                .map(|line| line.unwrap())
+                .collect::<Vec<_>>()
+        };
+        // Read both before waiting: a full pipe on either would deadlock.
+        let first = read(&mut one);
+        let second = read(&mut two);
+        let _ = one.wait();
+        let _ = two.wait();
+        assert_eq!(first, ["one-1", "one-2", "one-3"]);
+        assert_eq!(second, ["two-1", "two-2", "two-3"]);
+    }
+
+    /// Terminating a group must take its descendants with it, so a session
+    /// cannot leave a provider helper running after it ends.
+    ///
+    /// The grace windows mean a descendant may still act for a moment: the
+    /// leader is given time to save a rotated credential before the group is
+    /// killed. What must never happen is a survivor *after* `retire_pid`
+    /// returns.
+    #[test]
+    // `retire_pid` reaps the leader with waitpid.
+    #[allow(clippy::zombie_processes)]
+    fn terminating_a_group_leaves_no_descendant_running() {
+        let mut child = spawn("( trap '' TERM; while :; do sleep 0.05; done ) & trap '' TERM; while :; do sleep 0.05; done");
+        let pid = child.id();
+        drop(child.stdin.take());
+        retire_pid(pid, || {});
+        // Both the leader and the background child belong to `-pid`; after
+        // retirement neither may still be signallable.
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while unsafe { libc::kill(-(pid as i32), 0) } == 0 && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert_eq!(
+            unsafe { libc::kill(-(pid as i32), 0) },
+            -1,
+            "a descendant outlived its process group"
+        );
+    }
+
+    /// `owned_by` attributes children to a session for the idle list, and must
+    /// restore the previous owner so nested work does not leak attribution.
+    #[test]
+    fn ownership_is_scoped_to_the_calling_thread() {
+        assert_eq!(owner(), None);
+        owned_by(7, || {
+            assert_eq!(owner(), Some(7));
+            owned_by(9, || assert_eq!(owner(), Some(9)));
+            assert_eq!(owner(), Some(7), "nesting must restore the outer owner");
+        });
+        assert_eq!(owner(), None, "the owner must not outlive the scope");
     }
 }

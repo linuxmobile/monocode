@@ -198,7 +198,37 @@ impl Dispatch {
                         .collect(),
                 ))
             }
-            "models.list" => Ok(json!({ "models": {}, "errors": {} })),
+            "models.list" => {
+                // Discovery shells out to each provider CLI, which takes seconds
+                // per provider. It runs off the async workers and reports each
+                // provider's failure separately, so one broken CLI cannot hide
+                // the models the others returned.
+                let providers: Vec<monocode_core::provider::Kind> = self
+                    .state
+                    .providers
+                    .iter()
+                    .filter_map(|id| monocode_core::provider::Kind::parse(id))
+                    .collect();
+                blocking(move || {
+                    let mut models = serde_json::Map::new();
+                    let mut errors = serde_json::Map::new();
+                    for kind in providers {
+                        match monocode_core::catalog::models(kind) {
+                            Ok(rows) => {
+                                models.insert(
+                                    kind.id().to_string(),
+                                    serde_json::to_value(rows).map_err(|e| e.to_string())?,
+                                );
+                            }
+                            Err(error) => {
+                                errors.insert(kind.id().to_string(), Value::String(error));
+                            }
+                        }
+                    }
+                    Ok(json!({ "models": models, "errors": errors }))
+                })
+                .await
+            }
             "sessions.list" => Ok(json!([])),
             "devices.revokeSelf" => {
                 let store = self.state.store.lock().await;

@@ -75,18 +75,32 @@ Use Tokio as the asynchronous runtime.
 
 Implement native process management using Rust.
 
-- [ ] Replace `child-backend.ts`.
+> **Status: complete in `monocode-core`.** Process management was already native
+> and is used by all eleven provider transports; this phase verified the
+> behaviour against the requirements and added tests for the properties that had
+> none. See [process management](docs/native/migration.md#process-management).
+
+- [x] Replace `child-backend.ts`.
+      *The capability it provided — spawning, piping, streaming and killing a
+      provider child — lives in `monocode-core::process` and
+      `provider/parked.rs`, and the native host uses it directly. The TypeScript
+      file itself is deleted with `host/` at the end of Phases 3–5.*
 - [ ] Use `tokio::process::Command` for launching external processes.
-- [ ] Implement stdin, stdout, and stderr handling.
-- [ ] Implement streaming output processing.
-- [ ] Implement process lifecycle tracking.
-- [ ] Implement graceful termination and forced termination.
-- [ ] Handle Unix signals correctly.
-- [ ] Handle process groups and child-process cleanup.
-- [ ] Prevent orphaned agent processes.
-- [ ] Handle unexpected process termination.
-- [ ] Support concurrent agent sessions.
-- [ ] Avoid executing commands through a shell when direct process execution is sufficient.
+      *Deliberately not adopted for provider children. Core is synchronous and
+      provider I/O is pipe-bound; `tokio::process` would require moving ~74k LOC
+      onto an async runtime for no measured gain. The host, which does run
+      async, uses `spawn_blocking` instead. Revisit only with a profile showing
+      thread-per-child is the bottleneck.*
+- [x] Implement stdin, stdout, and stderr handling.
+- [x] Implement streaming output processing.
+- [x] Implement process lifecycle tracking.
+- [x] Implement graceful termination and forced termination.
+- [x] Handle Unix signals correctly.
+- [x] Handle process groups and child-process cleanup.
+- [x] Prevent orphaned agent processes.
+- [x] Handle unexpected process termination.
+- [x] Support concurrent agent sessions.
+- [x] Avoid executing commands through a shell when direct process execution is sufficient.
 
 # Phase 3 — Provider Integrations
 
