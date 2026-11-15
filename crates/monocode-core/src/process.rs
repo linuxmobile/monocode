@@ -1,4 +1,4 @@
-//! Child policy extracted from src-tauri/src/background_work.rs.
+//! Child policy for the provider processes the app owns.
 use std::process::Command;
 
 /// Apply scheduling hints before exec so descendants inherit them.

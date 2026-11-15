@@ -500,7 +500,7 @@ fn a_document_deleted_by_the_desktop_while_its_mono_is_inactive_returns_to_docum
     cx.run_until_parked();
     assert_ne!(other, s.id);
 
-    // The desktop deletes the artifact (src-tauri/src/artifacts.rs). Its card
+    // The desktop deletes the artifact. Its card
     // stays in the transcript, so the Mono keeps a placeholder entry.
     desktop
         .execute(

@@ -1,6 +1,5 @@
-//! Native app updates. Uses the same Minisign keys and package signatures as
-//! Tauri. The native feed is additionally signed, binding version, channel and
-//! platform to the package; it cannot dispatch a production Tauri update.
+//! Native app updates. The feed is signed, binding version, channel and
+//! platform to the package.
 mod install;
 #[cfg(test)]
 mod tests;
@@ -333,7 +332,7 @@ impl Update {
         let signature =
             Signature::decode(&decoded(&self.artifact.signature)?).map_err(|e| e.to_string())?;
         let key = decode_key(&self.public_key)?;
-        // Tauri's signer emits prehashed Minisign signatures, allowing bounded
+        // The signer emits prehashed Minisign signatures, allowing bounded
         // memory verification even for large app bundles.
         let mut verifier = key.verify_stream(&signature).map_err(|e| e.to_string())?;
         let mut file = File::open(path).map_err(|e| e.to_string())?;

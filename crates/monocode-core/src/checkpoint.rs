@@ -1,5 +1,5 @@
-//! Git-backed recordings of workspace changes during a turn, ported from
-//! src-tauri/src/checkpoint/turn.rs. These snapshots record what changed.
+//! Git-backed recordings of workspace changes during a turn.
+//! These snapshots record what changed.
 //! A turn's baseline keeps the previous turn's pending files as they were
 //! before it, so the latest recording covers the session's outstanding work.
 //! Shared reviews require successful edit evidence for each displayed file,
