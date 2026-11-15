@@ -8,7 +8,7 @@
 
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// A project registered on this machine.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -42,6 +42,9 @@ pub struct HostStore {
     /// re-parse a whole transcript on every request. Bounded by insertion
     /// order; the oldest entry is dropped when it fills.
     cache: Vec<(String, crate::session::HostSession)>,
+    /// Where uploaded attachment bytes live. One file per attachment id, so a
+    /// client-supplied path is never used to locate them.
+    attachment_dir: PathBuf,
 }
 
 impl HostStore {
@@ -49,6 +52,10 @@ impl HostStore {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, String> {
         let path = path.as_ref();
         let conn = Connection::open(path).map_err(|e| format!("open {path:?}: {e}"))?;
+        let attachment_dir = path
+            .parent()
+            .unwrap_or(Path::new("."))
+            .join("attachments");
         conn.execute_batch(
             "PRAGMA busy_timeout=5000;
              PRAGMA journal_mode=WAL;
@@ -97,6 +104,7 @@ impl HostStore {
             conn,
             environment_id,
             cache: Vec::new(),
+            attachment_dir,
         })
     }
 
@@ -174,6 +182,11 @@ impl HostStore {
     }
 
     /// Registers a folder and returns its project row.
+    /// Where attachment bytes live. Callers join a validated attachment id.
+    pub fn attachment_dir(&self) -> &Path {
+        &self.attachment_dir
+    }
+
     pub fn open_project(&mut self, cwd: &str, name: &str) -> Result<Project, String> {
         self.conn
             .execute(

@@ -4,6 +4,7 @@
 //! integration tests can exercise the session store and the turn loop against
 //! a real (fake) provider process instead of only through HTTP.
 
+pub mod attachments;
 pub mod git;
 pub mod methods;
 pub mod mutex;

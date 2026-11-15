@@ -116,6 +116,36 @@ impl Fixture {
         self.client.request(&self.machine, method, params)
     }
 
+    /// Writes a session snapshot whose single block references `id` as an
+    /// image attachment, which is what makes it readable.
+    fn attach_to_session(&self, project: &str, id: &str, size: u64) {
+        let snapshot = serde_json::json!({
+            "id": "s1",
+            "projectId": project,
+            "revision": 0,
+            "runId": "r",
+            "status": "idle",
+            "updatedAt": 1,
+            "session": { "blocks": [{
+                "id": "b1",
+                "attachments": [{
+                    "id": id,
+                    "kind": "image",
+                    "name": "a.png",
+                    "mimeType": "image/png",
+                    "size": size,
+                }],
+            }]},
+        });
+        let connection = rusqlite::Connection::open(self.directory.join("host.db")).unwrap();
+        connection
+            .execute(
+                "INSERT OR REPLACE INTO sessions (id, project_id, snapshot) VALUES (?1, ?2, ?3)",
+                rusqlite::params!["s1", project, snapshot.to_string()],
+            )
+            .unwrap();
+    }
+
     fn project(&self) -> String {
         self.call("projects.open", serde_json::json!({ "cwd": self.repo }))
             .get("id")
@@ -530,4 +560,176 @@ fn a_named_workspace_command_that_is_unknown_is_refused() {
         )
         .unwrap_err();
     assert!(error.contains("Unsupported workspace command"), "got: {error}");
+}
+
+/// Attachment bytes must survive the chunked round trip exactly, since a
+/// provider will later read them as an image.
+#[test]
+fn an_attachment_is_uploaded_and_read_back_byte_for_byte() {
+    let fixture = Fixture::start();
+    let project = fixture.project();
+    let id = "123e4567-e89b-42d3-a456-426614174000";
+    let data: Vec<u8> = (0..300u32).map(|i| (i % 251) as u8).collect();
+
+    let uploaded = fixture.call(
+        "attachments.upload",
+        serde_json::json!({
+            "id": id,
+            "offset": 0,
+            "size": data.len(),
+            "data": base64(&data),
+        }),
+    );
+    assert_eq!(uploaded["offset"], data.len());
+
+    // The session must reference the attachment before it can be read.
+    fixture.attach_to_session(&project, id, data.len() as u64);
+    let chunk = fixture.call(
+        "attachments.read",
+        serde_json::json!({ "projectId": project, "sessionId": "s1", "id": id, "offset": 0 }),
+    );
+    assert_eq!(chunk["size"], data.len());
+    assert_eq!(chunk["offset"], data.len());
+    assert_eq!(unbase64(chunk["data"].as_str().unwrap()), data);
+}
+
+#[test]
+fn a_repeated_upload_chunk_is_idempotent_but_different_bytes_are_refused() {
+    let fixture = Fixture::start();
+    let id = "123e4567-e89b-42d3-a456-426614174000";
+    let chunk = base64(b"abcdef");
+    let send = |data: &str| {
+        fixture.attempt(
+            "attachments.upload",
+            serde_json::json!({
+                "id": id, "offset": 0, "size": 6, "data": data,
+            }),
+        )
+    };
+    assert_eq!(send(&chunk).unwrap()["offset"], 6);
+    // A lost response means the client sends the same chunk again.
+    assert_eq!(send(&chunk).unwrap()["offset"], 6);
+    let error = send(&base64(b"zzzzzz")).unwrap_err();
+    assert!(error.contains("does not match"), "got: {error}");
+}
+
+/// An attachment id comes straight from the client, so it must never be able to
+/// name a file outside the attachment directory.
+#[test]
+fn an_attachment_id_cannot_escape_the_attachment_directory() {
+    let fixture = Fixture::start();
+    for id in ["../../etc/passwd", "/etc/passwd", "not-a-uuid", ""] {
+        let error = fixture
+            .attempt(
+                "attachments.upload",
+                serde_json::json!({ "id": id, "offset": 0, "size": 1, "data": "eA==" }),
+            )
+            .unwrap_err();
+        assert!(error.contains("Invalid attachment ID"), "{id}: {error}");
+    }
+}
+
+/// A client may only read an attachment it already attached to a session, so a
+/// guessed id or a session from another project yields nothing.
+#[test]
+fn only_attachments_in_the_named_session_can_be_read() {
+    let fixture = Fixture::start();
+    let project = fixture.project();
+    let id = "123e4567-e89b-42d3-a456-426614174000";
+    fixture.call(
+        "attachments.upload",
+        serde_json::json!({ "id": id, "offset": 0, "size": 1, "data": "eA==" }),
+    );
+    fixture.attach_to_session(&project, id, 1);
+
+    // Not attached to this session.
+    let error = fixture
+        .attempt(
+            "attachments.read",
+            serde_json::json!({
+                "projectId": project, "sessionId": "missing", "id": id, "offset": 0,
+            }),
+        )
+        .unwrap_err();
+    assert!(error.contains("Session not found"), "got: {error}");
+
+    // A different id that no block references.
+    let error = fixture
+        .attempt(
+            "attachments.read",
+            serde_json::json!({
+                "projectId": project, "sessionId": "s1",
+                "id": "123e4567-e89b-42d3-a456-426614174999", "offset": 0,
+            }),
+        )
+        .unwrap_err();
+    assert!(error.contains("not found"), "got: {error}");
+}
+
+#[test]
+fn a_read_before_the_upload_finishes_is_refused() {
+    let fixture = Fixture::start();
+    let project = fixture.project();
+    let id = "123e4567-e89b-42d3-a456-426614174000";
+    // Only two of the declared ten bytes arrived.
+    fixture.call(
+        "attachments.upload",
+        serde_json::json!({ "id": id, "offset": 0, "size": 10, "data": base64(b"ab") }),
+    );
+    fixture.attach_to_session(&project, id, 10);
+    let error = fixture
+        .attempt(
+            "attachments.read",
+            serde_json::json!({ "projectId": project, "sessionId": "s1", "id": id, "offset": 0 }),
+        )
+        .unwrap_err();
+    assert!(error.contains("incomplete"), "got: {error}");
+}
+
+fn base64(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    for chunk in bytes.chunks(3) {
+        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
+        out.push(TABLE[(n >> 18) as usize & 63] as char);
+        out.push(TABLE[(n >> 12) as usize & 63] as char);
+        out.push(if chunk.len() > 1 { TABLE[(n >> 6) as usize & 63] as char } else { '=' });
+        out.push(if chunk.len() > 2 { TABLE[n as usize & 63] as char } else { '=' });
+    }
+    out
+}
+
+fn unbase64(text: &str) -> Vec<u8> {
+    let value = |b: u8| -> u32 {
+        let index: u8 = match b {
+            b'A'..=b'Z' => b - b'A',
+            b'a'..=b'z' => b - b'a' + 26,
+            b'0'..=b'9' => b - b'0' + 52,
+            b'+' => 62,
+            _ => 63,
+        };
+        u32::from(index)
+    };
+    let body = text.trim_end_matches('=');
+    let mut out = Vec::new();
+    for group in body.as_bytes().chunks(4) {
+        let mut n = 0u32;
+        for (i, byte) in group.iter().enumerate() {
+            n |= value(*byte) << (18 - 6 * i);
+        }
+        match group.len() {
+            4 => {
+                out.push((n >> 16) as u8);
+                out.push((n >> 8) as u8);
+                out.push(n as u8);
+            }
+            3 => {
+                out.push((n >> 16) as u8);
+                out.push((n >> 8) as u8);
+            }
+            _ => out.push((n >> 16) as u8),
+        }
+    }
+    out
 }

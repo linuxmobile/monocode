@@ -54,29 +54,44 @@ impl Host {
         value["token"].as_str().expect("a token").to_string()
     }
 
-    fn start(&mut self, port: u16) {
-        let child = Command::new(host_binary())
-            .args(["serve", "--data-dir"])
-            .arg(&self.directory)
-            .arg("--port")
-            .arg(port.to_string())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()
-            .expect("start host");
-        self.child = Some(child);
-        self.port = port;
+    /// Starts a host on a port the OS picks.
+    ///
+    /// A fixed port would collide when several tests run at once, so this asks
+    /// for port 0 and reads back the port `serve` actually bound. `start_at`
+    /// remains for the test that restarts a host on a known port.
+    fn start(&mut self) {
+        self.start_at(0);
+    }
 
-        // `serve` writes running.json once the socket is bound.
+    fn start_at(&mut self, port: u16) {
+        self.child = Some(
+            Command::new(host_binary())
+                .args(["serve", "--data-dir"])
+                .arg(&self.directory)
+                .arg("--port")
+                .arg(port.to_string())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+                .expect("start host"),
+        );
+
+        // `serve` writes running.json after binding, and it records the port
+        // it really got, which is the only reliable readiness signal.
         let state = self.directory.join("running.json");
-        for _ in 0..100 {
-            if state.exists() {
-                return;
+        for _ in 0..200 {
+            if let Ok(text) = std::fs::read_to_string(&state) {
+                if let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) {
+                    if let Some(found) = value["port"].as_u64() {
+                        self.port = found as u16;
+                        return;
+                    }
+                }
             }
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
         panic!(
-            "host did not start; no running.json in {:?}",
+            "host did not start; no usable running.json in {:?}",
             self.directory
         );
     }
@@ -110,7 +125,7 @@ fn a_pairing_token_is_not_written_in_clear() {
 fn the_real_client_connects_and_lists_projects() {
     let mut host = Host::new();
     let token = host.pair("Laptop");
-    host.start(39501);
+    host.start();
 
     let client = host.client();
     let machine = client
@@ -132,7 +147,7 @@ fn the_real_client_connects_and_lists_projects() {
 fn a_revoked_device_can_no_longer_connect() {
     let mut host = Host::new();
     let token = host.pair("Laptop");
-    host.start(39502);
+    host.start();
 
     // Revoking by id needs the id the pair call returned; list then revoke.
     let listed = host.run(&["devices", "--json"]);
@@ -159,7 +174,7 @@ fn a_revoked_device_can_no_longer_connect() {
 fn an_unknown_credential_cannot_connect() {
     let mut host = Host::new();
     host.pair("Laptop");
-    host.start(39503);
+    host.start();
 
     let client = host.client();
     let result = client.connect(
@@ -174,7 +189,7 @@ fn an_unknown_credential_cannot_connect() {
 fn stop_shuts_the_server_down_and_clears_its_state_file() {
     let mut host = Host::new();
     host.pair("Laptop");
-    host.start(39504);
+    host.start();
 
     let state_path = host.directory.join("running.json");
     let state: serde_json::Value =
@@ -206,7 +221,7 @@ fn projects_open_registers_a_folder_and_persists_it() {
     let token = host.pair("Laptop");
     let project_root = host.directory.join("work");
     std::fs::create_dir_all(&project_root).expect("project dir");
-    host.start(39505);
+    host.start();
 
     let client = host.client();
     let machine = client
@@ -236,7 +251,7 @@ fn projects_open_registers_a_folder_and_persists_it() {
 fn an_unimplemented_method_says_so_instead_of_lying() {
     let mut host = Host::new();
     let token = host.pair("Laptop");
-    host.start(39506);
+    host.start();
 
     let client = host.client();
     let machine = client
@@ -247,16 +262,18 @@ fn an_unimplemented_method_says_so_instead_of_lying() {
         )
         .expect("connect");
 
-    // `files.write` is not ported yet: it must fail loudly, not report success.
+    // An unported method must fail loudly rather than report a fake success.
+    // This names one that is deliberately still refused, so the assertion keeps
+    // testing the refusal path as more methods land.
     let error = client
         .request(
             &machine.id,
-            "files.write",
-            serde_json::json!({ "projectId": "x", "path": "a.txt" }),
+            "sessions.syncChunk",
+            serde_json::json!({ "projectId": "x", "sessionId": "y" }),
         )
         .unwrap_err();
     assert!(
-        error.contains("cannot serve") || error.contains("not registered"),
+        error.contains("cannot serve"),
         "expected an explicit refusal, got: {error}"
     );
 }

@@ -15,10 +15,12 @@ use std::sync::Arc;
 /// The methods this host answers. Kept as one list so the descriptor and the
 /// dispatcher cannot disagree: every entry has an arm below, and every arm is
 /// listed here.
-pub const METHODS: [&str; 29] = [
+pub const METHODS: [&str; 31] = [
     "environment.describe",
     "projects.list",
     "projects.open",
+    "attachments.read",
+    "attachments.upload",
     "files.searchContent",
     "files.search",
     "files.index",
@@ -49,9 +51,7 @@ pub const METHODS: [&str; 29] = [
 
 /// Methods the desktop may call that this build does not serve yet. Reported
 /// explicitly rather than treated as unknown.
-const UNIMPLEMENTED: [&str; 3] = [
-    "attachments.read",
-    "attachments.upload",
+const UNIMPLEMENTED: [&str; 1] = [
     "sessions.syncChunk",
 ];
 
@@ -348,6 +348,68 @@ impl Dispatch {
                         .and_then(|result| {
                             serde_json::to_value(result).map_err(|e| e.to_string())
                         })
+                })
+                .await
+            }
+            "attachments.upload" => {
+                let id = string_param(&params, "id")?;
+                let offset = params
+                    .get("offset")
+                    .and_then(Value::as_u64)
+                    .ok_or_else(|| RpcFailure::BadRequest("`offset` is required".into()))?;
+                let size = params
+                    .get("size")
+                    .and_then(Value::as_u64)
+                    .ok_or_else(|| RpcFailure::BadRequest("`size` is required".into()))?;
+                let data = params
+                    .get("data")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                let directory = {
+                    let store = self.state.store.lock().await;
+                    store.attachment_dir().to_path_buf()
+                };
+                blocking(move || {
+                    crate::attachments::write_chunk(&directory, &id, offset, size, &data)
+                        .map(|offset| serde_json::json!({ "offset": offset }))
+                        .map_err(|e| e.to_string())
+                })
+                .await
+            }
+            "attachments.read" => {
+                let project = self.project_of(&params).await?;
+                let session_id = string_param(&params, "sessionId")?;
+                let id = string_param(&params, "id")?;
+                let offset = params
+                    .get("offset")
+                    .and_then(Value::as_u64)
+                    .ok_or_else(|| RpcFailure::BadRequest("`offset` is required".into()))?;
+                // The attachment must already be referenced by a block in the
+                // session the request names. A client-supplied path is never
+                // used, so it cannot fetch a file it did not attach.
+                let (directory, expected) = {
+                    let mut store = self.state.store.lock().await;
+                    let session = store
+                        .session(&session_id)
+                        .map_err(RpcFailure::BadRequest)?
+                        // A session belongs to one project, and this request
+                        // names both, so they must agree.
+                        .filter(|session| session.project_id == project.id)
+                        .ok_or_else(|| {
+                            RpcFailure::BadRequest("Session not found".to_string())
+                        })?;
+                    let size = crate::attachments::image_in_session(&session, &id)
+                        .ok_or_else(|| {
+                            RpcFailure::BadRequest(
+                                crate::attachments::AttachmentError::NotFound.to_string(),
+                            )
+                        })?;
+                    (store.attachment_dir().to_path_buf(), size)
+                };
+                blocking(move || {
+                    crate::attachments::read_chunk(&directory, &id, expected, offset)
+                        .map_err(|e| e.to_string())
                 })
                 .await
             }

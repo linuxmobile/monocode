@@ -280,7 +280,10 @@ Do not introduce a different database unless there is a measurable architectural
       via `monocode_core::files::list_project_files` and
       `monocode_core::search::project::search_project`.*
 - [x] Preserve existing file attachment functionality.
-      *`attachments.*` still refuse, and `host/` still serves them. Not deleted.*
+      *`crates/monocode-host/src/attachments.rs`: chunked base64 upload and
+      download, resumable and safe to retry. A read is only served for an
+      attachment already referenced by a block in the named session, so a
+      client cannot fetch a file it did not attach.*
 - [x] Replace Git-related TypeScript modules.
       *`crates/monocode-host/src/git.rs` runs the installed `git` directly.
       `git.branches`, `git.switch`, `git.createBranch`, `git.diff`,
