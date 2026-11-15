@@ -10,10 +10,11 @@ on:
       - 'crates/monocode-gpui/**'
       - 'crates/native-sign/**'
       - 'vendor/gpui-pre*/**'
+      - 'xtask/**'
       - 'scripts/*native*'
+      - 'scripts/*.sh'
       - 'scripts/native-editor/**'
       - 'scripts/native-settings/**'
-      - 'package.json'
       - '.github/workflows/native.yml'
       - '.github/workflows/native-release.yml'
 
@@ -30,9 +31,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -40,7 +38,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libdbus-1-dev pkg-config
-      - run: npm run native:test:dev
+      - run: cargo test --locked --package xtask
       - run: cargo clippy --manifest-path crates/monocode-gpui/Cargo.toml --locked -p monocode-core --all-targets --profile native-dev -- -D warnings
       - run: cargo test --manifest-path crates/monocode-gpui/Cargo.toml --locked -p monocode-core --profile native-dev
       - run: cargo test --locked --package native-sign

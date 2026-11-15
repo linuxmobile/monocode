@@ -135,10 +135,34 @@ Composer input should not rebuild the transcript. Transcript rows have stable
 identities, bounded blocks and virtualized layout; streaming updates should
 preserve the reader's position. Cancellation must remain responsive under load.
 
-The editor embeds generated analysis and formatting bundles. After changing their
-source services or dependencies, run `npm ci` and `npm run build` inside
-`scripts/native-editor/`. Generated bundles and their license notices belong
-in the repository.
+The editor embeds generated analysis and formatting bundles, and the settings
+screen embeds a generated game bundle. These are committed build artifacts: the
+app embeds them with `include_str!`, so nothing needs regenerating to build,
+test or release.
+
+Their generators (`scripts/native-editor/`, `scripts/native-settings/`) still
+require Node, npm and esbuild, and still read TypeScript sources from `host/src`.
+They are the last Node dependency in the repository and are removed together with
+`host/` rather than ported, because the sources they bundle disappear at the same
+time. Until then, regenerating an asset needs Node; building and shipping the app
+does not.
+
+## Task runner
+
+Build and release orchestration lives in the `xtask` crate:
+
+```
+cargo xtask set-version 0.17.0
+cargo xtask dev                 # build, run, and rebuild when you type r
+cargo xtask build --release
+cargo xtask package linux <binary> <out-dir>
+cargo xtask release <directory>
+```
+
+`xtask` parses and writes structured files (Cargo manifests, artifact indexes,
+the update manifest), where a real parser beats a shell script. Straightforward
+Linux work is plain Bash: `scripts/install.sh` and `scripts/uninstall.sh` copy
+files under `~/.local` and never need root.
 
 ## Framework patches
 

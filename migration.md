@@ -360,27 +360,87 @@ Remove Node.js-based build and automation scripts.
 
 ## Build
 
-- [ ] Replace `scripts/build-native.mjs`.
-- [ ] Replace `scripts/dev-native.mjs`.
-- [ ] Replace JavaScript-based version management.
-- [ ] Replace JavaScript-based packaging scripts.
+- [x] Replace `scripts/build-native.mjs`.
+      *`cargo xtask build`. Uses `cargo` directly; the old script existed only to
+      read the target directory and set a job limit.*
+- [x] Replace `scripts/dev-native.mjs`.
+      *`cargo xtask dev`. Same behaviour: saving a file does nothing, `r` rebuilds
+      and restarts, a failed build keeps the app running, and the app is ended
+      through its own `quit` hook rather than killed.*
+- [x] Replace JavaScript-based version management.
+      *`cargo xtask set-version`. Only `[workspace.package]` is touched, and
+      dependency versions are never rewritten. `package.json`/`package-lock.json`
+      are no longer written at all.*
+- [x] Replace JavaScript-based packaging scripts.
+      *`cargo xtask package` and `cargo xtask release`. The deb, AppImage and rpm
+      layouts, the `~preview.` Debian version, the HTTPS-only update base and the
+      "every target must be signed" rule are unchanged.*
 - [ ] Remove esbuild.
+      *Deferred: `scripts/native-editor/` and `scripts/native-settings/` still use
+      it to regenerate the embedded bundles. See "Deferred" below.*
 - [ ] Remove Vitest.
-- [ ] Remove all Node.js-specific build dependencies.
-- [ ] Use Cargo for Rust compilation.
-- [ ] Consider a Rust `xtask` for complex build and release orchestration.
-- [ ] Use Bash for straightforward Linux build and packaging tasks.
+      *Deferred with the same two generators; Vitest only tests the remote host,
+      which Phase 9 removes.*
+- [x] Remove all Node.js-specific build dependencies.
+      *No build, packaging, release or test step needs Node. `npm` still exists to
+      run the TypeScript host's own tests, which Phase 9 deletes.*
+- [x] Use Cargo for Rust compilation.
+      *Every task shells out to `cargo`; nothing else invokes a compiler.*
+- [x] Consider a Rust `xtask` for complex build and release orchestration.
+      *Adopted for anything that parses or writes structured files, where a real
+      parser beats a regex.*
+- [x] Use Bash for straightforward Linux build and packaging tasks.
+      *The installer and uninstaller are Bash; the copying is simple enough that a
+      build system would be more code than the task.*
 
 ## Installer and packaging
 
-- [ ] Implement a Linux-native installation script using Bash.
-- [ ] Support installation into appropriate user-level directories.
-- [ ] Install desktop entries, icons, and application assets.
-- [ ] Configure systemd user services where applicable.
-- [ ] Implement uninstall functionality.
-- [ ] Avoid unnecessary dependencies such as Node.js, npm, or Python.
+- [x] Implement a Linux-native installation script using Bash.
+      *`scripts/install.sh`, with `scripts/uninstall.sh`.*
+- [x] Support installation into appropriate user-level directories.
+      *Honours `XDG_DATA_HOME` and `XDG_BIN_HOME`; never needs root.*
+- [x] Install desktop entries, icons, and application assets.
+      *Desktop entry, 256px icon, every licence notice, and `native-install.json`
+      so the app knows it was installed rather than run from a build tree.*
+- [x] Configure systemd user services where applicable.
+      *`monocode-host install` owns the unit rather than the installer: it is the
+      only place that knows the host's binary, data directory and port.*
+- [x] Implement uninstall functionality.
+      *`scripts/uninstall.sh` removes installed files and keeps user data unless
+      `--purge` is given.*
+- [x] Avoid unnecessary dependencies such as Node.js, npm, or Python.
+      *Bash, `install`, and optional `update-desktop-database`/`gtk-update-icon-cache`.*
 - [ ] Ensure the installer works on a clean Linux environment.
-- [ ] Document external system dependencies.
+      *Verified in a throwaway `HOME` on this machine. A genuinely clean box is
+      Phase 10.*
+- [x] Document external system dependencies.
+      *See "External dependencies" below.*
+
+## Deferred: the embedded-asset generators
+
+`scripts/native-editor/` and `scripts/native-settings/` still require Node, npm
+and esbuild. They are not build steps: their output is committed and embedded
+with `include_str!`, so building, testing and releasing the app never runs them.
+
+They are deferred rather than ported because both generators read TypeScript
+sources from `host/src`, which Phase 9 deletes. Porting them first would preserve
+a dependency on code that is about to disappear. When `host/` goes, the bundles
+become vendored artifacts with documented provenance, and the generators go with
+them. Reimplementing esbuild and a TypeScript bundler would be a large
+undertaking for two assets that rarely change.
+
+## External dependencies
+
+Building needs:
+
+- Rust (a stable toolchain with `cargo`)
+- A C/C++ toolchain, `clang`, `cmake`, `ninja` and `pkg-config`
+- Development headers: fontconfig, freetype, xkbcommon, xkbcommon-x11, wayland,
+  EGL, Vulkan, ALSA and D-Bus
+
+Packaging additionally needs `dpkg-deb` (deb), `appimagetool` (AppImage) or
+`rpmbuild` (rpm). Installing needs only Bash and `install`; a desktop
+environment's cache tools are used when present and skipped when not.
 
 ## Tooling policy
 

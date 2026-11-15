@@ -32,7 +32,8 @@ npm run native:dev
 - `crates/monocode-core/` - provider transports, persistence, accounts, Git/files, remote connections and shared services
 - `crates/monocode-gpui/` - native shell, composer, transcript, editor, settings and platform UI
 - `host/` - the headless remote host, its transport code and shared TypeScript models
-- `scripts/` - native development, packaging and embedded-asset generators
+- `xtask/` - build, packaging, release and dev-loop orchestration
+- `scripts/` - the Bash installer and the embedded-asset generators
 
 Provider protocol work belongs in `crates/monocode-core`. The native UI lives in
 `crates/monocode-gpui`; keep provider I/O, parsing, file access and persistence
@@ -46,15 +47,23 @@ changing their sources or dependencies, run `npm ci` and `npm run build` inside
 the repository. The settings arcade bundle is built with
 `node scripts/native-settings/build-arcade.mjs`.
 
+These two generators are the only remaining Node dependency. They are removed
+with `host/`, because they bundle its TypeScript sources; building, testing and
+releasing the app never runs them.
+
 ## Before you push
 
 ```bash
-npm run check
+cargo test --locked --manifest-path xtask/Cargo.toml
+cargo fmt --manifest-path crates/monocode-gpui/Cargo.toml --all --check
+cargo clippy --locked --manifest-path crates/monocode-gpui/Cargo.toml \
+    -p monocode-core -p monocode-gpui --all-targets --profile native-dev -- -D warnings
+cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-core --profile native-dev
+cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-gpui --profile native-dev -- --test-threads=1
 ```
 
-That runs the host typecheck and tests, the native script tests, Rust formatting,
-strict Clippy, and the native tests. `npm run check:host` and
-`npm run native:check` run the two halves separately.
+Those are the native checks and need no Node. While `host/` still exists, its own
+typecheck and tests run with `npm run check:host`.
 
 ## New providers
 

@@ -31,10 +31,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -48,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#native-v}"
-          node --input-type=module -e 'import { previewVersion } from "./scripts/package-native.mjs"; previewVersion(process.argv[1]);' "$VERSION"
+          cargo run --quiet --locked --manifest-path xtask/Cargo.toml -- set-version-check "$VERSION"
           test -n "$MONOCODE_NATIVE_UPDATER_PUBKEY"
           test -n "$R2_PUBLIC_BASE_URL"
           echo "MONOCODE_NATIVE_VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -61,8 +57,7 @@ jobs:
           curl --fail --location --retry 3 https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage -o "$RUNNER_TEMP/appimagetool"
           chmod +x "$RUNNER_TEMP/appimagetool"
           echo "APPIMAGETOOL=$RUNNER_TEMP/appimagetool" >> "$GITHUB_ENV"
-      - run: npm ci
-      - run: node --test scripts/native-release.test.mjs scripts/package-native.test.mjs
+      - run: cargo test --locked --manifest-path xtask/Cargo.toml
       - name: Test native update backend
         run: cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-core --profile native-dev app_update
       - name: Build optimized native app
@@ -72,7 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           BINARY="crates/monocode-gpui/target/${{ matrix.target }}/release/monocode-gpui"
-          node scripts/package-native.mjs '${{ matrix.kind }}' "$BINARY" native-dist '${{ matrix.arch }}'
+          cargo run --quiet --locked --manifest-path xtask/Cargo.toml -- package '${{ matrix.kind }}' "$BINARY" native-dist '${{ matrix.arch }}'
       - uses: actions/upload-artifact@v4
         with:
           name: native-${{ matrix.target }}
@@ -101,15 +96,12 @@ jobs:
           dnf config-manager --set-enabled crb
           dnf install -y epel-release
           dnf install -y clang gcc-c++ cmake ninja-build pkgconf-pkg-config fontconfig-devel freetype-devel libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel wayland-devel alsa-lib-devel libX11-devel libX11-xcb mesa-libEGL-devel vulkan-loader-devel dbus-devel rpm-build perl
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - uses: dtolnay/rust-toolchain@stable
       - name: Configure native rpm channel
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#native-v}"
-          node --input-type=module -e 'import { previewVersion } from "./scripts/package-native.mjs"; previewVersion(process.argv[1]);' "$VERSION"
+          cargo run --quiet --locked --manifest-path xtask/Cargo.toml -- set-version-check "$VERSION"
           test -n "$MONOCODE_NATIVE_UPDATER_PUBKEY"
           test -n "$R2_PUBLIC_BASE_URL"
           echo "MONOCODE_NATIVE_VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -117,7 +109,7 @@ jobs:
           echo "MONOCODE_NATIVE_UPDATER_PUBKEY=$MONOCODE_NATIVE_UPDATER_PUBKEY" >> "$GITHUB_ENV"
       - run: cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-core --profile native-dev app_update
       - run: cargo build --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-gpui --release
-      - run: node scripts/package-native.mjs rpm crates/monocode-gpui/target/release/monocode-gpui native-dist x86_64
+      - run: cargo run --quiet --locked --manifest-path xtask/Cargo.toml -- package rpm crates/monocode-gpui/target/release/monocode-gpui native-dist x86_64
       - uses: actions/upload-artifact@v4
         with:
           name: native-linux-rpm
@@ -147,11 +139,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
       - uses: actions/download-artifact@v4
         with:
           pattern: native-*
@@ -165,14 +152,14 @@ jobs:
       - name: Sign all update packages and the native manifest
         run: |
           echo "MONOCODE_NATIVE_VERSION=${GITHUB_REF_NAME#native-v}" >> "$GITHUB_ENV"
-          MONOCODE_NATIVE_VERSION="${GITHUB_REF_NAME#native-v}" node scripts/native-release.mjs native-dist
+          cargo run --quiet --locked --manifest-path xtask/Cargo.toml -- release native-dist
       - name: Verify the signed feed and all packages with the native client
         run: cargo run --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-core --example verify_native_update --profile native-dev -- native-dist
       - name: Publish native preview assets
         run: |
           set -euo pipefail
           ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-          node --input-type=module -e 'import { readFileSync } from "node:fs"; for (const file of JSON.parse(readFileSync("native-dist/release-files.json"))) console.log(file);' > "$RUNNER_TEMP/native-files.txt"
+          cargo run --quiet --locked --manifest-path xtask/Cargo.toml -- release-files native-dist > "$RUNNER_TEMP/native-files.txt"
           if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release create "$GITHUB_REF_NAME" --draft --prerelease --latest=false --target "$GITHUB_SHA" --title "Monocode Native ${MONOCODE_NATIVE_VERSION}" --notes-file docs/native/preview-release-notes.md
           fi
