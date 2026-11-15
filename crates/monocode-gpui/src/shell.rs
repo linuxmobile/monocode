@@ -742,6 +742,9 @@ pub(crate) struct Shell {
     review_drag: bool,
     split_bounds: HashMap<i64, AnchorSlot>,
     pane_bounds: AnchorSlot,
+    /// The last frame's drawn layout signature: `(viewport, sidebar, review
+    /// and panel sizes)`. When it changes, render forces one uncached relayout.
+    drawn_layout: (gpui_kit::Size<Pixels>, f32, f32, f32, bool),
     /// The visible Mono's view, a drop target for tabs and panes.
     mono_bounds: AnchorSlot,
     pane_drag: Option<PaneDrag>,
@@ -1109,6 +1112,7 @@ impl Shell {
             review_drag: false,
             split_bounds: HashMap::new(),
             pane_bounds: AnchorSlot::default(),
+            drawn_layout: Default::default(),
             mono_bounds: AnchorSlot::default(),
             pane_drag: None,
             pane_sash: None,
@@ -8689,6 +8693,27 @@ impl Render for Shell {
         };
         let right_shown = self.right_panel_shown(cx);
         self.right_drawn = if right_shown { right_width } else { 0. };
+        // A resize replays retained layouts and cached subtrees sized for the
+        // previous room unless something they read changed, leaving split
+        // panes and their chat clipped at the old widths until some other
+        // notification arrives. Once the drawn layout changes, force one
+        // uncached relayout so this frame's sizes are the ones painted.
+        let ratio = self
+            .workspace
+            .active
+            .and_then(|id| self.workspace.reviews.get(&id))
+            .map_or(0., |review| review.ratio);
+        let layout = (
+            window.viewport_size(),
+            sidebar_width,
+            right_width,
+            ratio,
+            right_shown,
+        );
+        if self.drawn_layout != layout {
+            self.drawn_layout = layout;
+            window.refresh();
+        }
         let poll_git = self.window_active && !self.mono_active(cx);
         self.git.update(cx, |git, cx| {
             git.set_polling(poll_git && git.available(), cx)
@@ -12716,6 +12741,147 @@ mod tests {
             settled,
             "the transcript must not jump after the closing animation settles"
         );
+    }
+
+    #[gpui_kit::test]
+    fn narrowing_the_window_keeps_mono_prose_inside_its_pane(cx: &mut TestAppContext) {
+        let (window, _, b) = window(cx);
+        cx.update(|cx| cx.set_reduce_motion(true));
+        window
+            .update(cx, |shell, w, cx| {
+                shell.open(b, w, cx);
+                shell.sessions[&b].update(cx, |v, cx| {
+                    v.summary.has_messages = true;
+                    v.transcript.update(cx, |t, _| {
+                        t.mono_mode("cat", 0xe86b5f, "Mono");
+                    });
+                    v.transcript.update(cx, |t, cx| {
+                        t.patch(
+                            0,
+                            vec![
+                                monocode_core::transcript::Row {
+                                    role: "user".into(),
+                                    text: "Summarize".into(),
+                                    first: true,
+                                    sent_at: None,
+                                },
+                                monocode_core::transcript::Row {
+                                    role: "assistant".into(),
+                                    text: "- `ReviewCache` held up to 8 closed tabs at 32 MiB \
+                                           text budget each ~256 MiB ceiling, and each cached \
+                                           Entity keeps every row alive. Cut to 4 sources / \
+                                           8 MiB, worst case drops roughly 8x.\n\n## Status\n\n\
+                                           cargo clippy -p monocode-core -p monocode-gpui \
+                                           --all-targets finished clean with no warnings"
+                                        .into(),
+                                    first: true,
+                                    sent_at: None,
+                                },
+                            ],
+                            cx,
+                        )
+                    });
+                });
+            })
+            .unwrap();
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        cx.simulate_resize(gpui_kit::size(px(1100.), px(800.)));
+        cx.run_until_parked();
+        cx.refresh().unwrap();
+        cx.run_until_parked();
+        cx.refresh().unwrap();
+        let pane = cx.debug_bounds("rounded-main-pane").unwrap();
+        let prose = cx.debug_bounds("mono-prose-1-16").expect("prose paints");
+        assert!(
+            prose.left() >= pane.left() && prose.right() <= pane.right(),
+            "wide prose must sit inside the pane: {prose:?} in {pane:?}"
+        );
+        cx.simulate_resize(gpui_kit::size(px(760.), px(800.)));
+        cx.run_until_parked();
+        cx.refresh().unwrap();
+        let pane = cx.debug_bounds("rounded-main-pane").unwrap();
+        let prose = cx
+            .debug_bounds("mono-prose-1-16")
+            .expect("prose still paints");
+        assert!(
+            prose.left() >= pane.left() - px(0.5) && prose.right() <= pane.right() + px(0.5),
+            "narrowed prose must stay inside the pane: {prose:?} in {pane:?}"
+        );
+    }
+
+    #[gpui_kit::test]
+    fn widening_the_right_panel_keeps_mono_prose_inside_its_pane(cx: &mut TestAppContext) {
+        let (window, _, b) = window(cx);
+        cx.update(|cx| cx.set_reduce_motion(true));
+        window
+            .update(cx, |shell, w, cx| {
+                shell.open(b, w, cx);
+                shell.sessions[&b].update(cx, |v, cx| {
+                    v.summary.has_messages = true;
+                    v.transcript.update(cx, |t, _| {
+                        t.mono_mode("cat", 0xe86b5f, "Mono");
+                    });
+                    v.transcript.update(cx, |t, cx| {
+                        t.patch(
+                            0,
+                            vec![
+                                monocode_core::transcript::Row {
+                                    role: "user".into(),
+                                    text: "Summarize".into(),
+                                    first: true,
+                                    sent_at: None,
+                                },
+                                monocode_core::transcript::Row {
+                                    role: "assistant".into(),
+                                    text: "- `ReviewCache` held up to 8 closed tabs at 32 MiB \
+                                           text budget each ~256 MiB ceiling, and each cached \
+                                           Entity keeps every row alive. Cut to 4 sources / \
+                                           8 MiB, worst case drops roughly 8x.\n\n## Status\n\n\
+                                           cargo clippy -p monocode-core -p monocode-gpui \
+                                           --all-targets finished clean with no warnings"
+                                        .into(),
+                                    first: true,
+                                    sent_at: None,
+                                },
+                            ],
+                            cx,
+                        )
+                    });
+                });
+                // The review pane shrinks the chat the way a drag does.
+                shell.ensure_right_panel(w, cx);
+                shell.set_right_panel_open(true, w, cx);
+            })
+            .unwrap();
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        cx.simulate_resize(gpui_kit::size(px(1000.), px(800.)));
+        cx.run_until_parked();
+        cx.refresh().unwrap();
+        let pane = cx.debug_bounds("rounded-main-pane").unwrap();
+        let prose = cx.debug_bounds("mono-prose-1-16").expect("prose paints");
+        assert!(
+            prose.left() >= pane.left() && prose.right() <= pane.right(),
+            "prose must sit inside the pane: {prose:?} in {pane:?}"
+        );
+        window
+            .update(cx, |shell, w, cx| {
+                // Widening the panel shrinks the chat, as a drag does.
+                shell.workspace.right_panel_width = shell.right_panel_width() + 200.;
+                shell.set_right_panel_open(false, w, cx);
+                shell.set_right_panel_open(true, w, cx);
+            })
+            .unwrap();
+        cx.run_until_parked();
+        cx.refresh().unwrap();
+        let pane = cx.debug_bounds("rounded-main-pane").unwrap();
+        let prose = cx
+            .debug_bounds("mono-prose-1-16")
+            .expect("prose still paints");
+        assert!(
+            prose.left() >= pane.left() - px(0.5) && prose.right() <= pane.right() + px(0.5),
+            "prose must stay inside the pane after the panel drag: {prose:?} in {pane:?}"
+        );
+        assert!(prose.size.width < px(500.), "prose must rewrap: {prose:?}");
     }
 
     #[gpui_kit::test]

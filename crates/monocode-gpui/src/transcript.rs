@@ -7459,6 +7459,76 @@ mod scroll_tests {
     }
 
     #[gpui_kit::test]
+    fn markdown_prose_rewraps_and_stays_inside_the_chat_when_the_window_narrows(
+        cx: &mut TestAppContext,
+    ) {
+        let window = cx.update(|cx| {
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds::new(
+                        point(px(0.), px(0.)),
+                        size(px(900.), px(600.)),
+                    ))),
+                    ..Default::default()
+                },
+                |_, cx| {
+                    cx.new(|_| {
+                        let mut view = TranscriptView::new();
+                        view.mono_mode("cat", 0xe86b5f, "MonoCat");
+                        view
+                    })
+                },
+            )
+            .unwrap()
+        });
+        window
+            .update(cx, |view, _, cx| {
+                view.patch(
+                    0,
+                    vec![
+                        row("user", "Summarize"),
+                        row(
+                            "assistant",
+                            "- `ReviewCache` held up to 8 closed tabs at 32 MiB text budget \
+                             each ~256 MiB ceiling, and each cached Entity keeps every row \
+                             alive. Cut to 4 sources / 8 MiB, worst case drops roughly 8x.\n\n\
+                             ## Status\n\ncargo clippy -p monocode-core -p monocode-gpui \
+                             --all-targets finished clean with no warnings at all today",
+                        ),
+                    ],
+                    cx,
+                );
+            })
+            .unwrap();
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        visual.run_until_parked();
+        visual.refresh().unwrap();
+        let wide = visual
+            .debug_bounds("mono-prose-1-16")
+            .expect("the prose row paints");
+        for width in [640., 400.] {
+            visual.simulate_resize(gpui_kit::size(px(width), px(600.)));
+            visual.run_until_parked();
+            visual.refresh().unwrap();
+            let bounds = visual
+                .debug_bounds("mono-prose-1-16")
+                .expect("the prose row paints after the resize");
+            assert!(
+                bounds.left() >= px(-0.5),
+                "prose must not start left of the chat at width {width}: {bounds:?}"
+            );
+            assert!(
+                bounds.right() <= px(width + 0.5),
+                "prose must not overflow the chat at width {width}: {bounds:?}"
+            );
+            assert!(
+                bounds.size.width < wide.size.width,
+                "prose must rewrap when the window narrows: {wide:?} -> {bounds:?}"
+            );
+        }
+    }
+
+    #[gpui_kit::test]
     fn sent_prompt_stays_at_the_top_then_long_replies_follow_until_scrolled_away(
         cx: &mut TestAppContext,
     ) {
