@@ -16,7 +16,7 @@ const runtimes = {
 const args = process.argv.slice(2);
 const target = args.includes("--target")
   ? args[args.indexOf("--target") + 1]
-  : `${process.platform}-${process.arch}`;
+  : `linux-${process.arch}`;
 const targets = args.includes("--all") ? Object.keys(runtimes) : [target];
 const output = resolve("build/host-packages");
 const cache = resolve("build/host-runtime-cache");
@@ -57,7 +57,7 @@ for (const target of targets) {
     '#!/bin/sh\nset -eu\nDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$DIR/bin/node" "$DIR/host.mjs" "$@"\n',
   );
   await chmod(join(folder, "monocode-host"), 0o755);
-  if (target === `${process.platform}-${process.arch}`) {
+  if (target === `linux-${process.arch}`) {
     const actual = execFileSync(join(folder, "bin/node"), [join(folder, "host.mjs"), "--version"], {
       encoding: "utf8",
     }).trim();

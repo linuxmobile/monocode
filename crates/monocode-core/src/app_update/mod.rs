@@ -24,21 +24,17 @@ const MAX_PACKAGE: u64 = 1024 * 1024 * 1024;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageKind {
-    App,
     Appimage,
     Deb,
     Rpm,
-    Nsis,
 }
 
 impl PackageKind {
     pub fn suffix(self) -> &'static str {
         match self {
-            Self::App => "app",
             Self::Appimage => "appimage",
             Self::Deb => "deb",
             Self::Rpm => "rpm",
-            Self::Nsis => "nsis",
         }
     }
 }
@@ -355,6 +351,6 @@ impl Update {
     ) -> Result<Installed, String> {
         // Reverify immediately before installation, including cached downloads.
         self.verify_file(&download.path)?;
-        install::install(self, download, installation)
+        install::install(download, installation)
     }
 }

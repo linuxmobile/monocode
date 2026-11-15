@@ -18,7 +18,7 @@ import {
 
 it("keeps paths and environment content from injecting service configuration", () => {
   const options = {
-    directory: "/Users/a & b/%folder",
+    directory: "/home/a & b/%folder",
     port: 3774,
     executable: '/runtime/a"b/node',
     entry: "/runtime/$name/host.mjs",
@@ -87,7 +87,7 @@ it("leaves systemd alone when uninstalling from a host without it", async () => 
   expect(notes).toEqual([]);
 });
 
-it.runIf(process.platform === "linux")(
+it(
   "starts the host in its own session so it outlives the SSH connection",
   async () => {
     const directory = mkdtempSync(join(tmpdir(), "monocode-detached-test-"));

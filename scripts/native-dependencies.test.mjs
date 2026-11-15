@@ -7,16 +7,15 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const guard = new URL("../crates/monocode-gpui/dependency_guard.rs", import.meta.url);
-// The first Cargo build on a fresh Windows runner can exceed one minute.
-const cargoTimeout = process.platform === "win32" ? 180_000 : 60_000;
+// The first Cargo build on a fresh runner can exceed one minute.
+const cargoTimeout = 60_000;
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "monocode-dependency-guard-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, "src"));
   await writeFile(join(root, "src/lib.rs"), "");
-  // The real build script also embeds the Windows icon, which needs a
-  // registry dependency this offline fixture can't fetch.
+  // The offline fixture cannot fetch the real build's dependencies.
   await copyFile(guard, join(root, "dependency_guard.rs"));
   await writeFile(
     join(root, "build.rs"),

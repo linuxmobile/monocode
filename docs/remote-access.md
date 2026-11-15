@@ -6,7 +6,7 @@ A folder on a connected machine is a project in the rail, marked with a globe. E
 
 ## Connect through SSH
 
-In **Settings → Connections → Add machine**, enter an SSH address (`user@my-mac-mini`) or an alias from your SSH config and click **Connect**. The machine picker also links to this Settings page. An optional name and SSH port are available.
+In **Settings → Connections → Add machine**, enter an SSH address (`user@my-linux-box`) or an alias from your SSH config and click **Connect**. The machine picker also links to this Settings page. An optional name and SSH port are available.
 
 MonoCode downloads the host package matching the desktop release and remote architecture, verifies its checksum, installs a background service, pairs this desktop, and opens a private SSH forward. Node is included in the host package; users do not build the host, install Node, copy tokens, or run a tunnel command. Existing running hosts are reused without interrupting their agents.
 

@@ -15,7 +15,6 @@ mod code;
 mod command;
 mod context_menu;
 mod mention;
-mod spelling;
 pub(crate) use command::{Command, CommandRemoved};
 use mention::{DisplayLayout, MentionIcon};
 
@@ -1211,20 +1210,9 @@ impl EntityInputHandler for Input {
     fn text_input_configuration(
         &mut self,
         _: &mut Window,
-        cx: &mut Context<Self>,
+        _: &mut Context<Self>,
     ) -> gpui_kit::TextInputConfiguration {
-        let enabled = !self.secret
-            && !self.single_line
-            && self.inline_commands
-            && self.code.is_none()
-            && cx
-                .try_global::<crate::settings::Preferences>()
-                .is_some_and(|p| p.autocorrect);
-        gpui_kit::TextInputConfiguration {
-            autocorrect: enabled,
-            suggestions: enabled,
-            ..Default::default()
-        }
+        gpui_kit::TextInputConfiguration::default()
     }
 
     fn text_for_range(
@@ -1273,38 +1261,7 @@ impl EntityInputHandler for Input {
         }
         self.manual_scroll = false;
         self.reveal_pending = self.reveal_in_parent;
-        let mut r = self.replacement_range(r);
-        let mut corrected = None;
-        if self.inline_commands
-            && !self.single_line
-            && self.code.is_none()
-            && self.marked.is_none()
-            && r.start == r.end
-            && text.len() == 1
-            && text.chars().all(char::is_whitespace)
-            && cx
-                .try_global::<crate::settings::Preferences>()
-                .is_some_and(|p| p.autocorrect)
-        {
-            let start = self.content[..r.start]
-                .rfind(|c: char| !c.is_alphabetic())
-                .map_or(0, |ix| {
-                    ix + self.content[ix..].chars().next().unwrap().len_utf8()
-                });
-            let word = &self.content[start..r.start];
-            if word.len() >= 2
-                && (start == 0
-                    || self.content[..start]
-                        .chars()
-                        .next_back()
-                        .is_some_and(char::is_whitespace))
-                && let Some(value) = spelling::correction(word)
-            {
-                r.start = start;
-                corrected = Some(format!("{value}{text}"));
-            }
-        }
-        let text = corrected.as_deref().unwrap_or(text);
+        let r = self.replacement_range(r);
         let previous_command = self
             .inline_commands
             .then(|| Command::leading(&self.content))

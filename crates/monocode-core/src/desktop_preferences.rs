@@ -457,13 +457,6 @@ fn reconcile_value(
 }
 
 fn normalize_path(path: &str) -> String {
-    let path = if path.contains('\\')
-        && (path.as_bytes().get(1) == Some(&b':') || path.starts_with("\\\\"))
-    {
-        path.replace('\\', "/")
-    } else {
-        path.to_owned()
-    };
     let trimmed = path.trim_end_matches('/');
     if trimmed.is_empty() {
         "/".into()
@@ -476,8 +469,6 @@ fn project_path(path: &str) -> bool {
     !path.is_empty()
         && path != "/"
         && path != "~"
-        && !path.contains(".app/")
-        && !(path.len() == 2 && path.ends_with(':'))
         && crate::accounts::home().is_none_or(|home| Path::new(&path) != home)
 }
 fn merge_projects(old: Option<&Value>, current: &Value, source: &Value) -> Value {

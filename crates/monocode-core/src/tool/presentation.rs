@@ -376,7 +376,7 @@ pub fn app_tool(name: &str) -> bool {
 }
 
 /// The action of a Mono's app CLI call in a shell command:
-/// `'/Applications/Monocode.app/…/monocode-gpui' app memory.add --json …`.
+/// `'/opt/monocode/monocode-gpui' app memory.add --json …`.
 pub fn app_cli_action(command: &str) -> Option<&str> {
     let words: Vec<&str> = command.split_whitespace().collect();
     words.windows(3).find_map(|w| {
@@ -548,40 +548,19 @@ pub(super) fn shell_command(command: &str) -> String {
         let Some(parts) = shlex::split(&current) else {
             break;
         };
-        let Some(binary) = parts.first().and_then(|s| s.rsplit(['/', '\\']).next()) else {
+        let Some(binary) = parts.first().and_then(|s| s.rsplit('/').next()) else {
             break;
         };
         let unix = matches!(binary, "sh" | "bash" | "zsh" | "dash" | "ksh");
-        let powershell = matches!(
-            binary.to_lowercase().as_str(),
-            "powershell" | "powershell.exe" | "pwsh" | "pwsh.exe"
-        );
-        let cmd = matches!(binary.to_lowercase().as_str(), "cmd" | "cmd.exe");
         let flag = parts.iter().enumerate().skip(1).find(|(_, part)| {
-            if unix {
-                part.as_str() == "--command"
-                    || (part.starts_with('-') && !part.starts_with("--") && part.contains('c'))
-            } else if powershell {
-                matches!(
-                    part.to_lowercase().as_str(),
-                    "-command" | "-c" | "-file" | "-f"
-                )
-            } else {
-                cmd && part.eq_ignore_ascii_case("/c")
-            }
+            unix && (part.as_str() == "--command"
+                || (part.starts_with('-') && !part.starts_with("--") && part.contains('c')))
         });
-        let Some((at, flag)) = flag else { break };
-        if powershell && matches!(flag.to_lowercase().as_str(), "-file" | "-f") {
-            break;
-        }
+        let Some((at, _)) = flag else { break };
         let Some(script) = parts.get(at + 1) else {
             break;
         };
-        current = if (powershell || cmd) && parts.len() > at + 2 {
-            parts[at + 1..].join(" ")
-        } else {
-            script.trim().into()
-        };
+        current = script.trim().into();
     }
     current
 }
@@ -848,9 +827,7 @@ mod tests {
         assert!(!app_tool("mcp__other__app"));
         assert!(!app_tool("mcp__monocode_visual__visual_show"));
         assert_eq!(
-            app_cli_action(
-                r#"'/Applications/Monocode.app/Contents/MacOS/monocode-gpui' app memory.add --json '{"fact":"x"}'"#
-            ),
+            app_cli_action(r#"'/opt/monocode/monocode-gpui' app memory.add --json '{"fact":"x"}'"#),
             Some("memory.add")
         );
         assert_eq!(app_cli_action("git log app memory.add"), None);

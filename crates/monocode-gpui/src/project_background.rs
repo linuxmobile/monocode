@@ -352,7 +352,7 @@ mod tests {
 
     #[test]
     fn textures_shrink_only_to_still_cover_the_largest_screen() {
-        // A 13" MacBook Pro's default scaled mode draws at 2880×1800.
+        // A 13" laptop's scaled mode draws at 2880×1800.
         assert_eq!(
             covering_size((3360, 2038), (2880, 1800)),
             Some((2968, 1800))

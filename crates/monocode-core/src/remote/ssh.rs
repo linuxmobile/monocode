@@ -32,7 +32,7 @@ pub fn validate_target(target: &str, port: Option<u16>) -> Result<String, String
         || target.ends_with('@')
     {
         return Err(
-            "Enter an SSH hostname or alias, such as user@my-mac-mini, and a valid port.".into(),
+            "Enter an SSH hostname or alias, such as user@my-linux-box, and a valid port.".into(),
         );
     }
     Ok(target.into())
@@ -227,32 +227,20 @@ fn capture(mut reader: impl Read + Send + 'static) -> std::thread::JoinHandle<Ve
     })
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum HostPlatform {
-    Unix,
-}
+const PLATFORM_PROBE: &[&str] = &["echo", "MONOCODE_PLATFORM"];
 
-const PLATFORM_PROBE: &[&str] = &["echo", "MONOCODE_PLATFORM", "$env:OS", "%OS%", "$OS"];
-
-fn parse_platform(output: &str) -> Result<HostPlatform, String> {
-    let marker = output
+fn parse_platform(output: &str) -> Result<(), String> {
+    output
         .rsplit_once("MONOCODE_PLATFORM")
-        .ok_or("Could not identify the remote shell. Use a Unix shell.")?
-        .1;
-    if marker
-        .split_whitespace()
-        .any(|word| word.eq_ignore_ascii_case("Windows_NT"))
-    {
-        return Err("MonoCode Host runs on Linux hosts only".into());
-    }
-    Ok(HostPlatform::Unix)
+        .map(|_| ())
+        .ok_or_else(|| "Could not identify the remote shell. Use a Unix shell.".into())
 }
 
 pub fn detect_platform(
     target: &SshTarget,
     job: &Arc<Job>,
     askpass: &Askpass,
-) -> Result<HostPlatform, String> {
+) -> Result<(), String> {
     job.message("Checking the remote machine…");
     let output = run_remote_command(
         target,
@@ -267,12 +255,10 @@ pub fn detect_platform(
 
 pub fn run_script(
     target: &SshTarget,
-    platform: HostPlatform,
     script: String,
     job: &Arc<Job>,
     askpass: &Askpass,
 ) -> Result<String, String> {
-    let _ = platform;
     run_script_with_command(target, script, job, askpass, command(target, true))
 }
 
@@ -343,41 +329,30 @@ fn run_remote_command(
 pub fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
-pub fn bootstrap_script(platform: HostPlatform) -> String {
-    let template = match platform {
-        HostPlatform::Unix => include_str!("remote_bootstrap.sh"),
-    };
-    bootstrap_script_from_template(platform, template)
+pub fn bootstrap_script() -> String {
+    bootstrap_script_from_template(include_str!("remote_bootstrap.sh"))
 }
 
-fn bootstrap_script_from_template(platform: HostPlatform, template: &str) -> String {
+fn bootstrap_script_from_template(template: &str) -> String {
     let version = env!("CARGO_PKG_VERSION");
     let url = format!("https://github.com/hardbeat920/monocode/releases/download/v{version}");
-    match platform {
-        // include_str! preserves checkout line endings.
-        HostPlatform::Unix => template
-            .replace("\r\n", "\n")
-            .replace("@@VERSION@@", &shell_quote(version))
-            .replace("@@RELEASE@@", &shell_quote(&url)),
-    }
+    // include_str! preserves checkout line endings.
+    template
+        .replace("\r\n", "\n")
+        .replace("@@VERSION@@", &shell_quote(version))
+        .replace("@@RELEASE@@", &shell_quote(&url))
 }
 
-pub fn upgrade_script(platform: HostPlatform, port: u16) -> String {
-    let script = bootstrap_script(platform);
-    match platform {
-        HostPlatform::Unix => {
-            format!("MONOCODE_HOST_FORCE_UPGRADE=1\nMONOCODE_HOST_PORT={port}\n{script}")
-        }
-    }
+pub fn upgrade_script(port: u16) -> String {
+    let script = bootstrap_script();
+    format!("MONOCODE_HOST_FORCE_UPGRADE=1\nMONOCODE_HOST_PORT={port}\n{script}")
 }
 
-pub fn pairing_script(platform: HostPlatform, name: &str) -> String {
-    match platform {
-        HostPlatform::Unix => format!(
-            "set -eu\n\"$HOME/.monocode-host/bin/monocode-host\" pair --name {} --json\n",
-            shell_quote(name)
-        ),
-    }
+pub fn pairing_script(name: &str) -> String {
+    format!(
+        "set -eu\n\"$HOME/.monocode-host/bin/monocode-host\" pair --name {} --json\n",
+        shell_quote(name)
+    )
 }
 
 pub struct Tunnel {
@@ -679,7 +654,7 @@ mod tests {
             PLATFORM_PROBE,
         )
         .unwrap();
-        assert_eq!(parse_platform(&detected).unwrap(), HostPlatform::Unix);
+        assert!(parse_platform(&detected).is_ok());
         let output = run_script_with_command(
             &target,
             "printf 'remote-script-ok\\n'\n".into(),
@@ -710,7 +685,7 @@ mod tests {
     fn ssh_targets_cannot_inject_options_or_shell_commands() {
         for target in [
             "home",
-            "me@mac-mini.local",
+            "me@linux-box.local",
             "user@192.168.1.4",
             "user@[::1]",
         ] {
@@ -736,43 +711,31 @@ mod tests {
     fn unix_bootstrap_accepts_windows_checkout_line_endings() {
         let lf_template = include_str!("remote_bootstrap.sh").replace("\r\n", "\n");
         let crlf_template = lf_template.replace('\n', "\r\n");
-        let script = bootstrap_script_from_template(HostPlatform::Unix, &crlf_template);
+        let script = bootstrap_script_from_template(&crlf_template);
         assert!(script.starts_with("set -eu\n"));
         assert!(!script.contains('\r'));
-        assert_eq!(
-            script,
-            bootstrap_script_from_template(HostPlatform::Unix, &lf_template)
-        );
+        assert_eq!(script, bootstrap_script_from_template(&lf_template));
     }
     #[test]
     fn bootstrap_is_versioned_and_only_explicit_upgrade_restarts_the_host() {
-        let script = bootstrap_script(HostPlatform::Unix);
+        let script = bootstrap_script();
         assert!(!script.contains('\r'));
         assert!(!script.contains("@@"));
         assert!(script.contains("--proto '=https'"));
         assert!(script.contains("checksum mismatch"));
         assert!(script.contains("\"$FORCE_UPGRADE\" = 1"));
         assert!(script.contains("service uninstall"));
-        assert!(
-            upgrade_script(HostPlatform::Unix, 3774).starts_with("MONOCODE_HOST_FORCE_UPGRADE=1")
-        );
-        assert!(!upgrade_script(HostPlatform::Unix, 3774).contains('\r'));
+        assert!(upgrade_script(3774).starts_with("MONOCODE_HOST_FORCE_UPGRADE=1"));
+        assert!(!upgrade_script(3774).contains('\r'));
     }
     #[test]
-    fn remote_platform_probe_accepts_unix_and_refuses_windows() {
-        assert_eq!(
-            parse_platform("MONOCODE_PLATFORM :OS %OS%\n").unwrap(),
-            HostPlatform::Unix
-        );
+    fn remote_platform_probe_accepts_unix_shells() {
+        assert!(parse_platform("MONOCODE_PLATFORM\n").is_ok());
         assert!(parse_platform("unrecognized shell").is_err());
-        assert!(
-            parse_platform("MONOCODE_PLATFORM $env:OS Windows_NT $OS\r\n").is_err(),
-            "a Windows host cannot run the host"
-        );
-        let script = bootstrap_script(HostPlatform::Unix);
+        let script = bootstrap_script();
         assert!(!script.contains("@@"));
         assert!(script.contains("checksum mismatch"));
-        assert!(pairing_script(HostPlatform::Unix, "Nick's $PC").contains("'Nick'\\''s $PC'"));
+        assert!(pairing_script("Nick's $PC").contains("'Nick'\\''s $PC'"));
     }
     #[test]
     fn device_names_are_bounded_single_lines() {

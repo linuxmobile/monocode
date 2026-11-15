@@ -1224,7 +1224,7 @@ fn color(value: AnsiColor, colors: &Colors, foreground: bool) -> Hsla {
 }
 
 /// Bytes a keystroke sends, or None to leave it to the app's bindings.
-/// Includes terminalKeys.ts's macOS editing shortcuts.
+/// Includes terminalKeys.ts's editing shortcuts.
 pub(crate) fn key_bytes(keystroke: &Keystroke, mode: TermMode) -> Option<Vec<u8>> {
     let m = &keystroke.modifiers;
     let key = keystroke.key.as_str();
@@ -1577,7 +1577,7 @@ mod tests {
     }
 
     #[test]
-    fn keys_encode_like_xterm_with_the_macos_editing_shortcuts() {
+    fn keys_encode_like_xterm_with_the_editing_shortcuts() {
         assert_eq!(bytes("enter"), Some(b"\r".to_vec()));
         assert_eq!(bytes("backspace"), Some(b"\x7f".to_vec()));
         assert_eq!(bytes("up"), Some(b"\x1b[A".to_vec()));

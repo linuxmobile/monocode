@@ -21,7 +21,6 @@ impl DesktopPreferences {
             ("show_excluded_files", "showExcludedFiles", false),
             ("anchor_prompts", "transcriptAnchor", true),
             ("paced_reveal", "pacedReveal", true),
-            ("autocorrect", "composerAutocorrect", false),
             ("format_on_save", "formatOnSave", true),
             ("autosave", "autosave", false),
             ("composer_mascot", "composerRunner", true),

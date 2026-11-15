@@ -282,20 +282,12 @@ export function codexCommandText(
     const posixShell = ["sh", "bash", "zsh", "dash", "ksh"].includes(
       launcher ?? "",
     );
-    const powerShell = ["pwsh", "pwsh.exe", "powershell", "powershell.exe"].includes(
-      launcher ?? "",
-    );
-    const cmd = launcher === "cmd" || launcher === "cmd.exe";
     let flag = -1;
     for (let index = 1; index < parts.length - 1; index += 1) {
       const part = parts[index];
-      if (powerShell && /^-(?:file|f)$/i.test(part)) break;
       if (
-        (posixShell &&
-          (part.toLowerCase() === "--command" ||
-            /^-[A-Za-z]*c[A-Za-z]*$/.test(part))) ||
-        (powerShell && /^-(?:command|c)$/i.test(part)) ||
-        (cmd && /^\/c$/i.test(part))
+        posixShell &&
+        (part.toLowerCase() === "--command" || /^-[A-Za-z]*c[A-Za-z]*$/.test(part))
       ) {
         flag = index;
         break;

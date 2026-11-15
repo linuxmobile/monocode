@@ -17,7 +17,7 @@ import { ensureRuntimeArchive, fetchViaHttps } from "./runtime-download.mjs";
 const bytes = Buffer.from("verified runtime fixture");
 const checksum = createHash("sha256").update(bytes).digest("hex");
 const url =
-  "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz";
+  "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-arm64.tar.gz";
 const delays = [1_000, 2_000, 4_000];
 
 async function fixture(t) {
@@ -371,7 +371,7 @@ async function nativeTransport(t, handler) {
 
 for (const phase of ["headers", "body"]) {
   test(
-    `Windows fallback recovers from a fetch ${phase} timeout through the native transport and verifies its cache`,
+    `Fallback recovers from a fetch ${phase} timeout through the native transport and verifies its cache`,
     { timeout: 10_000 },
     async (t) => {
       const f = await fixture(t);

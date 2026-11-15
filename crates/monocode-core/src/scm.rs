@@ -20,12 +20,11 @@ pub use review::{
 };
 pub(crate) use shell::{expand_home, path_to_js};
 
-/// The PATH a login terminal would have, for shells the app starts: a
-/// Finder-launched app inherits launchd's bare PATH.
+/// The PATH a login terminal would have, for shells the app starts.
 pub fn terminal_search_path() -> String {
     shell::gui_search_path()
 }
-/// Resolve a CLI using the login-shell PATH available to Finder-launched apps.
+/// Resolve a CLI using the login-shell PATH.
 pub fn resolve_gui_binary(name: &str) -> Option<std::path::PathBuf> {
     shell::resolve_gui_binary(name)
 }
@@ -991,7 +990,7 @@ fn with_signing_hint(error: String) -> String {
     }
     format!(
         "{error}\n\nGit couldn't sign this commit. MonoCode runs git without a terminal, \
-         so your signer needs a GUI passphrase prompt (e.g. pinentry-mac) or an unlocked agent."
+         so your signer needs a GUI passphrase prompt (e.g. pinentry) or an unlocked agent."
     )
 }
 
@@ -1146,8 +1145,8 @@ fn resolve_repo_path(root: &Path, relative: &str) -> Result<String, String> {
     Ok(relative)
 }
 
-/// Any git can start a filter (git-lfs), which a Finder launch's bare PATH
-/// lacks. The cached search path finds it without waiting on the login shell.
+/// Any git can start a filter (git-lfs), which a bare GUI PATH lacks. The
+/// cached search path finds it without waiting on the login shell.
 pub(crate) fn git_cmd() -> Command {
     let mut cmd = Command::new("git");
     crate::process::configure_child(&mut cmd);

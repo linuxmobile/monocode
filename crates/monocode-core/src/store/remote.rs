@@ -137,10 +137,7 @@ impl Store {
             .as_str()
             .ok_or("Host project has no identity")?;
         let remote = RemoteProject {
-            key: crate::remote::remote_path(
-                environment_id,
-                cwd.replace('\\', "/").trim_end_matches('/'),
-            ),
+            key: crate::remote::remote_path(environment_id, cwd.trim_end_matches('/')),
             environment_id: environment_id.into(),
             project_id: id.into(),
             cwd: cwd.into(),
@@ -264,7 +261,7 @@ impl Store {
                 project.key.trim_end_matches('/') == cwd.trim_end_matches('/')
                     || crate::remote::remote_path(
                         &project.environment_id,
-                        project.cwd.replace('\\', "/").trim_end_matches('/'),
+                        project.cwd.trim_end_matches('/'),
                     )
                     .trim_end_matches('/')
                         == cwd.trim_end_matches('/')
@@ -669,27 +666,13 @@ mod tests {
     }
 
     #[test]
-    fn windows_project_keys_normalize_trailing_separators_and_find_legacy_unc_keys() {
+    fn project_keys_normalize_trailing_separators() {
         let store = Store::open(Path::new(":memory:")).unwrap();
         let project = store
-            .remember_remote_project("env", &json!({"id":"project","cwd":r"C:\repo\"}))
+            .remember_remote_project("env", &json!({"id":"project","cwd":"/repo/"}))
             .unwrap();
-        assert_eq!(project.key, "remote://env/C:/repo");
-        let legacy = RemoteProject {
-            key: "remote://env/server/share/repo".into(),
-            environment_id: "env".into(),
-            project_id: "unc".into(),
-            cwd: r"\\server\share\repo".into(),
-        };
-        store
-            .save_setting(
-                PROJECTS,
-                &serde_json::to_string(&BTreeMap::from([(legacy.key.clone(), legacy)])).unwrap(),
-            )
-            .unwrap();
-        assert!(store
-            .create("codex", "remote://env//server/share/repo")
-            .is_ok());
+        assert_eq!(project.key, "remote://env/repo");
+        assert!(store.create("codex", "remote://env/repo/").is_ok());
     }
 }
 

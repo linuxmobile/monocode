@@ -892,7 +892,6 @@ fn git_cmd_path(cmd: &Command) -> Vec<PathBuf> {
 #[test]
 fn read_only_git_cmd_path_adds_fixed_dirs_to_inherited_path() {
     let path = git_cmd_path(&git_cmd());
-    assert!(path.contains(&PathBuf::from("/opt/homebrew/bin")));
     assert!(path.contains(&PathBuf::from("/usr/local/bin")));
     if let Some(inherited) = std::env::var_os("PATH") {
         for dir in std::env::split_paths(&inherited) {
@@ -907,7 +906,7 @@ fn local_git_never_resolves_login_shell_path() {
         let cmd = git_cmd_for_args_with_path(&[action], || {
             panic!("local git must not resolve the login-shell PATH")
         });
-        assert!(git_cmd_path(&cmd).contains(&PathBuf::from("/opt/homebrew/bin")));
+        assert!(git_cmd_path(&cmd).contains(&PathBuf::from("/usr/local/bin")));
     }
 }
 

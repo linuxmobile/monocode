@@ -18,7 +18,7 @@ import threading
 import time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SYSTEM = {"Darwin": "darwin", "Linux": "linux"}[platform.system()]
+SYSTEM = "linux"
 ARCH = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "x64"}[platform.machine()]
 LAUNCHER = ROOT / "build" / "host-packages" / f"{SYSTEM}-{ARCH}" / "monocode-host"
 

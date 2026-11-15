@@ -61,8 +61,7 @@ function fixture() {
   return { home, commands, repo };
 }
 
-const apiRoot = (path: string) =>
-  process.platform === "win32" ? path.replace(/\\/g, "/") : path;
+const apiRoot = (path: string) => path;
 
 it("commits only selected working files and preserves other staging and repos", async () => {
   const { commands, repo } = fixture();
@@ -187,7 +186,7 @@ it("rejects invalid and cross-repo selections before touching staging", async ()
   ).rejects.toThrow("cannot amend");
 });
 
-it.skipIf(process.platform === "win32")(
+it(
   "treats wildcard, pathspec, newline and backslash filenames literally",
   async () => {
     const { commands, repo } = fixture();
@@ -250,7 +249,7 @@ it("locates each checkout and deleted parents while enforcing host boundaries", 
   ).toEqual([null]);
 });
 
-it.skipIf(process.platform === "win32")(
+it(
   "keeps file symlinks in their checkout and rejects traversal through outside directories",
   async () => {
     const { home, commands, repo } = fixture();

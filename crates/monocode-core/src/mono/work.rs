@@ -160,11 +160,7 @@ pub fn command_action(command: &str) -> Option<String> {
     {
         parts = words(&parts[2])?;
     }
-    let executable = parts
-        .first()?
-        .rsplit(['/', '\\'])
-        .next()?
-        .trim_end_matches(".exe");
+    let executable = parts.first()?.rsplit('/').next()?;
     if !matches!(executable, "monocode" | "monocode-gpui") || parts.get(1)? != "app" {
         return None;
     }
@@ -297,9 +293,8 @@ mod tests {
     fn native_app_commands_recognize_the_packaged_executable() {
         for command in [
             "monocode-gpui app sessions.start --json '{}'",
-            r#"'/Applications/Monocode Native.app/Contents/MacOS/monocode-gpui' app sessions.start --json '{}'"#,
-            r#"/bin/zsh -lc 'monocode-gpui app sessions.start --json "{}"'"#,
-            "C:/Mono/monocode-gpui.exe app sessions.start --json '{}'",
+            r#"/opt/monocode/monocode-gpui app sessions.start --json '{}'"#,
+            r#"/bin/bash -lc 'monocode-gpui app sessions.start --json "{}"'"#,
         ] {
             assert_eq!(
                 command_action(command).as_deref(),

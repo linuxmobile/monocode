@@ -11,7 +11,7 @@
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
-app=${1:-"/Applications/Monocode Native.app/Contents/MacOS/monocode-gpui"}
+app=${1:-"target/release/monocode-gpui"}
 seconds=${2:-20}
 replay="$here/fake-claude-stream.py"
 
@@ -51,7 +51,7 @@ else
 fi
 : >"$log"
 # PROFILE=1 also samples stacks over the same window with Monocode Performance.
-profiler=${MONOCODE_PROFILER:-"$HOME/code/mono-perf-chip/dist/Monocode Performance.app/Contents/MacOS/MonocodePerformance"}
+profiler=${MONOCODE_PROFILER:-"$HOME/code/mono-perf-chip/dist/MonocodePerformance"}
 if [ "${PROFILE:-0}" = 1 ] && [ -x "$profiler" ]; then
     mkdir -p "$work/profile"
     "$profiler" --profile "$seconds" --pid "$pid" --output "$work/profile" >"$work/profile/summary.json"

@@ -40,7 +40,6 @@ pub(super) struct State {
     announcements: approvals::InputAnnouncements,
     responding: HashSet<i64>,
     sequence: u64,
-    badge: usize,
     sounds_enabled: bool,
     sounds_enabled_at: u64,
     poll: Option<gpui_kit::Task<()>>,
@@ -81,7 +80,6 @@ impl State {
             announcements: Default::default(),
             responding: HashSet::new(),
             sequence: 0,
-            badge: 0,
             sounds_enabled: workspace.preferences.sounds,
             sounds_enabled_at: 0,
             poll: None,
@@ -309,12 +307,10 @@ impl Shell {
     }
 
     pub(super) fn start_native_notifications(&mut self, cx: &mut Context<Self>) {
-        platform::set_dock_badge(0);
         if platform::initialize() {
             self.notification_state.permission = Permission::Prompt;
             self.notification_state.permission_probe = Some(platform::permission());
         }
-        self.notification_state.badge = 0;
         self.process_notification_inputs(cx);
         self.notification_state.poll = Some(cx.spawn(async move |this, cx| {
             loop {
@@ -380,7 +376,7 @@ impl Shell {
             .or_else(|| self.monos.as_ref()?.read(cx).notification_entity(id, cx))
     }
 
-    /// Advance banners and the Dock badge while an occluded window skips render.
+    /// Advance banners while an occluded window skips render.
     fn process_notification_inputs(&mut self, cx: &mut Context<Self>) {
         let snapshots: Vec<_> = self
             .notification_chats(cx)
@@ -402,15 +398,6 @@ impl Shell {
         self.notification_state.approvals.update(cx, |notices, _| {
             notices.track_pending(&snapshots);
         });
-        let badge = delivery::dock_badge_count(
-            snapshots
-                .iter()
-                .filter_map(|s| Some((s.session_id.parse().ok()?, !s.pending.is_empty()))),
-        );
-        if badge != self.notification_state.badge {
-            self.notification_state.badge = badge;
-            platform::set_dock_badge(badge);
-        }
         for (session, input) in self.notification_state.announcements.reconcile(&snapshots) {
             if let Ok(id) = session.session_id.parse()
                 && let Some(view) = self.notification_chat(id, cx)
@@ -512,15 +499,6 @@ impl Shell {
         self.notification_state
             .responding
             .retain(|id| live_ids.contains(id));
-        let badge = delivery::dock_badge_count(
-            snapshots
-                .iter()
-                .filter_map(|s| Some((s.session_id.parse().ok()?, !s.pending.is_empty()))),
-        );
-        if self.notification_state.badge != badge {
-            self.notification_state.badge = badge;
-            platform::set_dock_badge(badge);
-        }
         let announcements = self.notification_state.announcements.reconcile(&snapshots);
         for (session, input) in announcements {
             if let Ok(id) = session.session_id.parse()

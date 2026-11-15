@@ -521,8 +521,8 @@ impl Popover {
 fn tint() -> Hsla {
     content(0.02)
 }
-// On macOS the renderer blurs what is already drawn behind this quad.
-// Light themes, and platforms without the blur, paint an opaque card.
+// The compositor blurs what is already drawn behind this quad when it
+// supports it; otherwise the opaque card is painted.
 fn glass(tint: Hsla, radius: f32) -> impl IntoElement {
     canvas(
         |_, _, _| {},

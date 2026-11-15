@@ -456,7 +456,7 @@ pub fn open_path_with_default_app(path: &Path) -> Result<(), String> {
     }
 }
 
-/// Show `path` in Finder / Explorer, or open its folder elsewhere.
+/// Show `path` in the file manager.
 /// Blocking on Linux, where `xdg-open` may wait for the file manager.
 pub fn reveal_path(path: &Path) -> Result<(), String> {
     if remote::is_remote(path) {

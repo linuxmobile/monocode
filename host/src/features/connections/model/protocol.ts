@@ -24,7 +24,6 @@ export type HostDescriptor = {
   name: string;
   providers: RemoteProvider[];
   capabilities: string[];
-  platform?: "win32" | "darwin" | "linux";
 };
 export type HostProject = { id: string; cwd: string; name: string };
 export type HostDirectory = {

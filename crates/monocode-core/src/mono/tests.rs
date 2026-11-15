@@ -177,8 +177,8 @@ fn context_shows_how_to_delegate_without_running_help() {
         memory_path: String::new(),
         topics: Vec::new(),
     };
-    let executable = std::path::Path::new("/Applications/Monocode.app/monocode");
-    let start = r#"/Applications/Monocode.app/monocode app sessions.start --json '{"project":"<assigned path>","title":"<short title>","prompt":"<complete instructions>","notifyOnComplete":true}'"#;
+    let executable = std::path::Path::new("/opt/monocode/monocode");
+    let start = r#"/opt/monocode/monocode app sessions.start --json '{"project":"<assigned path>","title":"<short title>","prompt":"<complete instructions>","notifyOnComplete":true}'"#;
     let rules = instructions(&mono, executable);
     assert!(rules.contains(start));
     assert!(rules.contains("## Be quick"));

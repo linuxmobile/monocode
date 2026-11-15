@@ -400,12 +400,6 @@ pub(crate) const INDEX: &[(&str, Section, &str, &str)] = &[
         "effort thinking reasoning fast service tier model picker composer",
     ),
     (
-        "composer-autocorrect",
-        Section::Chat,
-        "Autocorrect",
-        "spelling spell check autocorrect typo macos composer",
-    ),
-    (
         "composer-mascot",
         Section::Chat,
         "Composer mascot",

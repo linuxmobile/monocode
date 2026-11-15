@@ -72,15 +72,11 @@ fn config_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 fn credentials(config: Option<PathBuf>) -> Option<Value> {
-    // On macOS the CLI keeps its login in Keychain only. An item that is there
-    // but blank (the CLI clears it when a refresh fails) means signed out; an
-    // old .credentials.json must not stand in for it, or the footer would
+    // A blank credentials file (the CLI clears it when a refresh fails) means
+    // signed out; an old file must not stand in for it, or the footer would
     // promise a renewal with a long-dead refresh token and hide Sign in.
-    let dir = config.or_else(|| {
-        std::env::var_os("HOME")
-            .or_else(|| std::env::var_os("USERPROFILE"))
-            .map(|home| PathBuf::from(home).join(".claude"))
-    })?;
+    let dir = config
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".claude")))?;
     let raw = std::fs::read_to_string(dir.join(".credentials.json")).ok()?;
     credential_blob(&raw)
 }

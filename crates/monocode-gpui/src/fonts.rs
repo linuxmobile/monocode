@@ -4,9 +4,9 @@ use std::sync::OnceLock;
 /// GPUI resolves this family to the platform system UI font.
 pub(crate) const UI: &str = ".SystemUIFont";
 
-/// GPUI matches family names literally outside macOS, so the CSS generic
-/// `monospace` resolves to nothing there and text falls back to a
-/// proportional sans. Mirror the web build's terminal stack instead.
+/// GPUI matches family names literally, so the CSS generic `monospace`
+/// resolves to nothing and text falls back to a proportional sans. Mirror
+/// the web build's terminal stack instead.
 const MONO_CANDIDATES: &[&str] = &[
     "JetBrainsMono NFM",
     "JetBrainsMono Nerd Font Mono",

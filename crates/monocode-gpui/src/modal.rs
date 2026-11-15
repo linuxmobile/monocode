@@ -280,7 +280,7 @@ impl Prompt {
             .position(PromptButton::is_cancel)
             .unwrap_or(self.actions.len().saturating_sub(1))
     }
-    /// Return chooses the first non-cancel answer, as AppKit's default button.
+    /// Return chooses the first non-cancel answer.
     fn default(&self) -> Option<usize> {
         self.actions.iter().position(|a| !a.is_cancel())
     }

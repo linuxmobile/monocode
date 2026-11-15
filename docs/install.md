@@ -21,7 +21,7 @@ sudo dnf install ./MonoCodeNative-*.rpm
 
 ## AppImage
 
-Keep the AppImage somewhere you can write to, such as `~/Applications`, make it
+Keep the AppImage somewhere you can write to, such as `~/Apps`, make it
 executable, and run it:
 
 ```bash

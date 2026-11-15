@@ -1,4 +1,4 @@
-//! OS bridge. Call initialization and Dock updates on the UI thread. All other
+//! OS bridge. Call initialization on the UI thread. All other
 //! results are channels so authorization/dispatch never block the UI thread.
 
 use std::sync::mpsc::{self, Receiver};
@@ -37,8 +37,6 @@ pub fn show(_: Notification) -> Receiver<Result<(), String>> {
 pub fn drain_clicks() -> Vec<Target> {
     Vec::new()
 }
-
-pub fn set_dock_badge(_: usize) {}
 
 pub fn dismiss(_: &str) {}
 

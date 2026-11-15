@@ -118,25 +118,14 @@ impl Note {
 
 pub fn is_project(cwd: &str) -> bool {
     let path = crate::files::path_key(cwd);
-    if path.trim().is_empty()
-        || path == "~"
-        || path == "/"
-        || path.contains(".app/")
-        || cwd.contains(".app\\")
-    {
+    if path.trim().is_empty() || path == "~" || path == "/" {
         return false;
     }
     let parts = path
         .split('/')
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>();
-    let drive = parts.first().is_some_and(|part| {
-        part.len() == 2 && part.as_bytes()[0].is_ascii_alphabetic() && part.ends_with(':')
-    });
-    if (drive && parts.len() == 1)
-        || (parts.len() == 2 && matches!(parts[0], "Users" | "home"))
-        || (drive && parts.len() == 3 && parts[1].eq_ignore_ascii_case("Users"))
-    {
+    if parts.len() == 2 && parts[0] == "home" {
         return false;
     }
     crate::accounts::home()

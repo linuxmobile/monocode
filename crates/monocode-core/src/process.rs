@@ -58,9 +58,9 @@ const TERM_GRACE: std::time::Duration = std::time::Duration::from_secs(2);
 /// background thread. Close its stdin before calling this.
 ///
 /// Claude Code rotates its OAuth refresh token on every refresh and saves the
-/// new one through a `security -i` child. Killing the whole group in that
-/// window loses the new token and leaves Keychain holding a spent one, which
-/// signs the account out. Close stdin first, then send SIGTERM to the leader
+/// new one before exiting. Killing the whole group in that window loses the
+/// new token and leaves the stored credential spent, which signs the account
+/// out. Close stdin first, then send SIGTERM to the leader
 /// only (Claude shuts down cleanly on it), and SIGKILL the group last.
 pub fn retire(mut child: std::process::Child) {
     drop(child.stdin.take());

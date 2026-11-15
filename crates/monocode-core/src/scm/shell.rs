@@ -11,21 +11,10 @@ const LOGIN_SHELL_TIMEOUT: Duration = Duration::from_secs(5);
 static LOGIN_SHELL_ENV: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 
 pub(crate) fn dirs_home() -> Option<String> {
-    let keys = ["HOME", "USERPROFILE"];
-    for key in keys {
-        if let Some(home) = std::env::var_os(key) {
-            let home = home.to_string_lossy().into_owned();
-            if !home.is_empty() {
-                return Some(home);
-            }
-        }
-    }
-    match (std::env::var("HOMEDRIVE"), std::env::var("HOMEPATH")) {
-        (Ok(drive), Ok(path)) if !drive.is_empty() && !path.is_empty() => {
-            Some(format!("{drive}{path}"))
-        }
-        _ => passwd_identity().map(|id| id.home),
-    }
+    std::env::var_os("HOME")
+        .map(|home| home.to_string_lossy().into_owned())
+        .filter(|home| !home.is_empty())
+        .or_else(|| passwd_identity().map(|id| id.home))
 }
 
 pub(crate) fn expand_home(path: &Path) -> PathBuf {
@@ -94,7 +83,7 @@ fn passwd_identity() -> Option<PasswdIdentity> {
 }
 
 /// Resolve `name` the way a terminal would, then fall back to common install
-/// dirs. Finder-launched apps inherit launchd's bare PATH.
+/// dirs. GUI-launched apps inherit a bare PATH.
 pub(crate) fn resolve_gui_binary(name: &str) -> Option<PathBuf> {
     which_in_path(&gui_search_path(), name)
 }
@@ -136,20 +125,11 @@ fn gui_search_path_from(
             ".grok/bin",
             ".npm-global/bin",
             ".bun/bin",
-            "AppData/Roaming/npm",
-            "AppData/Local/Yarn/bin",
-            "scoop/shims",
         ] {
             parts.push(format!("{home}/{dir}").into());
         }
     }
-    for dir in [
-        "/opt/homebrew/bin",
-        "/usr/local/bin",
-        "/usr/bin",
-        "/bin",
-        "/snap/bin",
-    ] {
+    for dir in ["/usr/local/bin", "/usr/bin", "/bin", "/snap/bin"] {
         parts.push(dir.into());
     }
     std::env::join_paths(parts)
@@ -174,14 +154,6 @@ pub(crate) fn apply_gui_env(cmd: &mut Command) {
         }
     } else if let Some(home) = dirs_home() {
         cmd.env("HOME", &home);
-        if std::env::var_os("USERPROFILE").is_none() {
-            cmd.env("USERPROFILE", &home);
-        }
-        if std::env::var_os("USER").is_none() {
-            if let Ok(username) = std::env::var("USERNAME") {
-                cmd.env("USER", username);
-            }
-        }
     }
     if std::env::var_os("LANG").is_none() && std::env::var_os("LC_ALL").is_none() {
         cmd.env("LANG", "en_US.UTF-8");
@@ -289,7 +261,7 @@ mod tests {
         assert_eq!(parts[0], PathBuf::from("/login/bin"));
         assert_eq!(parts[1], PathBuf::from("/inherited/bin"));
         assert!(parts.contains(&PathBuf::from("/home/me/.local/bin")));
-        assert!(parts.contains(&PathBuf::from("/opt/homebrew/bin")));
+        assert!(parts.contains(&PathBuf::from("/usr/local/bin")));
     }
 
     #[test]

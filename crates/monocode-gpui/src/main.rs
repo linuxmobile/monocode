@@ -3,7 +3,6 @@ extern crate gpui_kit as gpui;
 mod accounts;
 mod activity;
 mod app_log;
-mod app_menu;
 mod arcade;
 mod assets;
 mod automations;
@@ -134,27 +133,8 @@ fn data_dir() -> PathBuf {
         });
     base.join("Monocode Development")
 }
-// The packaged app runs this binary directly: a launcher that execs it changes the
-// process's pid version, and macOS then refuses its menu bar item. The bundle
-// records its data mode in Info.plist instead of passing a flag.
-fn bundle_uses_monocode_data() -> Option<bool> {
-    let exe = std::env::current_exe().ok()?;
-    let plist = std::fs::read_to_string(exe.parent()?.parent()?.join("Info.plist")).ok()?;
-    plist_data_mode(&plist)
-}
-fn plist_data_mode(plist: &str) -> Option<bool> {
-    let rest = plist.split("<key>MonocodeDataMode</key>").nth(1)?;
-    let mode = rest
-        .trim_start()
-        .strip_prefix("<string>")?
-        .split('<')
-        .next()?;
-    match mode {
-        "monocode-data" => Some(true),
-        "dev-data" => Some(false),
-        _ => None,
-    }
-}
+// The packaged app runs this binary directly. Development and release builds
+// keep their data separate, which `--dev-data` and `--monocode-data` override.
 fn main() {
     if let Some(code) = monocode_core::remote::ssh_askpass::maybe_run() {
         std::process::exit(code);
@@ -216,7 +196,7 @@ fn main() {
     let mut chat_fixture = false;
     let mut visual_fixture = false;
     // Development stays separate; release builds use the installed app's data.
-    let mut use_monocode = bundle_uses_monocode_data().unwrap_or(!cfg!(debug_assertions));
+    let mut use_monocode = !cfg!(debug_assertions);
     let mut monocode_db = monocode_core::store::monocode_database();
     let mut check_data = false;
     let mut explicit_cwd = false;
@@ -332,7 +312,7 @@ fn main() {
     } else {
         None
     };
-    // Opened from the Dock or Finder, macOS starts the app in `/`. Resume the
+    // Launched from a desktop entry, the app can start in `/`. Resume the
     // saved project instead of deriving a project from an internal chat path.
     let cwd = if let Some(project) = existing_project.filter(|_| !explicit_cwd) {
         project
@@ -422,7 +402,6 @@ fn main() {
                 None,
             )]);
             shell::bind_keys(cx);
-            app_menu::bind(cx);
             usage_footer::bind(cx);
             cx.on_window_closed(|cx, _| {
                 if cx.windows().is_empty() {
@@ -452,15 +431,11 @@ fn main() {
                     titlebar: Some(TitlebarOptions {
                         title: Some("Monocode Native".into()),
                         appears_transparent: false,
-                        traffic_light_position: None,
+                        ..Default::default()
                     }),
                     ..Default::default()
                 },
                 |window, cx| {
-                    // Install the menu one frame later, after the first frame presents.
-                    window.on_next_frame(|window, _| {
-                        window.on_next_frame(|_, cx| app_menu::ready(cx));
-                    });
                     // Off the launch path: it lists every conversation folder.
                     let cleanup = db.clone();
                     window.on_next_frame(move |_, cx| {
@@ -528,16 +503,6 @@ mod native_tests {
                         .cached(StyleRefinement::default().w_full().h(px(76.))),
                 )
         }
-    }
-    #[test]
-    fn bundle_plist_selects_the_data_mode() {
-        let plist = |mode: &str| {
-            format!("<dict>\n<key>MonocodeDataMode</key><string>{mode}</string>\n</dict>")
-        };
-        assert_eq!(plist_data_mode(&plist("monocode-data")), Some(true));
-        assert_eq!(plist_data_mode(&plist("dev-data")), Some(false));
-        assert_eq!(plist_data_mode(&plist("other")), None);
-        assert_eq!(plist_data_mode("<dict></dict>"), None);
     }
     #[gpui_kit::test]
     fn long_history_virtualizes_and_typing_does_not_rebuild_it(cx: &mut TestAppContext) {

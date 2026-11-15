@@ -1,8 +1,6 @@
 //! Shared, side-effect-free notification delivery policy. The host owns OS
 //! permission requests, dispatch, settings persistence, and opening sessions.
 
-use std::collections::HashSet;
-
 use serde_json::Value;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -116,14 +114,4 @@ pub fn clip_body(text: &str) -> String {
     }
     clipped.push('…');
     clipped
-}
-
-/// Count sessions that need input, never individual requests. The badge is
-/// independent of notification opt-in, project muting, and visible sessions.
-pub fn dock_badge_count(sessions: impl IntoIterator<Item = (i64, bool)>) -> usize {
-    sessions
-        .into_iter()
-        .filter_map(|(id, needs_input)| needs_input.then_some(id))
-        .collect::<HashSet<_>>()
-        .len()
 }

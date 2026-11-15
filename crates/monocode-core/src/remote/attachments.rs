@@ -1,5 +1,5 @@
 //! Session-scoped attachment previews. A host attachment path is never a
-//! desktop filesystem path, even when both machines happen to use `/Users`.
+//! desktop filesystem path, even when both machines happen to use `/home`.
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 
@@ -152,12 +152,12 @@ mod tests {
     #[test]
     fn projection_never_treats_host_paths_as_local_desktop_images() {
         let mut snapshot = json!({"session":{"blocks":[{"role":"user","text":"image","attachments":[
-            {"id":"image/id","size":3,"kind":"image","path":"/Users/me/secret.png","previewUrl":"file:///Users/me/secret.png"},
-            {"id":"broken","path":"/Users/me/secret.png"}
+            {"id":"image/id","size":3,"kind":"image","path":"/home/me/secret.png","previewUrl":"file:///home/me/secret.png"},
+            {"id":"broken","path":"/home/me/secret.png"}
         ]}]}});
         qualify_snapshot(&mut snapshot, "host/id", "session/id");
         let file = &snapshot["session"]["blocks"][0]["attachments"][0];
-        assert!(!file["path"].as_str().unwrap().contains("/Users/"));
+        assert!(!file["path"].as_str().unwrap().contains("/home/"));
         assert!(file.get("previewUrl").is_none());
         let source = parse_source(file["path"].as_str().unwrap()).unwrap();
         assert_eq!(
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn remote_user_links_cannot_trigger_legacy_local_attachment_previews() {
-        let mut snapshot = json!({"session":{"blocks":[{"role":"user","text":"A host message\n\n[secret.png](</Users/me/secret.png>)"}]}});
+        let mut snapshot = json!({"session":{"blocks":[{"role":"user","text":"A host message\n\n[secret.png](</home/me/secret.png>)"}]}});
         qualify_snapshot(&mut snapshot, "host", "session");
         let (history, _) = crate::store::Store::project_remote_history(&snapshot).unwrap();
         assert_eq!(history.rows.len(), 2);

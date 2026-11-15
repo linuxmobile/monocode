@@ -174,7 +174,6 @@ export async function installService(
     ...new Set([
       process.env.PATH ?? "",
       join(homedir(), ".local/bin"),
-      "/opt/homebrew/bin",
       "/usr/local/bin",
       "/usr/bin",
       "/bin",

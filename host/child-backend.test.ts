@@ -23,7 +23,7 @@ it("resolves every provider and runs only allowed provider commands", async () =
       expect(resolved.path).toBe(file);
       if (provider === "antigravity")
         expect(resolved.args).toEqual(
-          process.platform === "linux" ? ["--uid="] : [],
+          ["--uid="],
         );
     }
     const output = await backend.invoke<string>("harness_exec", {
@@ -236,8 +236,7 @@ setInterval(() => {}, 1000);
     {
       cwd: directory,
       stdio: ["pipe", "ignore", "ignore", "pipe"],
-      detached: process.platform !== "win32",
-      windowsHide: true,
+      detached: true,
     },
   );
   let guardClosed = false;

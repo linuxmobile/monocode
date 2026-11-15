@@ -212,30 +212,13 @@ export function filesFromClipboard(
     const file = item.getAsFile();
     if (file) fromItems.push(file);
   }
-  const files = fromItems.length > fromList.length ? fromItems : fromList;
-  return dropMacScreenshotTwins(files);
+  return fromItems.length > fromList.length ? fromItems : fromList;
 }
 
 function arrayLike<T>(list: ArrayLike<T> | null | undefined): T[] {
   return list ? Array.from(list) : [];
 }
 
-/** macOS often exposes the same screenshot as PNG and an unnamed TIFF. */
-function dropMacScreenshotTwins(files: File[]): File[] {
-  const unnamedTiff = (file: File) => {
-    const type = file.type.toLowerCase();
-    if (type !== "image/tiff" && type !== "image/tif") return false;
-    const name = file.name.trim().toLowerCase();
-    return (
-      !name || name === "image.tiff" || name === "image.tif" || name === "image"
-    );
-  };
-  const hasOtherImage = files.some(
-    (file) => file.type.startsWith("image/") && !unnamedTiff(file),
-  );
-  if (!hasOtherImage) return files;
-  return files.filter((file) => !unnamedTiff(file));
-}
 
 export async function pickAttachments(): Promise<Attachment[]> {
   const paths = await pickFilePaths();

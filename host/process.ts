@@ -45,7 +45,6 @@ const providerDirectories = (provider: RemoteProvider): string[] => {
       join(home, "n", "bin"),
       join(home, ".bun", "bin"),
       ...(extra[provider] ?? []),
-      "/opt/homebrew/bin",
       "/usr/local/bin",
       "/usr/bin",
       "/snap/bin",

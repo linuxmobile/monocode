@@ -407,10 +407,8 @@ export function isLocalProject(path: string): boolean {
 export function looksLikeProject(path: string): boolean {
   if (!path || path === "/" || path === "~") return false;
   const normalized = slash(path).replace(/\/+$/, "") || "/";
-  if (/^[A-Za-z]:$/.test(normalized) || normalized === "/") return false;
-  // Home itself arrives expanded (`/Users/me`), so the `~` check above misses
-  // it. Indexing it walks `~/Library`, which trips the OS consent prompt.
+  if (normalized === "/") return false;
+  // Home itself arrives expanded, so the `~` check above misses it.
   if (prettyCwd(path) === "~") return false;
-  if (path.includes(".app/") || path.includes(".app\\")) return false;
   return true;
 }

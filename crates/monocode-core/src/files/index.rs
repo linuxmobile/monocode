@@ -404,13 +404,7 @@ pub(crate) fn is_indexable_root(root: &Path) -> bool {
     if root.parent().is_none() {
         return false;
     }
-    let too_broad = [
-        dirs_home().map(PathBuf::from),
-        Some(PathBuf::from("/Users")),
-        Some(PathBuf::from("/Applications")),
-        Some(PathBuf::from("/Volumes")),
-        Some(PathBuf::from("/home")),
-    ];
+    let too_broad = [dirs_home().map(PathBuf::from), Some(PathBuf::from("/home"))];
     !too_broad
         .iter()
         .flatten()

@@ -258,7 +258,6 @@ export function createHostServer(
               protocolVersion: HOST_PROTOCOL_VERSION,
               environmentId: engine.store.environmentId,
               name: hostname(),
-              platform: process.platform,
               // Older clients validate this list against Codex and Claude only.
               providers: providers.filter((provider) =>
                 Array.isArray(params.supportedProviders)

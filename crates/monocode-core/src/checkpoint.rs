@@ -726,8 +726,6 @@ impl Store {
 }
 
 fn review_comparison_path(path: &Path) -> PathBuf {
-    // path_to_js replaces Windows separators, including in canonical verbatim
-    // paths. Restore native separators before comparing path components.
     path.to_path_buf()
 }
 

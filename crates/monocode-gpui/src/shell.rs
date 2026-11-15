@@ -279,11 +279,9 @@ pub(crate) fn corner_controls_width(_window: &Window) -> f32 {
     0.
 }
 
-/// macOS must receive button clicks as app content. Only blank titlebar
-/// regions initiate native dragging or the system double-click action.
-/// Client-decorated Linux windows also need explicit native drag requests.
-/// Windows hit-tests the drag area as the caption, which drags, snaps and
-/// maximizes on double-click natively.
+/// Only blank titlebar regions initiate native dragging or the system
+/// double-click action. Client-decorated Linux windows need explicit native
+/// drag requests.
 pub(crate) fn titlebar_drag_area() -> gpui_kit::Div {
     let bounds = AnchorSlot::default();
     div()

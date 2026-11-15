@@ -772,13 +772,23 @@ impl QuickComposer {
             async move {
                 std::fs::create_dir_all(path.parent().unwrap_or(&path))
                     .map_err(|e| e.to_string())?;
-                // Let WindowServer remove the panel before the overlay appears.
-                std::thread::sleep(std::time::Duration::from_millis(150));
-                let output = std::process::Command::new("/usr/sbin/screencapture")
-                    .args(["-i", "-x", "-t", "png"])
+                // Let the compositor map the region-selection overlay before
+                // the panel steps aside.
+                let selector = std::process::Command::new("slurp").output().map_err(|e| {
+                    format!("Could not take a screenshot: install slurp and grim ({e})")
+                })?;
+                if !selector.status.success() {
+                    return Ok(None);
+                }
+                let geometry = String::from_utf8_lossy(&selector.stdout).trim().to_owned();
+                if geometry.is_empty() {
+                    return Ok(None);
+                }
+                let output = std::process::Command::new("grim")
+                    .args(["-g", &geometry])
                     .arg(&path)
                     .output()
-                    .map_err(|e| format!("Could not take a screenshot: {e}"))?;
+                    .map_err(|e| format!("Could not take a screenshot: install grim ({e})"))?;
                 if path.is_file() {
                     return Ok(Some(path));
                 }

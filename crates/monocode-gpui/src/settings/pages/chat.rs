@@ -106,20 +106,6 @@ impl SettingsView {
                     |this, v, cx| this.update(cx, |p| p.model_controls = v.into()),
                 )],
             ),
-            self.row(
-                Some("composer-autocorrect"),
-                false,
-                "Autocorrect",
-                Some("Spell check and autocorrect prompts.".into()),
-                vec![self.toggle(
-                    "composer-autocorrect",
-                    "Autocorrect",
-                    p.autocorrect,
-                    false,
-                    cx,
-                    |this, on, cx| this.update(cx, |p| p.autocorrect = on),
-                )],
-            ),
         ];
         let editor = vec![self.row(
             Some("format-on-save"),

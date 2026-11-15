@@ -2,7 +2,7 @@
 //! the app appends one line per second it drew anything, so you can see how
 //! many frames streaming or scrolling costs and which views keep asking for
 //! them.
-//! `open --env MONOCODE_FRAME_LOG=/tmp/monocode-frames.log "Monocode Native.app"`
+//! `MONOCODE_FRAME_LOG=/tmp/monocode-frames.log target/release/monocode-gpui`
 //!
 //! - `fps`: draws per second, split into `layout` (content changed),
 //!   `paint` (only animation steps) and `refresh` (whole-window redraws).

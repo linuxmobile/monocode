@@ -543,7 +543,7 @@ export class WorkspaceCommands {
     }
     // Discovery cannot widen the host's registered project boundaries.
     const root = await this.gitRoot(top);
-    return { root: slashed(root), relative: process.platform === "win32" ? slashed(relative(root, actual)) : relative(root, actual) };
+    return { root: slashed(root), relative: relative(root, actual) };
   }
 
   private async gitSelectedPaths(root: string, paths: unknown): Promise<string[]> {
@@ -552,7 +552,7 @@ export class WorkspaceCommands {
     const selected: string[] = [];
     for (const path of paths) {
       if (typeof path !== "string" || isAbsolute(path) || path.includes("\0") ||
-          (process.platform === "win32" ? slashed(path) : path).split("/").some((part) => !part || part === "." || part === ".." || part.toLowerCase() === ".git"))
+          path.split("/").some((part) => !part || part === "." || part === ".." || part.toLowerCase() === ".git"))
         throw new Error("Invalid selected file path");
       const target = workspacePath(root, path);
       const entry = await lstat(target).catch((error: NodeJS.ErrnoException) => {

@@ -902,7 +902,7 @@ impl Explorer {
     fn paste(&mut self, at: String, window: &mut Window, cx: &mut Context<Self>) {
         let dest = self.create_parent(Some(&at));
         let Some(clip) = self.clip.clone() else {
-            // clipboardFilePaths: files copied in Finder.
+            // clipboardFilePaths: files copied in the file manager.
             let paths: Vec<PathBuf> = cx
                 .read_from_clipboard()
                 .map(|item| {

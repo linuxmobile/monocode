@@ -551,21 +551,21 @@ mod tests {
         assert!(home.get("path").is_none());
         assert_eq!(home, json!({}));
         assert_eq!(
-            browse_arguments(Some("C:\\Users\\me".into())),
-            json!({"path":"C:\\Users\\me"})
+            browse_arguments(Some("/home/me".into())),
+            json!({"path":"/home/me"})
         );
     }
 
     #[test]
     fn remote_directory_keeps_host_paths_unchanged() {
         let directory: Directory = serde_json::from_value(json!({
-            "path": "C:\\Users\\me\\code",
-            "parent": "C:\\Users\\me",
-            "entries": [{"name": "my-app", "path": "C:\\Users\\me\\code\\my-app"}],
+            "path": "/home/me/code",
+            "parent": "/home/me",
+            "entries": [{"name": "my-app", "path": "/home/me/code/my-app"}],
         }))
         .unwrap();
-        assert_eq!(directory.path, "C:\\Users\\me\\code");
-        assert_eq!(directory.entries[0].path, "C:\\Users\\me\\code\\my-app");
+        assert_eq!(directory.path, "/home/me/code");
+        assert_eq!(directory.entries[0].path, "/home/me/code/my-app");
         assert!(
             serde_json::from_value::<Directory>(
                 json!({"path": "/home", "entries": [{"name": "missing-path"}]})

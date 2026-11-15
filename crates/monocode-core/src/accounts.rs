@@ -169,9 +169,7 @@ impl Profile {
 }
 
 pub fn home() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
+    std::env::var_os("HOME").map(PathBuf::from)
 }
 pub fn supports_profiles(kind: Kind) -> bool {
     matches!(kind, Kind::Codex | Kind::Claude)

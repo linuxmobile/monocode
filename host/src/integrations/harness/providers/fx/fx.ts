@@ -56,8 +56,8 @@ type Resume = {
 };
 
 // fx answers `initialize` in well under a second when it can reach a
-// credential. A long wait means it is blocked reading the macOS Keychain, not
-// working — so fail fast with something actionable instead of stalling.
+// credential. A long wait means it is blocked reading its credential store,
+// so fail fast with something actionable instead of stalling.
 const INIT_TIMEOUT_MS = 12_000;
 const SESSION_TIMEOUT_MS = 45_000;
 const CONTROL_TIMEOUT_MS = 15_000;
@@ -66,12 +66,12 @@ const PROMPT_TIMEOUT_MS = 30 * 60_000;
 const AUTH_HELP =
   "fx has no Vercel AI Gateway credential it can read from here. " +
   "Run `fx login` (or `fx setup`) in a terminal, or export AI_GATEWAY_API_KEY " +
-  "so it does not depend on the macOS Keychain.";
+  "so it does not depend on the OS credential store.";
 
 /** fx rejects `initialize` itself when it cannot read a credential. */
 function fxStartupError(error: unknown): Error {
   const detail = error instanceof Error ? error.message : String(error);
-  if (/needs access|AI Gateway|API key|Keychain/i.test(detail)) {
+  if (/needs access|AI Gateway|API key|credential/i.test(detail)) {
     return new Error(`${detail.trim()}\n\n${AUTH_HELP}`);
   }
   if (/timed out/i.test(detail)) {
@@ -463,7 +463,7 @@ async function prompt(live: Live, input: SendTurnInput): Promise<void> {
     const detail = error instanceof Error ? error.message : String(error);
     live.onEvent({
       type: "session.error",
-      message: /needs access|AI Gateway|API key|Keychain/i.test(detail)
+      message: /needs access|AI Gateway|API key|credential/i.test(detail)
         ? `${detail.trim()}\n\n${AUTH_HELP}`
         : detail,
     });

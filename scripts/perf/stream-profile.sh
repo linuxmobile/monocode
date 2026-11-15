@@ -11,9 +11,9 @@
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
-app=${1:-"/Applications/Monocode Native.app/Contents/MacOS/monocode-gpui"}
+app=${1:-"target/release/monocode-gpui"}
 seconds=${2:-30}
-profiler=${MONOCODE_PROFILER:-"$HOME/code/mono-perf-chip/dist/Monocode Performance.app/Contents/MacOS/MonocodePerformance"}
+profiler=${MONOCODE_PROFILER:-"$HOME/code/mono-perf-chip/dist/MonocodePerformance"}
 replay="$here/fake-claude-stream.py"
 
 [ -x "$app" ] || { echo "No Monocode binary at $app" >&2; exit 1; }

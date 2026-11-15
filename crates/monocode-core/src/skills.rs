@@ -166,7 +166,6 @@ pub(crate) fn list_skills_from(
             add_root(root, "user", "antigravity");
         }
         add_root(home.join(".config/devin/skills"), "user", "devin");
-        // Windows keeps Devin's user config under %APPDATA% instead.
         add_root(project.join(".devin/skills"), "project", "devin");
         for (root, scope, namespace) in claude_plugin_skill_roots(home, project) {
             add_namespaced_root(

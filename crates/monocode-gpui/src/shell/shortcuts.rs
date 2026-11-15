@@ -1,4 +1,4 @@
-//! Workspace fallback for orphaned GPUI focus and embedded AppKit previews.
+//! Workspace fallback for orphaned GPUI focus.
 //! Normal focused inputs keep the keymap's context ordering. Resolve from the
 //! live keymap, including user overrides, rather than maintaining another list
 //! of physical shortcuts.
@@ -109,7 +109,7 @@ pub(super) fn install(owner: WeakEntity<Shell>, window: &Window, cx: &mut App) -
             forwarding.handled.set(true);
             cx.stop_propagation();
         } else if native {
-            // The monitor re-delivers the original event to AppKit. Prevent
+            // The monitor re-delivers the original event. Prevent
             // the stale GPUI input from processing Copy, typing, IME, etc.
             cx.stop_propagation();
         }

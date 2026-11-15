@@ -56,7 +56,7 @@ pub(crate) fn copy_durable(path: &Path, dest: &Path) -> std::io::Result<()> {
     let temp = PathBuf::from(temp);
     let result = std::fs::copy(path, &temp)
         .and_then(|_| {
-            // Windows requires write access when flushing a file to disk.
+            // Open for writing so the copy can be flushed to disk.
             std::fs::File::options()
                 .write(true)
                 .open(&temp)

@@ -1,9 +1,6 @@
 //! Platform shell selection, independent of the terminal renderer.
 
 pub(super) fn pty_program(program: &str) -> String {
-    // Alacritty escapes arguments on Windows, but inserts the program verbatim
-    // into CreateProcessW's command line. PowerShell 7 lives under Program Files.
-
     program.to_owned()
 }
 

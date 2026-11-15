@@ -106,7 +106,6 @@ export function devinCredentialsPathFromStatus(stdout: string): string | null {
 export function devinCredentialsCandidates(home: string): string[] {
   const base = home.replace(/[\\/]+$/, "");
   return [
-    `${base}/AppData/Roaming/devin/credentials.toml`,
     `${base}/.local/share/devin/credentials.toml`,
     `${base}/.config/devin/credentials.toml`,
   ];

@@ -103,35 +103,21 @@ pub struct RemotePath {
     pub host_path: String,
 }
 
-/// Qualifies a host path without losing Windows drive letters or UNC roots.
+/// Qualifies an absolute path on a remote Linux host.
 pub fn remote_path(environment_id: &str, host_path: &str) -> String {
-    let path = host_path.replace('\\', "/");
-    let path = if path.starts_with("//") {
-        &path[1..]
-    } else {
-        path.trim_start_matches('/')
-    };
+    let path = host_path.trim_start_matches('/');
     format!("{REMOTE_PATH_PREFIX}{environment_id}/{path}")
 }
 
 pub fn parse_remote_path(path: &str) -> Option<RemotePath> {
-    let path = path.strip_prefix(REMOTE_PATH_PREFIX)?.replace('\\', "/");
+    let path = path.strip_prefix(REMOTE_PATH_PREFIX)?;
     let (environment_id, host_path) = path.split_once('/')?;
     if environment_id.is_empty() {
         return None;
     }
-    let bytes = host_path.as_bytes();
-    let drive = bytes.len() >= 2
-        && bytes[0].is_ascii_alphabetic()
-        && bytes[1] == b':'
-        && (bytes.len() == 2 || bytes[2] == b'/');
     Some(RemotePath {
         environment_id: environment_id.into(),
-        host_path: if drive {
-            host_path.into()
-        } else {
-            format!("/{host_path}")
-        },
+        host_path: format!("/{host_path}"),
     })
 }
 
@@ -513,12 +499,11 @@ impl Connections {
                 let mut target = target;
                 let mut machine = if let Some(mut existing) = existing {
                     if upgrade {
-                        let platform = ssh::detect_platform(&target, &job, &askpass)?;
+                        ssh::detect_platform(&target, &job, &askpass)?;
                         job.message("Updating MonoCode Host on the machine…");
                         let output = ssh::run_script(
                             &target,
-                            platform,
-                            ssh::upgrade_script(platform, target.remote_port),
+                            ssh::upgrade_script(target.remote_port),
                             &job,
                             &askpass,
                         )?;
@@ -536,15 +521,9 @@ impl Connections {
                     }
                     existing
                 } else {
-                    let platform = ssh::detect_platform(&target, &job, &askpass)?;
+                    ssh::detect_platform(&target, &job, &askpass)?;
                     job.message("Installing or starting MonoCode Host…");
-                    let output = ssh::run_script(
-                        &target,
-                        platform,
-                        ssh::bootstrap_script(platform),
-                        &job,
-                        &askpass,
-                    )?;
+                    let output = ssh::run_script(&target, ssh::bootstrap_script(), &job, &askpass)?;
                     let info: Value = serde_json::from_str(output.lines().last().unwrap_or(""))
                         .map_err(|_| "Host setup returned an invalid response")?;
                     target.remote_port = info
@@ -556,8 +535,7 @@ impl Connections {
                     job.message("Pairing this desktop with the host…");
                     let pair = ssh::run_script(
                         &target,
-                        platform,
-                        ssh::pairing_script(platform, &ssh::device_name()),
+                        ssh::pairing_script(&ssh::device_name()),
                         &job,
                         &askpass,
                     )?;
@@ -885,25 +863,14 @@ mod tests {
     }
 
     #[test]
-    fn remote_paths_round_trip_unix_drives_and_unc_roots() {
+    fn remote_paths_round_trip_absolute_host_paths() {
         for (host, normalized, qualified) in [
             (
                 "/home/user/repo",
                 "/home/user/repo",
                 "remote://env/home/user/repo",
             ),
-            (
-                r"C:\Users\Nick\repo",
-                "C:/Users/Nick/repo",
-                "remote://env/C:/Users/Nick/repo",
-            ),
-            (
-                r"\\server\share\repo",
-                "//server/share/repo",
-                "remote://env//server/share/repo",
-            ),
             ("/", "/", "remote://env/"),
-            ("C:", "C:", "remote://env/C:"),
         ] {
             assert_eq!(remote_path("env", host), qualified);
             let parsed = parse_remote_path(qualified).unwrap();

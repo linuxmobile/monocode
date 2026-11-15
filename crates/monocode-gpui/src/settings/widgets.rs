@@ -263,7 +263,6 @@ impl SettingsView {
                     | "paced-reveal"
                     | "collapse-tool-groups"
                     | "fold-finished-work"
-                    | "composer-autocorrect"
                     | "format-on-save"
                     | "composer-mascot"
                     | "empty-session-games"

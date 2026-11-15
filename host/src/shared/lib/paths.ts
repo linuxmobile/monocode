@@ -16,7 +16,7 @@ export function prettyCwd(cwd: string): string {
   if (trimmed === "~") return "~";
 
   const parts = trimmed.split("/").filter(Boolean);
-  if (parts.length >= 2 && (parts[0] === "Users" || parts[0] === "home")) {
+  if (parts.length >= 2 && parts[0] === "home") {
     const rest = parts.slice(2).join("/");
     return rest ? `~/${rest}` : "~";
   }
@@ -139,10 +139,9 @@ let cachedHomeDir: string | undefined;
 /**
  * Record the OS's actual home directory so `~/` references resolve exactly,
  * instead of only being inferred from `cwd`. That inference fails whenever a
- * project lives outside the usual `/Users/<name>` or `/home/<name>` shape -
- * a custom install location, a container, a drive letter this module does
- * not recognise - even though the real home directory is known. Pass
- * `undefined` to clear it, e.g. between tests.
+ * project lives outside the usual `/home/<name>` shape - a custom install
+ * location or a container - even though the real home directory is known.
+ * Pass `undefined` to clear it, e.g. between tests.
  */
 export function setHomeDir(path: string | undefined): void {
   cachedHomeDir = path ? trimSlash(slash(path)) : undefined;

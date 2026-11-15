@@ -155,7 +155,7 @@ pub fn resolve_auto(kind: Kind) -> Option<PathBuf> {
     .filter(|p| !p.as_os_str().is_empty())
     .map(|p| p.join(kind.binary_name()))
     .collect();
-    if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
+    if let Some(home) = std::env::var_os("HOME") {
         let home = PathBuf::from(home);
         for dir in kind.install_dirs().iter().copied().chain([
             ".local/bin",
@@ -186,12 +186,7 @@ pub fn resolve_auto(kind: Kind) -> Option<PathBuf> {
             candidates.extend(versions.into_iter().rev());
         }
     }
-    for dir in [
-        "/opt/homebrew/bin",
-        "/usr/local/bin",
-        "/usr/bin",
-        "/snap/bin",
-    ] {
+    for dir in ["/usr/local/bin", "/usr/bin", "/snap/bin"] {
         candidates.push(Path::new(dir).join(kind.binary_name()));
     }
     if matches!(kind, Kind::Cursor | Kind::Pi) {
@@ -1327,7 +1322,6 @@ pub fn run_text(mut request: Request, cancel: Arc<AtomicBool>) -> Result<String,
 pub(crate) fn catalog_for(kind: Kind, account: crate::accounts::Profile) -> Result<Value, String> {
     let binary = resolve(kind).ok_or_else(|| kind.unavailable_hint())?;
     let cwd = std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
         .unwrap_or(std::env::current_dir().map_err(|e| e.to_string())?);
     run_process(

@@ -317,8 +317,6 @@ impl Shell {
             monos.update(cx, |m, cx| m.set_preferences(prefs, cx));
         }
         crate::settings::apply_keybindings(&self.workspace.preferences, cx);
-        // After the keymap, so the menu shows rebound shortcuts.
-        crate::app_menu::install(&self.workspace.preferences, cx);
         cx.set_global(self.workspace.preferences.clone());
         self.sync_right_panel(cx);
         if let Some(center) = crate::accounts::get(cx) {

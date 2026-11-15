@@ -33,7 +33,7 @@ test("all native architectures and installation types have isolated versioned UR
     assert.ok(artifact.url.includes("%20"));
   }
 });
-test("a missing Intel Mac or Linux package prevents publishing the feed", () => {
+test("a missing Linux package prevents publishing the feed", () => {
   for (const target of nativeTargets) {
     assert.throws(
       () =>

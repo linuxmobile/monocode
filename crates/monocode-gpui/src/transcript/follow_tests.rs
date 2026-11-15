@@ -1578,8 +1578,9 @@ fn a_notification_continuing_a_turn_does_not_move_the_chat(cx: &mut TestAppConte
     let window = chat(cx);
     let mut tool = ToolCall::new("launch", "exec_command");
     tool.input = serde_json::json!({
-        "cmd": "'/Applications/Monocode Native.app/Contents/MacOS/monocode-gpui' app sessions.start --json '{}'"
-    }).to_string();
+        "cmd": "'/opt/monocode/monocode-gpui' app sessions.start --json '{}'"
+    })
+    .to_string();
     tool.output =
         serde_json::json!({"ok": true, "result": {"sessionId": 776, "accepted": true}}).to_string();
     tool.state = ToolState::Completed;

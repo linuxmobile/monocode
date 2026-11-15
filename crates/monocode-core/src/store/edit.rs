@@ -344,12 +344,7 @@ mod tests {
     }
     #[test]
     fn native_attachment_links_are_never_recalled_as_text_without_the_original_files() {
-        for path in [
-            "/tmp/photo.png",
-            r"C:\Users\me\photo.png",
-            "C:/Users/me/photo.png",
-            r"\\server\share\photo.png",
-        ] {
+        for path in ["/tmp/photo.png", "/home/me/photo.png"] {
             let (mut store, id, mut rows) = fixture();
             rows[2].text = format!("Describe image\n\n[photo.png](<{path}>)");
             store.write_rows(id, 2, &rows[2..]).unwrap();

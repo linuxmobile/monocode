@@ -503,7 +503,7 @@ export function movePath(from: string, destParent: string): Promise<string> {
 }
 
 /**
- * Paths for files copied in a file manager, on macOS, Linux and Windows.
+ * Paths for files copied in a file manager.
  * Rejects when the clipboard cannot be read; an empty list means it holds no
  * files.
  */
@@ -513,7 +513,7 @@ export function clipboardFilePaths(): Promise<string[]> {
   );
 }
 
-/** Put the original file on the macOS clipboard, preserving its name and type. */
+/** Put the original file on the clipboard, preserving its name and type. */
 export function copyFileToClipboard(path: string): Promise<void> {
   return invoke<void>("copy_file_to_clipboard", { path });
 }

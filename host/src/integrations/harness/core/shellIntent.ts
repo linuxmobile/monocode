@@ -54,10 +54,10 @@ export function inferShellIntent(command: string): ShellIntent | undefined {
 }
 
 /**
- * Codex may expose a command through the argv used to launch the user's shell,
- * for example `/bin/zsh -lc "cat package.json"` or
- * `pwsh.exe -Command "Get-Content package.json"`. The launcher is transport
- * noise for this visual-only classifier; inspect the script it was given.
+ * Codex may expose a command through the argv used to launch the user's
+ * shell, for example `/bin/zsh -lc "cat package.json"`. The launcher is
+ * transport noise for this visual-only classifier; inspect the script it was
+ * given.
  */
 export function unwrapShellCommand(command: string): string {
   let current = command.trim();
@@ -82,12 +82,6 @@ export function unwrapShellCommand(command: string): string {
     let flagIndex = -1;
     for (let index = 1; index < tokens.length; index += 1) {
       const token = tokens[index];
-      if (
-        "optionBoundary" in wrapper &&
-        wrapper.optionBoundary.test(token.value)
-      ) {
-        break;
-      }
       if (wrapper.commandFlag.test(token.value)) {
         flagIndex = index;
         break;
@@ -96,16 +90,7 @@ export function unwrapShellCommand(command: string): string {
     if (flagIndex < 0) break;
     const commandToken = tokens[flagIndex + 1];
     if (!commandToken) break;
-    const remainder = current.slice(commandToken.start).trim();
-    const commandQuote = current[commandToken.start];
-    const commandIsSoleQuotedToken =
-      (commandQuote === '"' || commandQuote === "'") &&
-      current[commandToken.end - 1] === commandQuote &&
-      tokens.length === flagIndex + 2;
-    const script =
-      wrapper.consumeRemainder && !commandIsSoleQuotedToken
-        ? remainder
-        : commandToken.value.trim();
+    const script = commandToken.value.trim();
     if (!script || script === current) break;
     current = script;
   }
@@ -116,18 +101,6 @@ const SHELL_WRAPPERS = [
   {
     executables: new Set(["sh", "bash", "zsh", "dash", "ksh"]),
     commandFlag: /^(?:--command|-[a-z]*c[a-z]*)$/i,
-    consumeRemainder: false,
-  },
-  {
-    executables: new Set(["powershell", "powershell.exe", "pwsh", "pwsh.exe"]),
-    commandFlag: /^-(?:command|c)$/i,
-    optionBoundary: /^-(?:file|f)$/i,
-    consumeRemainder: true,
-  },
-  {
-    executables: new Set(["cmd", "cmd.exe"]),
-    commandFlag: /^\/c$/i,
-    consumeRemainder: true,
   },
 ] as const;
 

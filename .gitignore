@@ -20,10 +20,6 @@ gen/schemas/
 coverage/
 .turbo/
 *.tsbuildinfo
-*.dmg
-*.app/
-*.msi
-*.exe
 *.deb
 *.rpm
 *.AppImage
