@@ -1305,12 +1305,7 @@ impl Conversation {
                             .text_color(content(if self.mono_ui.emoji { 1. } else { 0.55 }))
                             .group_hover("mono-emoji", |s| s.text_color(content(1.))),
                     )
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        if cfg!(target_os = "macos") {
-                            window.focus(&this.input.focus_handle(cx), cx);
-                            window.show_character_palette();
-                            return;
-                        }
+                    .on_click(cx.listener(|this, _, _window, cx| {
                         this.mono_ui.emoji = !this.mono_ui.emoji;
                         cx.notify();
                     })),

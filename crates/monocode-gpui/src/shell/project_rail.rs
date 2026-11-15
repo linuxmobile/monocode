@@ -233,32 +233,7 @@ impl Shell {
                 },
             )
             .into_any_element();
-        if cfg!(target_os = "macos")
-            && !self.workspace.project_rail_open
-            && self.settings.is_none()
-            && self.classic_surface_open(cx)
-        {
-            // Destination headers live beside the rail. Keep its divider below
-            // the traffic lights, at the same height as the sessions view.
-            div()
-                .w(px(width))
-                .h_full()
-                .flex_shrink_0()
-                .flex()
-                .flex_col()
-                .child(
-                    titlebar_drag_area()
-                        .w_full()
-                        .h(px(TITLE_BAR_HEIGHT))
-                        .flex_shrink_0()
-                        .border_b_1()
-                        .border_color(content(0.07)),
-                )
-                .child(div().flex_1().min_h_0().child(frame))
-                .into_any_element()
-        } else {
-            frame
-        }
+        frame
     }
     pub(super) fn project_rail(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let compact = !self.workspace.project_rail_open && self.settings.is_none();
@@ -284,7 +259,7 @@ impl Shell {
                 .flex_col()
                 .items_center()
                 .overflow_hidden()
-                .when(!cfg!(target_os = "macos"), |d| d.child(header))
+                .when(!false, |d| d.child(header))
                 .child(self.project_rail_compact_actions(cx))
                 .child(div().min_h(px(8.)).flex_1())
                 .child(
@@ -546,11 +521,7 @@ impl Shell {
                                 .font_weight(FontWeight::NORMAL)
                                 .text_size(px(11.))
                                 .text_color(content(0.4))
-                                .child(if cfg!(target_os = "macos") {
-                                    "⌘,"
-                                } else {
-                                    "Ctrl ,"
-                                }),
+                                .child("Ctrl ,"),
                         )
                     })
                     .on_click(cx.listener(|this, _, window, cx| {
@@ -605,11 +576,7 @@ impl Shell {
                                 .text_size(px(11.))
                                 .font_weight(FontWeight::NORMAL)
                                 .text_color(content(0.4))
-                                .child(if cfg!(target_os = "macos") {
-                                    "⌘K"
-                                } else {
-                                    "Ctrl K"
-                                }),
+                                .child("Ctrl K"),
                         )
                         .on_click(cx.listener(|this, _, w, cx| this.focus_search(w, cx))),
                 )

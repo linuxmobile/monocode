@@ -7,7 +7,7 @@ use crate::{
     input,
     shell::*,
 };
-use gpui::{App, KeyBinding, Menu, MenuItem, actions};
+use gpui::{App, Menu, MenuItem, actions};
 
 actions!(application, [Hide, HideOthers, ShowAll]);
 
@@ -23,13 +23,6 @@ pub(crate) fn bind(cx: &mut App) {
     cx.on_action(|_: &HideOthers, cx| cx.hide_other_apps());
     cx.on_action(|_: &ShowAll, cx| cx.unhide_other_apps());
     cx.on_action(|action: &OpenUrl, cx| cx.open_url(action.0));
-    if cfg!(target_os = "macos") {
-        cx.bind_keys([
-            KeyBinding::new("cmd-h", Hide, None),
-            KeyBinding::new("cmd-alt-h", HideOthers, None),
-            KeyBinding::new("cmd-m", MinimizeWindow, None),
-        ]);
-    }
 }
 
 /// Set once the first window has presented a frame.

@@ -24,13 +24,6 @@ pub(crate) const BINDINGS: &[Binding] = &[
         when: "Always",
         fixed: false,
     },
-    #[cfg(target_os = "macos")]
-    Binding {
-        command: "App: Focus Prompt",
-        keys: "⌘L",
-        when: "Active chat or session",
-        fixed: false,
-    },
     Binding {
         command: "App: Go to File",
         keys: "⌘P",
@@ -320,13 +313,6 @@ pub(crate) const BINDINGS: &[Binding] = &[
         fixed: false,
     },
 ];
-pub(super) fn quick_composer_label(p: &Preferences) -> String {
-    p.keybindings
-        .get("App: Quick Composer")
-        .and_then(|s| s.clone())
-        .map(|s| shortcut_label(&s))
-        .unwrap_or_else(|| "⌘⇧Space".into())
-}
 /// A command's shortcut as shown, honoring the user's rebinding; `None`
 /// once they have disabled it.
 pub(crate) fn command_shortcut(p: &Preferences, command: &str) -> Option<String> {
@@ -335,14 +321,12 @@ pub(crate) fn command_shortcut(p: &Preferences, command: &str) -> Option<String>
         Some(None) => None,
         None => {
             let keys = BINDINGS.iter().find(|r| r.command == command)?.keys;
-            Some(if cfg!(target_os = "macos") {
-                keys.into()
-            } else {
+            Some(
                 keys.replace('⌘', "Ctrl+")
                     .replace('⇧', "Shift+")
                     .replace('⌥', "Alt+")
-                    .replace('⌃', "Ctrl+")
-            })
+                    .replace('⌃', "Ctrl+"),
+            )
         }
     }
 }
@@ -352,24 +336,9 @@ pub(crate) fn shortcut_label(shortcut: &str) -> String {
     for part in parts {
         label.push_str(&match part {
             "cmd" => "⌘".into(),
-            "ctrl" => if cfg!(target_os = "macos") {
-                "⌃"
-            } else {
-                "Ctrl+"
-            }
-            .into(),
-            "alt" => if cfg!(target_os = "macos") {
-                "⌥"
-            } else {
-                "Alt+"
-            }
-            .into(),
-            "shift" => if cfg!(target_os = "macos") {
-                "⇧"
-            } else {
-                "Shift+"
-            }
-            .into(),
+            "ctrl" => "Ctrl+".into(),
+            "alt" => "Alt+".into(),
+            "shift" => "Shift+".into(),
             "space" => "Space".into(),
             "up" => "↑".into(),
             "down" => "↓".into(),
@@ -386,7 +355,7 @@ impl SettingsView {
         let query = self.keybinding_query.trim().to_lowercase();
         let rows: Vec<_> = BINDINGS
             .iter()
-            .filter(|r| cfg!(target_os = "macos") || r.command != "App: Quick Composer")
+            .filter(|r| false || r.command != "App: Quick Composer")
             .filter(|r| {
                 format!("{} {} {}", r.command, self.binding_label(r), r.when)
                     .to_lowercase()
@@ -653,14 +622,7 @@ impl SettingsView {
 fn default_shortcuts(row: &Binding) -> Vec<String> {
     let shortcut = row
         .keys
-        .replace(
-            '⌘',
-            if cfg!(target_os = "macos") {
-                "cmd-"
-            } else {
-                "ctrl-"
-            },
-        )
+        .replace('⌘', "ctrl-")
         .replace('⌃', "ctrl-")
         .replace('⌥', "alt-")
         .replace('⇧', "shift-")

@@ -468,11 +468,6 @@ fn empty_state() -> AnyElement {
                                         |_, _, _| (),
                                         |bounds, _, window, _| {
                                             let quad = fill(bounds, content(0.06));
-                                            #[cfg(any(target_os = "macos", target_os = "windows"))]
-                                            let quad =
-                                                quad.border_color(gpui::backdrop_blur_marker(
-                                                    4. * window.scale_factor(),
-                                                ));
                                             window.paint_quad(quad.corner_radii(px(16.)));
                                         },
                                     )

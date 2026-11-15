@@ -24,23 +24,9 @@ use std::{
     time::Instant,
 };
 
-const MOD: &str = if cfg!(target_os = "macos") {
-    "⌘"
-} else {
-    "Ctrl+"
-};
-const SHIFT: &str = if cfg!(target_os = "macos") {
-    "⇧"
-} else {
-    "Shift+"
-};
-const REVEAL_LABEL: &str = if cfg!(target_os = "macos") {
-    "Reveal in Finder"
-} else if cfg!(target_os = "windows") {
-    "Reveal in File Explorer"
-} else {
-    "Open Containing Folder"
-};
+const MOD: &str = "Ctrl+";
+const SHIFT: &str = "Shift+";
+const REVEAL_LABEL: &str = "Open Containing Folder";
 const ROW: f32 = 30.;
 const ENTRY_FONT_SIZE: f32 = 13.;
 
@@ -98,11 +84,7 @@ actions!(
 );
 
 pub(crate) fn bind(cx: &mut App) {
-    let m = if cfg!(target_os = "macos") {
-        "cmd"
-    } else {
-        "ctrl"
-    };
+    let m = "ctrl";
     let c = Some("Explorer");
     cx.bind_keys([
         KeyBinding::new("down", Down, c),

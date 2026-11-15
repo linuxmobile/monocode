@@ -24,12 +24,7 @@ impl SettingsView {
     pub(super) fn page(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Vec<AnyElement> {
         match self.section {
             Section::General => self.general_page(cx),
-            Section::Connections => {
-                // As on the earlier desktop and in the phone app's copy:
-                // Settings → Connections holds both machines and phones.
-                let mut page = self.connections_page(cx);
-                page
-            }
+            Section::Connections => self.connections_page(cx),
             Section::Appearance => self.appearance_page(window, cx),
             Section::Keybindings => self.keybindings_page(cx),
             Section::Chat => self.chat_page(cx),

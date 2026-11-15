@@ -3,18 +3,14 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
-#[cfg(not(windows))]
+
 use std::{process::Stdio, sync::mpsc, time::Duration};
 
-#[cfg(not(windows))]
 const LOGIN_SHELL_TIMEOUT: Duration = Duration::from_secs(5);
 
 static LOGIN_SHELL_ENV: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 
 pub(crate) fn dirs_home() -> Option<String> {
-    #[cfg(windows)]
-    let keys = ["USERPROFILE", "HOME"];
-    #[cfg(not(windows))]
     let keys = ["HOME", "USERPROFILE"];
     for key in keys {
         if let Some(home) = std::env::var_os(key) {
@@ -41,13 +37,7 @@ pub(crate) fn expand_home(path: &Path) -> PathBuf {
             .map(PathBuf::from)
             .unwrap_or_else(|| path.to_path_buf());
     }
-    let rest = text.strip_prefix("~/").or_else(|| {
-        if cfg!(windows) {
-            text.strip_prefix("~\\")
-        } else {
-            None
-        }
-    });
+    let rest = text.strip_prefix("~/").or_else(|| None);
     if let Some(rest) = rest {
         if let Some(home) = dirs_home() {
             return PathBuf::from(home).join(rest);
@@ -58,11 +48,7 @@ pub(crate) fn expand_home(path: &Path) -> PathBuf {
 
 pub(crate) fn path_to_js(path: &Path) -> String {
     let text = path.to_string_lossy();
-    if cfg!(windows) {
-        text.replace('\\', "/")
-    } else {
-        text.into_owned()
-    }
+    text.into_owned()
 }
 
 struct PasswdIdentity {
@@ -72,7 +58,6 @@ struct PasswdIdentity {
 }
 
 fn passwd_identity() -> Option<PasswdIdentity> {
-    #[cfg(unix)]
     {
         let uid = unsafe { libc::getuid() };
         let mut buf = vec![0u8; 4096];
@@ -105,10 +90,6 @@ fn passwd_identity() -> Option<PasswdIdentity> {
             }
             Some(PasswdIdentity { home, user, shell })
         }
-    }
-    #[cfg(not(unix))]
-    {
-        None
     }
 }
 
@@ -171,11 +152,6 @@ fn gui_search_path_from(
     ] {
         parts.push(dir.into());
     }
-    #[cfg(windows)]
-    {
-        parts.push(r"C:\Program Files\Git\cmd".into());
-        parts.push(r"C:\Program Files\nodejs".into());
-    }
     std::env::join_paths(parts)
         .unwrap_or_default()
         .to_string_lossy()
@@ -222,37 +198,15 @@ fn which_in_path(path: &str, name: &str) -> Option<PathBuf> {
 }
 
 fn existing_binary(path: PathBuf) -> Option<PathBuf> {
-    #[cfg(windows)]
-    if path.extension().is_none() {
-        for ext in ["exe", "cmd", "bat", "com"] {
-            let candidate = path.with_extension(ext);
-            if is_executable_file(&candidate) {
-                return Some(candidate);
-            }
-        }
-    }
     is_executable_file(&path).then_some(path)
 }
 
 fn is_executable_file(path: &Path) -> bool {
-    #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::metadata(path)
             .map(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
             .unwrap_or(false)
-    }
-    #[cfg(not(unix))]
-    {
-        path.is_file()
-            && path
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .is_some_and(|ext| {
-                    ["exe", "cmd", "bat", "com"]
-                        .iter()
-                        .any(|allowed| ext.eq_ignore_ascii_case(allowed))
-                })
     }
 }
 
@@ -278,29 +232,14 @@ fn peek_login_shell_path(cache: &Mutex<Option<HashMap<String, String>>>) -> Opti
 }
 
 fn load_login_shell_env() -> HashMap<String, String> {
-    #[cfg(windows)]
-    {
-        std::env::var("PATH")
-            .ok()
-            .filter(|value| !value.is_empty())
-            .map(|value| HashMap::from([("PATH".to_string(), value)]))
-            .unwrap_or_default()
-    }
-    #[cfg(not(windows))]
     load_unix_login_shell_env()
 }
 
 /// `-lic`, not `-lc`: zsh reads `.zshrc` only for interactive shells, and
 /// version managers initialize from there.
-#[cfg(not(windows))]
+
 fn load_unix_login_shell_env() -> HashMap<String, String> {
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| {
-        if cfg!(target_os = "macos") {
-            "/bin/zsh".into()
-        } else {
-            "/bin/bash".into()
-        }
-    });
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
     let mut cmd = Command::new(&shell);
     cmd.args(["-lic", "printenv"])
         .stdin(Stdio::null())
@@ -318,7 +257,6 @@ fn load_unix_login_shell_env() -> HashMap<String, String> {
     let output = match rx.recv_timeout(LOGIN_SHELL_TIMEOUT) {
         Ok(Ok(output)) => output,
         _ => {
-            #[cfg(unix)]
             unsafe {
                 libc::kill(-(pid as i32), libc::SIGKILL);
             }
@@ -355,7 +293,6 @@ mod tests {
         assert!(parts.contains(&PathBuf::from("/opt/homebrew/bin")));
     }
 
-    #[cfg(unix)]
     #[test]
     fn preserves_unix_backslash_filenames() {
         assert_eq!(path_to_js(Path::new(r"/tmp/a\b.txt")), r"/tmp/a\b.txt");

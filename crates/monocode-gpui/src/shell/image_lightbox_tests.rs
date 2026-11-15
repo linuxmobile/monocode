@@ -35,11 +35,7 @@ fn image_lightbox_opens_from_composer_and_sent_images_and_restores_focus(cx: &mu
             ))],
         })
     });
-    let modifier = if cfg!(target_os = "macos") {
-        "cmd"
-    } else {
-        "ctrl"
-    };
+    let modifier = "ctrl";
     visual.simulate_keystrokes(&format!("{modifier}-v"));
     visual.run_until_parked();
     visual.refresh().unwrap();

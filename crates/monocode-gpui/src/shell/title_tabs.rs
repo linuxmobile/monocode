@@ -539,11 +539,7 @@ mod tests {
             })
             .unwrap();
         let mono = add_mono(window, visual);
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         visual.simulate_keystrokes(&format!("{modifier}-w"));
         visual.run_until_parked();
         window

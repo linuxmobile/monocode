@@ -1158,7 +1158,7 @@ fn create_secure_tmp_dir() -> Option<PathBuf> {
     if fs::create_dir(&dir).is_err() {
         return None;
     }
-    #[cfg(unix)]
+
     {
         use std::os::unix::fs::PermissionsExt;
         if fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).is_err() {
@@ -1195,7 +1195,7 @@ fn git_unified_hunks(old: Option<&[u8]>, new: Option<&[u8]>) -> Option<(i64, i64
     // Isolate the subprocess from user configuration: a global
     // `diff.external`, textconv driver, or attributes file could otherwise
     // replace the unified output this parser expects.
-    let null_device = if cfg!(windows) { "NUL" } else { "/dev/null" };
+    let null_device = "/dev/null";
     let null_file: &Path = Path::new(null_device);
     let mut cmd = Command::new("git");
     crate::process::configure_child(&mut cmd);
@@ -2008,7 +2008,6 @@ fn delete_config(app: &Path) -> Result<(), String> {
 }
 
 fn write_secret_file(path: &Path, value: &str) -> Result<(), String> {
-    #[cfg(unix)]
     {
         use std::io::Write;
         use std::os::unix::fs::OpenOptionsExt;
@@ -2022,10 +2021,6 @@ fn write_secret_file(path: &Path, value: &str) -> Result<(), String> {
         file.write_all(value.as_bytes())
             .map_err(|error| error.to_string())?;
         Ok(())
-    }
-    #[cfg(not(unix))]
-    {
-        fs::write(path, value).map_err(|error| error.to_string())
     }
 }
 

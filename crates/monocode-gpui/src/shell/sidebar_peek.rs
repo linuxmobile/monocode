@@ -297,10 +297,6 @@ impl Shell {
                     canvas(
                         |_, _, _| {},
                         move |bounds, _, window, _| {
-                            #[cfg(any(target_os = "macos", target_os = "windows"))]
-                            let quad = gpui::fill(bounds, content(0.05))
-                                .border_color(gpui::backdrop_blur_marker(blur));
-                            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
                             let quad = {
                                 let _ = blur;
                                 gpui::fill(bounds, shell_fill())

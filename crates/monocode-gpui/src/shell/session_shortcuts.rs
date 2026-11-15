@@ -50,14 +50,7 @@ mod tests {
     use gpui::{KeyUpEvent, Keystroke, TestAppContext};
 
     fn shortcut() -> String {
-        format!(
-            "{}-shift-a",
-            if cfg!(target_os = "macos") {
-                "cmd"
-            } else {
-                "ctrl"
-            }
-        )
+        format!("{}-shift-a", "ctrl")
     }
 
     fn setup(cx: &mut TestAppContext) {
@@ -142,11 +135,7 @@ mod tests {
         window
             .update(cx, |shell, _, cx| {
                 assert!(!shell.sessions[&active].read(cx).summary.archived);
-                let modifier = if cfg!(target_os = "macos") {
-                    "cmd"
-                } else {
-                    "ctrl"
-                };
+                let modifier = "ctrl";
                 shell
                     .workspace
                     .preferences
@@ -161,11 +150,7 @@ mod tests {
                 assert!(!shell.sessions[&active].read(cx).summary.archived)
             })
             .unwrap();
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         cx.simulate_keystrokes(window.into(), &format!("{modifier}-alt-a"));
         cx.run_until_parked();
         window

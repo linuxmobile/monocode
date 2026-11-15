@@ -7,36 +7,7 @@ use gpui::{
     RenderImage, ScrollHandle, ScrollWheelEvent, canvas, fill, point, size,
 };
 
-#[cfg(target_os = "macos")]
-#[path = "video.rs"]
-mod video;
-
 pub(super) fn prepare_document(doc: Document) -> Result<Document, String> {
-    #[cfg(target_os = "macos")]
-    if let Document::Image {
-        ref bytes,
-        format: "avif",
-        original_size,
-        ..
-    } = doc
-    {
-        use objc2::AnyThread;
-        use objc2_app_kit::NSImage;
-        let data = objc2_foundation::NSData::with_bytes(bytes);
-        let image =
-            NSImage::initWithData(NSImage::alloc(), &data).ok_or("Couldn’t decode this image")?;
-        let dimensions = image.size();
-        let data = image
-            .TIFFRepresentation()
-            .ok_or("Couldn’t decode this image")?;
-        return Ok(Document::Image {
-            bytes: data.to_vec(),
-            format: "tiff",
-            original_size,
-            width: dimensions.width as u32,
-            height: dimensions.height as u32,
-        });
-    }
     Ok(doc)
 }
 
@@ -63,8 +34,6 @@ pub(super) struct MediaPreview {
     duration: Option<f64>,
     failed: bool,
     menu: Option<(Point<gpui::Pixels>, Entity<Menu>, Subscription)>,
-    #[cfg(target_os = "macos")]
-    video: Option<video::Video>,
     _poll: Option<Task<()>>,
     _source: Option<Arc<document::TemporaryMedia>>,
 }
@@ -133,8 +102,6 @@ impl MediaPreview {
             duration: None,
             failed: false,
             menu: None,
-            #[cfg(target_os = "macos")]
-            video: None,
             _poll: None,
             _source: None,
         }
@@ -168,13 +135,6 @@ impl MediaPreview {
             duration: None,
             failed: false,
             menu: None,
-            #[cfg(target_os = "macos")]
-            video: Some(video::Video::new(
-                source
-                    .as_ref()
-                    .map(|source| source.path().to_string_lossy().into_owned())
-                    .unwrap_or(path),
-            )),
             _poll: None,
             _source: source,
         };
@@ -183,26 +143,7 @@ impl MediaPreview {
                 cx.background_executor()
                     .timer(Duration::from_millis(250))
                     .await;
-                if this
-                    .update(cx, |this, cx| {
-                        #[cfg(target_os = "macos")]
-                        if this.visible
-                            && let Some(video) = &this.video
-                            && let Some((width, height, duration, failed)) = video.metadata()
-                            && (this.width != width
-                                || this.height != height
-                                || this.duration != Some(duration)
-                                || this.failed != failed)
-                        {
-                            this.width = width;
-                            this.height = height;
-                            this.duration = Some(duration);
-                            this.failed = failed;
-                            cx.notify();
-                        }
-                    })
-                    .is_err()
-                {
+                if this.update(cx, |_this, _cx| {}).is_err() {
                     break;
                 }
             }
@@ -214,10 +155,6 @@ impl MediaPreview {
     }
     pub(super) fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
-        #[cfg(target_os = "macos")]
-        if !visible && let Some(video) = &self.video {
-            video.hide();
-        }
     }
     fn scale(&self) -> f32 {
         self.zoom.unwrap_or_else(|| {
@@ -334,20 +271,8 @@ impl MediaPreview {
     }
 }
 impl gpui::Render for MediaPreview {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let is_image = self.image.is_some();
-        #[cfg(target_os = "macos")]
-        if self.failed
-            && let Some(video) = &self.video
-        {
-            video.hide();
-        }
-        #[cfg(target_os = "macos")]
-        if !window.is_window_active()
-            && let Some(video) = &self.video
-        {
-            video.pause();
-        }
         let body = if self.image.is_some() {
             let source = match &self.decoded {
                 Some(decoded) => ImageSource::Render(decoded.clone()),
@@ -547,14 +472,6 @@ impl gpui::Render for MediaPreview {
                 )
                 .into_any_element()
         } else {
-            #[cfg(target_os = "macos")]
-            {
-                self.video
-                    .as_ref()
-                    .map(|v| v.element())
-                    .unwrap_or_else(|| div().into_any_element())
-            }
-            #[cfg(not(target_os = "macos"))]
             {
                 div()
                     .flex_1()
@@ -592,7 +509,7 @@ impl gpui::Render for MediaPreview {
             .child(self.format.to_uppercase())
             .child(div().flex_1())
             .when(is_image, |d| {
-                d.when(cfg!(target_os = "macos"), |d| {
+                d.when(false, |d| {
                     d.child(
                         icon_action(
                             "copy-original-image",

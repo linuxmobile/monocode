@@ -43,10 +43,6 @@ impl Shell {
     pub(crate) fn mono_manager(&self) -> Entity<crate::monos::Monos> {
         self.monos.as_ref().unwrap().clone()
     }
-    #[cfg(all(target_os = "macos", not(test)))]
-    pub(crate) fn mono_quick_compose(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.show_quick_composer(window, cx);
-    }
     pub(super) fn mono_active(&self, cx: &App) -> bool {
         self.monos
             .as_ref()

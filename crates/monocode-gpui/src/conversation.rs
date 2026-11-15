@@ -3281,11 +3281,7 @@ impl Conversation {
         let busy = self.responding() && !has_value;
         let draft = self.draft_active(cx);
         let modifiers = window.modifiers();
-        let alternate = if cfg!(target_os = "macos") {
-            modifiers.platform
-        } else {
-            modifiers.control
-        };
+        let alternate = modifiers.control;
         let follow_up = (has_value && !draft)
             .then(|| self.follow_up_action(alternate, cx))
             .flatten();
@@ -3321,11 +3317,7 @@ impl Conversation {
             // Only ⌘'s own changes matter, and only while it changes the action.
             .on_modifiers_changed(cx.listener(
                 |this, event: &gpui::ModifiersChangedEvent, _, cx| {
-                    let alternate = if cfg!(target_os = "macos") {
-                        event.modifiers.platform
-                    } else {
-                        event.modifiers.control
-                    };
+                    let alternate = event.modifiers.control;
                     if std::mem::replace(&mut this.send_alternate, alternate) != alternate
                         && this.follow_up_action(alternate, cx).is_some()
                     {
@@ -3341,11 +3333,7 @@ impl Conversation {
                     this.stop(cx);
                 } else {
                     let modifiers = event.modifiers();
-                    let alternate = if cfg!(target_os = "macos") {
-                        modifiers.platform
-                    } else {
-                        modifiers.control
-                    };
+                    let alternate = modifiers.control;
                     this.send_follow_up(alternate, cx);
                 }
             }))
@@ -3680,12 +3668,7 @@ mod composer_motion_tests {
                                             <= 2.
                                 })
                                 .expect("the composer paints React's content-3% surface");
-                            #[cfg(any(target_os = "macos", target_os = "windows"))]
-                            assert_eq!(
-                                surface.border_color,
-                                gpui::backdrop_blur_marker(24. * scale)
-                            );
-                            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+
                             let _ = surface;
                             assert!(window.painted_quads().iter().any(|quad| {
                                 quad.border_color == content(0.2)
@@ -3971,13 +3954,7 @@ fn composer_surface(radius: f32) -> impl IntoElement {
         |_, _, _| {},
         move |bounds, _, window, _| {
             let surface = gpui::fill(bounds, fill).corner_radii(px(radius - 1.));
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
-            let surface = if blur > 0. {
-                surface.border_color(gpui::backdrop_blur_marker(blur * window.scale_factor()))
-            } else {
-                surface
-            };
-            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+
             let _ = blur;
             window.paint_quad(surface);
         },

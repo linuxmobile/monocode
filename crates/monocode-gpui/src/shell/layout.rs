@@ -28,40 +28,15 @@ fn card_corner_mask(begin: bool) -> impl IntoElement {
             let r = px(CARD_RADIUS)
                 .min(bounds.size.width / 2.)
                 .min(bounds.size.height / 2.);
-            #[cfg(target_os = "macos")]
-            let corners = [
-                bounds.origin,
-                gpui::point(bounds.right() - r, bounds.top()),
-                gpui::point(bounds.right() - r, bounds.bottom() - r),
-                gpui::point(bounds.left(), bounds.bottom() - r),
-            ];
-            #[cfg(target_os = "macos")]
-            for (corner, origin) in corners.into_iter().enumerate() {
-                window.paint_quad(
-                    gpui::fill(gpui::Bounds::new(origin, gpui::size(r, r)), gpui::black())
-                        .border_color(gpui_apple::metal_renderer::corner_clip_marker(
-                            begin,
-                            corner as u8,
-                        )),
-                );
-            }
             if !begin {
                 // The areas outside the curve belong to the surrounding
                 // chrome, just like the gutters and footer. Restoring the
                 // window's unwashed glass here leaves dark square corners.
-                #[cfg(target_os = "macos")]
-                let outside = inset_chrome_wash();
                 // Without the mask an opaque fill covers whatever the card
                 // painted past its curve. Over Windows' glass the root's
                 // translucent fill is already there, and a second one darkens
                 // the corners.
-                #[cfg(target_os = "windows")]
-                let outside = if shell_fill().a < 1. {
-                    inset_chrome_wash()
-                } else {
-                    shell_fill().blend(inset_chrome_wash())
-                };
-                #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+
                 let outside = shell_fill().blend(inset_chrome_wash());
                 let vertices = [
                     (
@@ -149,7 +124,7 @@ fn panel_button(enabled: bool, dot: bool) -> gpui::Stateful<gpui::Div> {
 
 impl Shell {
     pub(super) fn classic_titlebar_spans_window(&self, cx: &gpui::App) -> bool {
-        cfg!(target_os = "macos")
+        false
             && self.workspace.classic_layout
             && !self.workspace.project_rail_open
             && self.settings.is_none()
@@ -367,7 +342,7 @@ impl Shell {
         let footer = (!self.classic_surface_open(cx)).then(|| self.footer_row(cx));
         let spans_window = self.classic_titlebar_spans_window(cx);
         let original = self.workspace.classic_layout;
-        let compact_surface = cfg!(target_os = "macos")
+        let compact_surface = false
             && original
             && !self.workspace.project_rail_open
             && self.settings.is_none()

@@ -1,8 +1,3 @@
-#![cfg_attr(
-    all(target_os = "windows", not(debug_assertions)),
-    windows_subsystem = "windows"
-)]
-
 mod accounts;
 mod activity;
 mod app_log;
@@ -34,8 +29,6 @@ mod git_graph;
 mod git_picker;
 mod git_status;
 mod gpu_trim;
-#[cfg(target_os = "macos")]
-mod hang_watchdog;
 mod history;
 mod image_lightbox;
 mod image_memory;
@@ -44,10 +37,6 @@ mod ink_field;
 mod input;
 mod markdown;
 mod markdown_model;
-#[cfg(target_os = "macos")]
-mod memory_log;
-#[cfg(all(test, target_os = "macos"))]
-mod metal_tests;
 mod modal;
 mod monos;
 mod notes;
@@ -87,8 +76,6 @@ mod tab_motion;
 mod tab_tile;
 mod terminal;
 mod theme;
-#[cfg(target_os = "macos")]
-mod traffic_lights;
 mod transcript;
 mod usage_footer;
 mod visuals;
@@ -98,18 +85,13 @@ mod window_state;
 mod workspace;
 mod worktree_switcher;
 
-use gpui::{App, KeyBinding, TitlebarOptions, WindowOptions, actions, point, prelude::*, px, size};
+use gpui::{App, KeyBinding, TitlebarOptions, WindowOptions, actions, prelude::*, px, size};
 use monocode_core::{store::Store, transcript::Transcript};
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
     time::Instant,
 };
-/// libmalloc keeps freed large spans dirty, so startup decodes and image churn
-/// stayed in the footprint. mimalloc 2 returns them; 3 retains churn too.
-#[cfg(target_os = "macos")]
-#[global_allocator]
-static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 actions!(application, [Quit]);
 fn quit(cx: &mut App) {
@@ -142,12 +124,7 @@ fn data_dir() -> PathBuf {
     if let Some(path) = std::env::var_os("MONOCODE_NATIVE_DATA_DIR") {
         return path.into();
     }
-    #[cfg(target_os = "macos")]
-    let base = PathBuf::from(std::env::var_os("HOME").unwrap_or_default())
-        .join("Library/Application Support");
-    #[cfg(windows)]
-    let base = PathBuf::from(std::env::var_os("LOCALAPPDATA").unwrap_or_default());
-    #[cfg(not(any(target_os = "macos", windows)))]
+
     let base = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
@@ -422,12 +399,8 @@ fn main() {
             dev_reload::install(cx);
             cx.set_global(title_raster);
             image_memory::init(cx);
-            #[cfg(target_os = "macos")]
-            memory_log::start(cx);
             frame_log::start(cx);
             gpu_trim::start(cx);
-            #[cfg(target_os = "macos")]
-            hang_watchdog::start(database.with_file_name("gpui-hangs"), cx);
             input::bind(cx);
             image_lightbox::bind(cx);
             composer_completion::bind(cx);
@@ -439,11 +412,7 @@ fn main() {
             diff_view::bind(cx);
             fonts::init(cx);
             terminal::bind(cx);
-            let modifier = if cfg!(target_os = "macos") {
-                "cmd"
-            } else {
-                "ctrl"
-            };
+            let modifier = "ctrl";
             cx.bind_keys([KeyBinding::new(&format!("{modifier}-q"), Quit, None)]);
             shell::bind_keys(cx);
             app_menu::bind(cx);
@@ -468,19 +437,13 @@ fn main() {
                     window_background: theme::window_backdrop(true),
                     // GPUI owns the custom chrome. AppKit must not reinterpret
                     // its controls as native titlebar double-click/drag gestures.
-                    app_owns_titlebar_drag: cfg!(target_os = "macos"),
+                    app_owns_titlebar_drag: false,
                     titlebar: Some(TitlebarOptions {
                         title: Some("Monocode Native".into()),
                         // Windows also drops its caption: the app's drag areas
                         // hit-test as the caption and the frame still resizes.
                         appears_transparent: cfg!(any(target_os = "macos", target_os = "windows")),
-                        traffic_light_position: if cfg!(target_os = "macos") {
-                            // Original macOS chrome: 12 pt left inset, with
-                            // 14 pt native buttons centered in the 40 pt bar.
-                            Some(point(px(12.), px((theme::TITLE_BAR_HEIGHT - 14.) / 2.)))
-                        } else {
-                            None
-                        },
+                        traffic_light_position: None,
                     }),
                     ..Default::default()
                 },
@@ -517,17 +480,6 @@ fn main() {
                         )
                     });
                     shell.update(cx, |shell, cx| shell.focus_active(window, cx));
-                    #[cfg(target_os = "macos")]
-                    {
-                        traffic_lights::pin(window, theme::TITLE_BAR_HEIGHT);
-                        // AppKit rebuilds the buttons on some titlebar changes.
-                        shell.update(cx, |_, cx| {
-                            cx.observe_window_activation(window, |_, window, _| {
-                                traffic_lights::pin(window, theme::TITLE_BAR_HEIGHT)
-                            })
-                            .detach();
-                        });
-                    }
                     window.activate_window();
                     shell
                 },

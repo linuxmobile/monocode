@@ -114,7 +114,7 @@ pub fn read_document(path: &Path) -> Result<Document, String> {
             ));
             let mut options = std::fs::OpenOptions::new();
             options.create_new(true).write(true);
-            #[cfg(unix)]
+
             {
                 use std::os::unix::fs::OpenOptionsExt;
                 options.mode(0o600);
@@ -412,7 +412,7 @@ mod tests {
         std::fs::create_dir_all(&root).unwrap();
         let path = root.join("source.rs");
         std::fs::write(&path, b"\xef\xbb\xbffn main() {}\r\n").unwrap();
-        #[cfg(unix)]
+
         {
             use std::os::unix::fs::PermissionsExt;
             std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -426,7 +426,7 @@ mod tests {
             std::fs::read(&path).unwrap(),
             "\u{feff}// 🙂\r\n".as_bytes()
         );
-        #[cfg(unix)]
+
         {
             use std::os::unix::fs::PermissionsExt;
             assert_eq!(

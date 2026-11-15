@@ -370,9 +370,6 @@ impl Render for ImageLightbox {
                     |_, _, _| {},
                     |bounds, _, window, _| {
                         let quad = gpui::fill(bounds, black(0.85));
-                        #[cfg(any(target_os = "macos", target_os = "windows"))]
-                        let quad = quad
-                            .border_color(gpui::backdrop_blur_marker(4. * window.scale_factor()));
                         window.paint_quad(quad);
                     },
                 )
@@ -444,15 +441,6 @@ impl Render for ImageLightbox {
                         canvas(
                             |_, _, _| {},
                             |bounds, _, window, _| {
-                                #[cfg(any(target_os = "macos", target_os = "windows"))]
-                                window.paint_quad(
-                                    gpui::fill(bounds, gpui::transparent_black())
-                                        .corner_radii(px(18.))
-                                        .border_color(gpui::backdrop_blur_marker(
-                                            12. * window.scale_factor(),
-                                        )),
-                                );
-                                #[cfg(not(any(target_os = "macos", target_os = "windows")))]
                                 let _ = (bounds, window);
                             },
                         )
@@ -562,11 +550,7 @@ mod tests {
         })).unwrap());
         let visual = &mut VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         visual.simulate_keystrokes(&format!("{modifier}-="));
         window
             .update(visual, |view, _, _| assert_eq!(view.view.scale, 1.25))

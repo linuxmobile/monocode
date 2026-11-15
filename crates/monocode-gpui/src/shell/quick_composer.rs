@@ -95,8 +95,6 @@ impl Shell {
                 ..Default::default()
             },
             move |window, cx| {
-                #[cfg(all(target_os = "macos", not(test)))]
-                crate::traffic_lights::floating_panel(window, false);
                 let view = cx.new(|cx| {
                     crate::quick_composer::QuickComposer::new(projects, appearance, choice, cx)
                 });

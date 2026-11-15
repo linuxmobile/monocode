@@ -1052,7 +1052,6 @@ fn delete_config(app: &Path) -> Result<(), String> {
 }
 
 fn write_secret_file(path: &Path, value: &str) -> Result<(), String> {
-    #[cfg(unix)]
     {
         use std::io::Write;
         use std::os::unix::fs::OpenOptionsExt;
@@ -1066,10 +1065,6 @@ fn write_secret_file(path: &Path, value: &str) -> Result<(), String> {
         file.write_all(value.as_bytes())
             .map_err(|error| error.to_string())?;
         Ok(())
-    }
-    #[cfg(not(unix))]
-    {
-        fs::write(path, value).map_err(|error| error.to_string())
     }
 }
 

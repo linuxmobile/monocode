@@ -47,8 +47,7 @@ mod terminal_dock;
 mod terminal_panes;
 use terminal_panes::terminal_drag_ghost;
 mod title_tabs;
-#[cfg(any(target_os = "linux", target_os = "windows"))]
-mod window_chrome;
+
 mod worktrees;
 
 use crate::{
@@ -196,11 +195,7 @@ pub(crate) struct ActivateTab(pub isize);
 pub(crate) fn bind_keys(cx: &mut App) {
     session_groups::bind(cx);
     session_folders::bind(cx);
-    let modifier = if cfg!(target_os = "macos") {
-        "cmd"
-    } else {
-        "ctrl"
-    };
+    let modifier = "ctrl";
     // Scoped to the shell, so the focused composer, menus and pickers outrank
     // these: GPUI ranks an unscoped binding above every context.
     let context = Some("Workspace");
@@ -272,43 +267,17 @@ pub(crate) fn bind_keys(cx: &mut App) {
         KeyBinding::new("tab", FocusNext, context),
         KeyBinding::new("shift-tab", FocusPrevious, context),
     ]);
-    #[cfg(target_os = "macos")]
-    cx.bind_keys([KeyBinding::new("cmd-l", FocusPrompt, context)]);
 }
 
-/// Windows has no caption of its own (`appears_transparent`), so the app
-/// draws the window controls. Test windows keep the captionless geometry
-/// that Linux tests get from server decorations.
-#[cfg(target_os = "windows")]
-const WINDOWS_CONTROLS: bool = cfg!(not(test));
-
-pub(crate) fn client_controls_width(window: &Window) -> f32 {
-    #[cfg(target_os = "linux")]
-    if !window.is_fullscreen()
-        && matches!(
-            window.window_decorations(),
-            gpui::Decorations::Client { .. }
-        )
-    {
-        return window_chrome::CONTROLS_WIDTH;
-    }
-    #[cfg(target_os = "windows")]
-    if WINDOWS_CONTROLS && !window.is_fullscreen() {
-        return window_chrome::CONTROLS_WIDTH;
-    }
-    let _ = window;
+/// The app draws no window controls: the desktop draws the frame, so the
+/// whole bar belongs to the window's title.
+pub(crate) fn client_controls_width(_window: &Window) -> f32 {
     0.
 }
 
-/// Client-drawn window controls that hold the corner's right end, inside the
-/// bar: Windows only. Client-decorated Linux shifts the whole bar left of its
-/// controls instead (`titlebar_controls_space`).
-pub(crate) fn corner_controls_width(window: &Window) -> f32 {
-    if cfg!(target_os = "windows") {
-        client_controls_width(window)
-    } else {
-        0.
-    }
+/// The corner holds no client-drawn controls (`titlebar_controls_space`).
+pub(crate) fn corner_controls_width(_window: &Window) -> f32 {
+    0.
 }
 
 /// macOS must receive button clicks as app content. Only blank titlebar
@@ -324,8 +293,8 @@ pub(crate) fn titlebar_drag_area() -> gpui::Div {
         .child(bounds.probe())
         .window_control_area(WindowControlArea::Drag)
         .on_mouse_down(MouseButton::Left, move |event, window, cx| {
-            if (cfg!(target_os = "macos")
-                || (cfg!(target_os = "linux")
+            if (false
+                || (true
                     && matches!(
                         window.window_decorations(),
                         gpui::Decorations::Client { .. }
@@ -398,7 +367,7 @@ pub(crate) struct ShellMenu {
 }
 /// The gap the traffic lights take in the title bar (`w-[78px]`, or `w-2.5`
 /// where the window has none, as in macOS fullscreen).
-const TRAFFIC_LIGHTS: f32 = if cfg!(target_os = "macos") { 78. } else { 10. };
+const TRAFFIC_LIGHTS: f32 = 10.;
 const NO_TRAFFIC_LIGHTS: f32 = 10.;
 // The tab strip's padding; the trailing side also has the 2px gap before the
 // strip's drag area.
@@ -415,43 +384,14 @@ const CORNER_TABS_LEAD: f32 = 7.;
 const CORNER_CONTROL_GAP: f32 = 4.;
 const CORNER_BUTTONS_WIDTH: f32 = 48. + 2. * CORNER_CONTROL_GAP;
 // TitleBar.tsx's labels, with their shortcuts.
-const TOGGLE_SIDEBAR_LABEL: &str = if cfg!(target_os = "macos") {
-    "Toggle Sidebar (⌘B)"
-} else {
-    "Toggle Sidebar (Ctrl+B)"
-};
-const BACK_LABEL: &str = if cfg!(target_os = "macos") {
-    "Back (⌘[)"
-} else {
-    "Back (Ctrl+[)"
-};
-const FORWARD_LABEL: &str = if cfg!(target_os = "macos") {
-    "Forward (⌘])"
-} else {
-    "Forward (Ctrl+])"
-};
-const TOGGLE_RIGHT_PANEL_LABEL: &str = if cfg!(target_os = "macos") {
-    "Toggle right sidebar (⌘⇧B)"
-} else {
-    "Toggle right sidebar (Ctrl+Shift+B)"
-};
-const TOGGLE_RIGHT_PANEL_DOT_LABEL: &str = if cfg!(target_os = "macos") {
-    "Toggle right sidebar (⌘⇧B, uncommitted changes)"
-} else {
-    "Toggle right sidebar (Ctrl+Shift+B, uncommitted changes)"
-};
-const MOD: &str = if cfg!(target_os = "macos") {
-    "⌘"
-} else {
-    "Ctrl+"
-};
-const REVEAL_LABEL: &str = if cfg!(target_os = "macos") {
-    "Reveal in Finder"
-} else if cfg!(target_os = "windows") {
-    "Reveal in File Explorer"
-} else {
-    "Open Containing Folder"
-};
+const TOGGLE_SIDEBAR_LABEL: &str = "Toggle Sidebar (Ctrl+B)";
+const BACK_LABEL: &str = "Back (Ctrl+[)";
+const FORWARD_LABEL: &str = "Forward (Ctrl+])";
+const TOGGLE_RIGHT_PANEL_LABEL: &str = "Toggle right sidebar (Ctrl+Shift+B)";
+const TOGGLE_RIGHT_PANEL_DOT_LABEL: &str =
+    "Toggle right sidebar (Ctrl+Shift+B, uncommitted changes)";
+const MOD: &str = "Ctrl+";
+const REVEAL_LABEL: &str = "Open Containing Folder";
 
 struct TabDrag {
     id: TitleTab,
@@ -654,7 +594,7 @@ pub(crate) struct Shell {
     /// The narrowest right panel whose header holds the corner's tools
     /// beside client-drawn window controls.
     right_panel_min: f32,
-    #[cfg(target_os = "linux")]
+
     client_decorations: bool,
     tabs_frame: Entity<Chrome>,
     store: Database,
@@ -1045,7 +985,7 @@ impl Shell {
             fullscreen: false,
             window_controls: 0.,
             right_panel_min: crate::right_panel::WIDTH_MIN,
-            #[cfg(target_os = "linux")]
+
             client_decorations: false,
             tabs_frame,
             store,
@@ -1962,12 +1902,6 @@ impl Shell {
         }
         window.defer(cx, move |window, cx| {
             window.set_content_zoom(zoom, cx);
-            #[cfg(target_os = "macos")]
-            {
-                let height = crate::theme::TITLE_BAR_HEIGHT;
-                window.set_traffic_light_position(crate::traffic_lights::position(zoom, height));
-                crate::traffic_lights::pin(window, height);
-            }
         });
     }
     /// The native stand-in for the web app's Reload: restart the process.
@@ -5254,11 +5188,7 @@ impl Shell {
         })
     }
     fn file_search_button(&self, cx: &Context<Self>) -> gpui::Stateful<gpui::Div> {
-        let label = if cfg!(target_os = "macos") {
-            "Search files (⌘P)"
-        } else {
-            "Search files (Ctrl+P)"
-        };
+        let label = "Search files (Ctrl+P)";
         icon_button("titlebar-file-search", label, "search")
             .debug_selector(|| "titlebar-file-search".into())
             .flex_shrink_0()
@@ -5498,11 +5428,7 @@ impl Shell {
                         .disabled(ix == 0)
                         .into(),
                     MenuAction::new("all", "Close All Tabs")
-                        .shortcut(if cfg!(target_os = "macos") {
-                            "⌘⇧W"
-                        } else {
-                            "Ctrl+Shift+W"
-                        })
+                        .shortcut("Ctrl+Shift+W")
                         .disabled(count < 2 && !closable)
                         .into(),
                 ];
@@ -8604,7 +8530,7 @@ impl Render for Shell {
             crate::right_panel::WIDTH_MIN
         };
         self.right_panel_min = tools + self.window_controls;
-        #[cfg(target_os = "linux")]
+
         {
             let client = matches!(
                 window.window_decorations(),
@@ -8708,18 +8634,6 @@ impl Render for Shell {
                 shell
                     .update(cx, |shell, cx| {
                         shell.save_window_state(window, cx);
-                        #[cfg(all(target_os = "macos", not(test)))]
-                        if shell.workspace.preferences.close_to_tray
-                            && shell.workspace.preferences.mono_menu_bar_icon
-                            && shell
-                                .monos
-                                .as_ref()
-                                .is_some_and(|m| !m.read(cx).roster.monos.is_empty())
-                            && !shell.unsaved_files(cx)
-                        {
-                            crate::traffic_lights::hide(window);
-                            return false;
-                        }
                         if shell.unsaved_files(cx) {
                             shell.request_quit(window, cx);
                             false
@@ -9304,24 +9218,7 @@ impl Render for Shell {
                     .as_ref()
                     .map(|(view, _)| crate::image_lightbox::overlay(view)),
             )
-            .map(|root| {
-                #[cfg(target_os = "linux")]
-                let caption = self.client_decorations;
-                // `resize_handles` stays empty on Windows: GPUI reports server
-                // decorations and the native frame does the resizing.
-                #[cfg(target_os = "windows")]
-                let caption = WINDOWS_CONTROLS;
-                #[cfg(any(target_os = "linux", target_os = "windows"))]
-                let root = root
-                    .when(caption && !self.fullscreen, |root| {
-                        root.child(window_chrome::controls(
-                            window,
-                            cx.listener(|this, _, window, cx| this.request_quit(window, cx)),
-                        ))
-                    })
-                    .children(window_chrome::resize_handles(window));
-                root
-            })
+            .map(|root| root)
     }
 }
 
@@ -9820,11 +9717,7 @@ mod tests {
         window
             .update(cx, |shell, w, cx| shell.open(a, w, cx))
             .unwrap();
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         cx.simulate_keystrokes(window.into(), &format!("{modifier}-shift-w"));
         cx.run_until_parked();
         window
@@ -9839,11 +9732,7 @@ mod tests {
     }
     #[gpui::test]
     fn bulk_close_shortcuts_keep_pinned_tabs(cx: &mut TestAppContext) {
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         for keys in ["shift-w", "alt-t"] {
             let (window, a, b) = same_project_window(cx);
             cx.update(bind_keys);
@@ -10496,11 +10385,7 @@ mod tests {
             .update(cx, |shell, w, cx| shell.focus_search(w, cx))
             .unwrap();
         cx.refresh().unwrap();
-        let m = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let m = "ctrl";
         for visible in [false, true, false, true] {
             cx.simulate_keystrokes(window.into(), &format!("{m}-b"));
             cx.run_until_parked();
@@ -10531,11 +10416,7 @@ mod tests {
             })
             .unwrap();
         cx.refresh().unwrap();
-        let m = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let m = "ctrl";
         for open in [false, true, false, true] {
             cx.simulate_keystrokes(window.into(), &format!("{m}-shift-b"));
             cx.run_until_parked();
@@ -10559,11 +10440,7 @@ mod tests {
             .update(cx, |shell, w, cx| shell.focus_active(w, cx))
             .unwrap();
         cx.refresh().unwrap();
-        let m = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let m = "ctrl";
         for classic in [true, false] {
             cx.simulate_keystrokes(window.into(), &format!("{m}-shift-l"));
             cx.run_until_parked();
@@ -10828,11 +10705,7 @@ mod tests {
                 .unwrap();
         }
         cx.update(|_, cx| cx.set_reduce_motion(false));
-        let m = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let m = "ctrl";
         for open in [false, true, false, true, false] {
             cx.simulate_keystrokes(&format!("{m}-shift-b"));
             cx.run_until_parked();
@@ -11296,14 +11169,6 @@ mod tests {
                 .top(),
             header.bottom()
         );
-        #[cfg(target_os = "macos")]
-        {
-            let strip = visual.debug_bounds("title-tab-strip").unwrap();
-            assert_eq!(strip.top(), px(0.));
-            assert_eq!(strip.size.height, px(40.));
-            assert_eq!(projects.top(), px(40.));
-            assert_eq!(header.top(), px(40.));
-        }
 
         let expand = visual.debug_bounds("toggle-sidebar").unwrap();
         assert_eq!(expand.origin, toggle.origin);
@@ -11392,18 +11257,6 @@ mod tests {
                 w.draw(cx).clear(cx);
             })
             .unwrap();
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
-            window
-                .update(cx, |_, w, _| {
-                    let (blur, radius) = (24., 11.);
-                    let marker = gpui::backdrop_blur_marker(blur * w.scale_factor());
-                    assert!(
-                        w.painted_quads().iter().any(|q| q.border_color == marker
-                            && q.corner_radii.top_left.0 == radius * w.scale_factor()),
-                        "composer frosting keeps the same blur and radius in both layouts"
-                    );
-                })
-                .unwrap();
             let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
             (
                 visual.debug_bounds("sidebar-frame"),
@@ -11815,11 +11668,7 @@ mod tests {
             assert_eq!(visual.debug_bounds("new-tab").unwrap(), original_button);
         }
         // Also exercise the actual shortcuts from the focused composer.
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         for (key, expected) in [("up", next), ("down", current)] {
             visual.simulate_keystrokes(&format!("{modifier}-{key}"));
             visual.run_until_parked();
@@ -11839,11 +11688,7 @@ mod tests {
             input::bind(cx);
             bind_keys(cx);
         });
-        let m = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let m = "ctrl";
         let active = |cx: &mut TestAppContext| {
             window
                 .update(cx, |shell, _, _| shell.workspace.active)
@@ -12313,104 +12158,6 @@ mod tests {
                 assert!(shell.review_slide.is_none());
             })
             .unwrap();
-    }
-
-    #[cfg(target_os = "macos")]
-    #[gpui::test]
-    #[ignore = "Manual CoreText CPU frame-cost measurement; opens no native window"]
-    fn pane_motion_frame_cost_with_long_history(cx: &mut TestAppContext) {
-        use std::time::{Duration, Instant};
-        let cx = &mut TestAppContext::build_with_text_system(
-            cx.dispatcher.clone(),
-            Some("pane_motion_frame_cost"),
-            Arc::new(gpui_apple::AppleTextSystem::new()),
-        );
-        let (window, _, id) = window(cx);
-        let transcript = window.update(cx, |shell, w, cx| {
-            shell.open(id, w, cx);
-            let session = shell.sessions[&id].clone();
-            session.update(cx, |session, cx| {
-                session.summary.has_messages = true;
-                let mut history = monocode_core::transcript::Transcript::default();
-                for _ in 0..10_000 {
-                    history.begin("assistant");
-                    history.append("A conversation with enough text to wrap while its pane changes width.\nA second line of native text.");
-                }
-                session.transcript.update(cx, |view, cx| view.patch(0, history.rows, cx));
-                cx.notify();
-                session.transcript.clone()
-            })
-        }).unwrap();
-        cx.update_window(window.into(), |_, window, cx| {
-            window.simulate_next_frame(cx);
-            window.draw(cx).clear(cx);
-        })
-        .unwrap();
-        let mut frames = Vec::new();
-        let mut settling_passes = 0;
-        for opening in [true, false] {
-            window
-                .update(cx, |shell, w, cx| {
-                    shell.toggle_right_panel(w, cx);
-                    if let Some(slide) = &shell.right_slide {
-                        slide.freeze_elapsed(Duration::ZERO);
-                    }
-                })
-                .unwrap();
-            for frame in 1..=40 {
-                let root = window.root(cx).unwrap();
-                let (before, sliding) = root.read_with(cx, |shell, _| {
-                    (shell.render_passes, shell.right_slide.is_some())
-                });
-                let start = Instant::now();
-                window
-                    .update(cx, |shell, _, cx| {
-                        if let Some(slide) = &shell.right_slide {
-                            slide.freeze_elapsed(Duration::from_secs_f32(frame as f32 / 120.));
-                        }
-                        cx.notify();
-                    })
-                    .unwrap();
-                if root.read_with(cx, |shell, _| shell.render_passes) == before {
-                    cx.update_window(window.into(), |_, window, cx| {
-                        window.simulate_next_frame(cx);
-                        window.draw(cx).clear(cx);
-                    })
-                    .unwrap();
-                }
-                let (after, settled) = root.read_with(cx, |shell, _| {
-                    (shell.render_passes, shell.right_slide.is_none())
-                });
-                let passes = after - before;
-                // Finishing the slide installs the settled panel layout and
-                // can notify the shell once more. Include that work in this
-                // sample; every other frame must still render exactly once.
-                assert!(
-                    passes == 1 || (passes == 2 && sliding && settled),
-                    "expected one render, or two at settling; got {passes}"
-                );
-                settling_passes += passes - 1;
-                frames.push(start.elapsed().as_secs_f64() * 1000.);
-                let rendered = transcript.read_with(cx, |view, _| view.rendered);
-                assert!(
-                    rendered > 0 && rendered < 100,
-                    "expected visible history work, got {rendered}"
-                );
-            }
-            window
-                .update(cx, |shell, _, _| {
-                    assert_eq!(shell.workspace.right_panel_open, opening)
-                })
-                .unwrap();
-        }
-        frames.sort_by(f64::total_cmp);
-        eprintln!(
-            "CoreText, 10,000 messages, {} simulated 120Hz frames: CPU p50={:.2}ms p95={:.2}ms max={:.2}ms ({settling_passes} extra settling passes included; excludes presentation/GPU)",
-            frames.len(),
-            frames[frames.len() / 2],
-            frames[frames.len() * 95 / 100],
-            frames.last().unwrap()
-        );
     }
 
     #[gpui::test]
@@ -13390,73 +13137,6 @@ mod tests {
             chrome.1.read_with(cx, |v, _| v.renders),
             before.1,
             "chat changes must reuse the tabs"
-        );
-    }
-
-    #[cfg(target_os = "macos")]
-    #[gpui::test]
-    fn title_particle_frames_only_invalidate_the_sidebar(cx: &mut TestAppContext) {
-        let (window, _, id) = window(cx);
-        cx.update(|cx| cx.set_reduce_motion(false));
-        // Blank tabs deliberately have no sidebar card. Mount a conversation
-        // before changing its title, so this exercises an existing label.
-        window
-            .update(cx, |shell, _, cx| {
-                shell.sessions[&id].update(cx, |session, cx| {
-                    session.summary.has_messages = true;
-                    session.rename("Original session title".into(), cx);
-                });
-            })
-            .unwrap();
-        cx.run_until_parked();
-        cx.refresh().unwrap();
-        window
-            .update(cx, |shell, _, cx| {
-                shell.sessions[&id].update(cx, |session, cx| {
-                    session.rename("Matching the generated title effect".into(), cx);
-                });
-            })
-            .unwrap();
-        cx.run_until_parked();
-        cx.refresh().unwrap();
-        // Deliver the title-change frame's deferred layout/hover work before
-        // measuring the subsequent decorative animation frames in isolation.
-        cx.update_window(window.into(), |_, window, cx| {
-            window.simulate_next_frame(cx);
-            window.draw(cx).clear(cx);
-        })
-        .unwrap();
-        cx.run_until_parked();
-        let (sidebar, tabs, transcript) = window
-            .read_with(cx, |shell, cx| {
-                (
-                    shell.sidebar_frame.clone(),
-                    shell.tabs_frame.clone(),
-                    shell.sessions[&id].read(cx).transcript.clone(),
-                )
-            })
-            .unwrap();
-        let before = (
-            sidebar.read_with(cx, |view, _| view.renders),
-            tabs.read_with(cx, |view, _| view.renders),
-            transcript.read_with(cx, |view, _| view.render_passes),
-        );
-        for _ in 0..3 {
-            cx.update_window(window.into(), |_, window, cx| {
-                assert!(
-                    window.simulate_next_frame(cx) > 0,
-                    "title requested its next frame"
-                );
-                window.draw(cx).clear(cx);
-            })
-            .unwrap();
-            cx.run_until_parked();
-        }
-        assert!(sidebar.read_with(cx, |view, _| view.renders) > before.0);
-        assert_eq!(tabs.read_with(cx, |view, _| view.renders), before.1);
-        assert_eq!(
-            transcript.read_with(cx, |view, _| view.render_passes),
-            before.2
         );
     }
 }

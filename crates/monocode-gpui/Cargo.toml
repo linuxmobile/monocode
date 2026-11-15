@@ -48,34 +48,10 @@ tree-sitter-yaml = "0.7"
 tree-sitter-toml-ng = "0.7"
 tree-sitter-ruby = "0.23"
 tree-sitter-zig = "1.1"
-# Settings → Mobile draws the pairing code from the module matrix.
-qrcode = { version = "0.14", default-features = false }
-
-[build-dependencies]
-embed-resource = "3"
 
 [dev-dependencies]
 rusqlite.workspace = true
 gpui = { package = "gpui-pre", version = "=0.3.9", default-features = false, features = ["test-support"] }
-
-# The vendored renderer's backdrop-blur marker for frosted popovers.
-[target.'cfg(target_os = "macos")'.dependencies]
-gpui_apple = { package = "gpui-pre-apple", version = "=0.3.9" }
-# Pins the native traffic lights to the Tauri app's spacing.
-objc2 = "0.6"
-block2 = "0.6"
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "block2", "NSEvent", "NSApplication", "NSDockTile", "NSButton", "NSControl", "NSLayoutAnchor", "NSLayoutConstraint", "NSResponder", "NSView", "NSWindow", "NSStatusBar", "NSStatusItem", "NSStatusBarButton", "NSMenu", "NSMenuItem", "NSImage"] }
-raw-window-handle = "0.6"
-objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "objc2-app-kit", "objc2-core-foundation", "WKWebView", "WKWebViewConfiguration", "WKPreferences", "WKWebsiteDataStore", "WKNavigation", "WKNavigationDelegate", "WKNavigationAction", "block2"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSGeometry", "NSData", "NSRange", "NSArray", "NSSet", "NSError", "NSBundle"] }
-objc2-user-notifications = "0.3"
-# libmalloc keeps freed large spans dirty, so startup and image churn stayed
-# resident. mimalloc 3 retains churn the same way; the v2 feature pins 2.x.
-mimalloc = { version = "0.1", default-features = false, features = ["v2"] }
-
-[target.'cfg(target_os = "macos")'.dev-dependencies]
-gpui_apple = { package = "gpui-pre-apple", version = "=0.3.9", features = ["test-support", "runtime_shaders"] }
-parking_lot = "0.12"
 
 # Experimental native builds resolve separately from the production Tauri app.
 [workspace]
@@ -93,14 +69,10 @@ serde_json = "1"
 rusqlite = { version = "0.40.2", features = ["bundled", "hooks"], default-features = false }
 
 # Exclude the unused screen-capture dependency from all native platforms.
-# Keep the Apple renderer's alpha and font-matching fixes, and macOS windows
-# that restart a stalled display link instead of freezing.
+# Keep the Linux renderer's alpha and font-matching fixes.
 [patch.crates-io]
 gpui-pre = { path = "../../vendor/gpui-pre" }
-gpui-pre-apple = { path = "../../vendor/gpui-pre-apple" }
 gpui-pre-linux = { path = "../../vendor/gpui-pre-linux" }
-gpui-pre-macos = { path = "../../vendor/gpui-pre-macos" }
-gpui-pre-windows = { path = "../../vendor/gpui-pre-windows" }
 
 [profile.native-dev]
 inherits = "dev"

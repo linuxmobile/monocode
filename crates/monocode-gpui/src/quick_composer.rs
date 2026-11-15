@@ -18,8 +18,6 @@ use monocode_core::{
     agent::AccessMode, git::Snapshot, project_appearance::ProjectAppearance, provider::Kind,
 };
 use std::{collections::HashMap, path::PathBuf};
-#[cfg(all(target_os = "macos", not(test)))]
-mod hotkey;
 
 pub(crate) const WIDTH: f32 = 680.;
 pub(crate) const INITIAL_HEIGHT: f32 = 128.;
@@ -127,8 +125,6 @@ pub(crate) struct Controller {
     pub task: Option<Task<()>>,
     pub events: Option<Subscription>,
     config: String,
-    #[cfg(all(target_os = "macos", not(test)))]
-    registration: Option<hotkey::Registration>,
 }
 impl Controller {
     pub fn configure(
@@ -147,19 +143,7 @@ impl Controller {
         self.config = config;
         self.error = None;
         self.task = None;
-        #[cfg(all(target_os = "macos", not(test)))]
-        {
-            self.registration = None;
-            if prefs.quick_composer && !shortcut.is_empty() {
-                match hotkey::Registration::new(&shortcut) {
-                    Ok((registration, rx)) => {
-                        self.registration = Some(registration);
-                        return Some(rx);
-                    }
-                    Err(e) => self.error = Some(e),
-                }
-            }
-        }
+        let _ = shortcut;
         None
     }
 }
@@ -488,9 +472,7 @@ impl QuickComposer {
     pub fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.close_picker_state(cx);
         self.shown = false;
-        #[cfg(all(target_os = "macos", not(test)))]
-        crate::traffic_lights::hide(window);
-        #[cfg(any(not(target_os = "macos"), test))]
+
         window.remove_window();
         cx.notify();
     }
@@ -782,8 +764,6 @@ impl QuickComposer {
     fn take_screenshot(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.close_picker_state(cx);
         self.attaching = true;
-        #[cfg(all(target_os = "macos", not(test)))]
-        crate::traffic_lights::hide(window);
         let path = std::env::temp_dir()
             .join("monocode-quick-composer")
             .join(format!("screenshot-{}.png", monocode_core::mono::new_id()));
@@ -871,11 +851,8 @@ impl QuickComposer {
             return;
         }
         let height = height.clamp(1., MAX_HEIGHT);
-        #[cfg(all(target_os = "macos", not(test)))]
-        crate::traffic_lights::fit_height(window, cx, height as f64);
-        #[cfg(any(not(target_os = "macos"), test))]
         let _ = cx;
-        #[cfg(any(not(target_os = "macos"), test))]
+
         {
             let size = window.bounds().size;
             if (f32::from(size.height) - height).abs() > 0.5 {

@@ -5,11 +5,6 @@ use std::collections::{HashMap, HashSet};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-#[cfg(target_os = "macos")]
-unsafe extern "C" {
-    fn mach_host_self() -> u32;
-}
-
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Usage {
     pub cpu_percent: Option<f64>,
@@ -107,79 +102,13 @@ struct Process {
 }
 
 /// Kernel process birth time prevents PID reuse from authorizing a stop.
-#[cfg(target_os = "macos")]
-pub fn identity(pid: u32) -> Option<String> {
-    unsafe {
-        let mut info: libc::proc_bsdinfo = std::mem::zeroed();
-        let size = std::mem::size_of_val(&info) as i32;
-        if libc::proc_pidinfo(
-            pid as i32,
-            libc::PROC_PIDTBSDINFO,
-            0,
-            &mut info as *mut _ as *mut _,
-            size,
-        ) != size
-        {
-            return None;
-        }
-        Some(format!(
-            "{}:{}:{}",
-            pid, info.pbi_start_tvsec, info.pbi_start_tvusec
-        ))
-    }
-}
-#[cfg(not(target_os = "macos"))]
+
 pub fn identity(_pid: u32) -> Option<String> {
     None
 }
 
 /// System CPU since the previous call, and the kernel's memory pressure level.
 pub fn usage() -> Usage {
-    #[cfg(target_os = "macos")]
-    unsafe {
-        use std::sync::{Mutex, OnceLock};
-        static CPU: Mutex<Option<[u32; 4]>> = Mutex::new(None);
-        static HOST: OnceLock<u32> = OnceLock::new();
-        let host = *HOST.get_or_init(|| mach_host_self());
-        let mut ticks = [0u32; 4];
-        let mut count = 4;
-        let mut cpu_percent = None;
-        if libc::host_statistics(
-            host,
-            libc::HOST_CPU_LOAD_INFO,
-            ticks.as_mut_ptr() as *mut i32,
-            &mut count,
-        ) == 0
-        {
-            let mut previous = CPU.lock().unwrap_or_else(|error| error.into_inner());
-            if let Some(before) = *previous {
-                let delta: Vec<u64> = ticks
-                    .iter()
-                    .zip(before)
-                    .map(|(now, old)| now.wrapping_sub(old) as u64)
-                    .collect();
-                let total: u64 = delta.iter().sum();
-                if total > 0 {
-                    cpu_percent = Some(100.0 * (total - delta[2]) as f64 / total as f64);
-                }
-            }
-            *previous = Some(ticks);
-        }
-        let mut pressure: u32 = 0;
-        let mut length = std::mem::size_of_val(&pressure);
-        let ok = libc::sysctlbyname(
-            c"kern.memorystatus_vm_pressure_level".as_ptr(),
-            &mut pressure as *mut _ as *mut _,
-            &mut length,
-            std::ptr::null_mut(),
-            0,
-        ) == 0;
-        Usage {
-            cpu_percent,
-            memory_pressure: ok.then_some(pressure),
-        }
-    }
-    #[cfg(not(target_os = "macos"))]
     Usage::default()
 }
 
@@ -294,33 +223,7 @@ fn validate_tool<'a>(
 
 // A ps snapshot is for display, not authority to signal a PID. Walk current
 // kernel parent links as well, so a reused descendant PID cannot be targeted.
-#[cfg(target_os = "macos")]
-fn live_descendant(pid: u32, ancestor: u32, stamp: &str) -> bool {
-    let mut current = pid;
-    let mut seen = HashSet::new();
-    while current > 1 && seen.insert(current) {
-        if current == ancestor {
-            return identity(ancestor).as_deref() == Some(stamp);
-        }
-        unsafe {
-            let mut info: libc::proc_bsdinfo = std::mem::zeroed();
-            let size = std::mem::size_of_val(&info) as i32;
-            if libc::proc_pidinfo(
-                current as i32,
-                libc::PROC_PIDTBSDINFO,
-                0,
-                &mut info as *mut _ as *mut _,
-                size,
-            ) != size
-            {
-                return false;
-            }
-            current = info.pbi_ppid;
-        }
-    }
-    false
-}
-#[cfg(not(target_os = "macos"))]
+
 fn live_descendant(_pid: u32, _ancestor: u32, _stamp: &str) -> bool {
     false
 }
@@ -361,7 +264,7 @@ fn stop_tool_in(pid: u32, stamp: &str, roots: &[Agent]) -> Result<(), String> {
             Some((candidate, birth))
         })
         .collect();
-    #[cfg(unix)]
+
     for (pid, stamp) in &targets {
         if identity(*pid).as_ref() == Some(stamp) {
             unsafe {
@@ -372,9 +275,7 @@ fn stop_tool_in(pid: u32, stamp: &str, roots: &[Agent]) -> Result<(), String> {
     // Escalation belongs to this explicit stop request; recheck birth times.
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(2));
-        #[cfg(not(unix))]
-        let _ = targets;
-        #[cfg(unix)]
+
         for (pid, stamp) in targets {
             if identity(pid).as_ref() == Some(&stamp) {
                 unsafe {
@@ -465,39 +366,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn stopping_a_tool_preserves_its_agent_and_sibling() {
-        struct Child(std::process::Child);
-        impl Drop for Child {
-            fn drop(&mut self) {
-                let _ = self.0.kill();
-                let _ = self.0.wait();
-            }
-        }
-        let root_pid = std::process::id();
-        let root = Agent {
-            session: 1,
-            pid: root_pid,
-            identity: identity(root_pid),
-        };
-        let mut tool = Child(Command::new("/bin/sleep").arg("30").spawn().unwrap());
-        let mut sibling = Child(Command::new("/bin/sleep").arg("30").spawn().unwrap());
-        let pid = tool.0.id();
-        let stamp = identity(pid).unwrap();
-        assert!(stop_tool_in(pid, "stale identity", std::slice::from_ref(&root)).is_err());
-        assert!(tool.0.try_wait().unwrap().is_none());
-        stop_tool_in(pid, &stamp, std::slice::from_ref(&root)).unwrap();
-        let deadline = Instant::now() + Duration::from_secs(3);
-        while tool.0.try_wait().unwrap().is_none() && Instant::now() < deadline {
-            std::thread::sleep(Duration::from_millis(10));
-        }
-        assert!(tool.0.try_wait().unwrap().is_some());
-        assert!(sibling.0.try_wait().unwrap().is_none());
-        assert_eq!(identity(root_pid), root.identity);
-    }
-
-    #[cfg(unix)]
     #[test]
     fn owned_children_are_listed_under_their_session() {
         let mut child = Command::new("/bin/sleep").arg("30").spawn().unwrap();

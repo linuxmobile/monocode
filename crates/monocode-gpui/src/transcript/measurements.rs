@@ -596,63 +596,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn shared_prompt_width_keeps_real_font_lines_unwrapped() {
-        let system = gpui::WindowTextSystem::new(Arc::new(gpui::TextSystem::new(Arc::new(
-            gpui_apple::AppleTextSystem::new(),
-        ))));
-        for family in [".AppleSystemUIFont", "Helvetica", "Times New Roman"] {
-            let (mut fitted, mut capped) = (0, 0);
-            for count in 1..40 {
-                let text: SharedString = format!("{} final word", "iW ".repeat(count)).into();
-                let run = gpui::TextRun {
-                    len: text.len(),
-                    font: gpui::font(family),
-                    color: Default::default(),
-                    background_color: None,
-                    underline: None,
-                    strikethrough: None,
-                };
-                let natural = system
-                    .shape_text(
-                        text.clone(),
-                        PROMPT_TEXT_SIZE,
-                        std::slice::from_ref(&run),
-                        None,
-                        None,
-                    )
-                    .unwrap();
-                let widest = natural
-                    .iter()
-                    .map(|line| line.width())
-                    .fold(px(0.), Pixels::max);
-                let width = prompt_bubble_width(natural.iter().map(|line| line.width()));
-                if widest >= PROMPT_BUBBLE_MAX - PROMPT_PAD_X {
-                    // A capped bubble wraps its widest line, as render does.
-                    assert_eq!(width, PROMPT_BUBBLE_MAX, "{family}, {count}");
-                    capped += 1;
-                    continue;
-                }
-                let wrapped = system
-                    .shape_text(
-                        text,
-                        PROMPT_TEXT_SIZE,
-                        &[run],
-                        Some(width - PROMPT_PAD_X),
-                        None,
-                    )
-                    .unwrap();
-                assert!(
-                    wrapped.iter().all(|line| line.wrap_boundaries.is_empty()),
-                    "the widest line must not acquire another line: {family}, {count}"
-                );
-                fitted += 1;
-            }
-            assert!(fitted > 0 && capped > 0, "both paths ran for {family}");
-        }
-    }
-
     #[gpui::test]
     fn prompt_widths_survive_streaming_suffix_updates_and_refresh_after_edits(
         cx: &mut TestAppContext,

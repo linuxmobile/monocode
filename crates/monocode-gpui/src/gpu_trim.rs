@@ -56,8 +56,6 @@ pub(crate) fn start(cx: &mut App) {
 }
 
 fn trim(cx: &mut App) {
-    #[cfg(target_os = "macos")]
-    gpui_apple::metal_renderer::trim();
     cx.clear_sprite_atlases();
 }
 

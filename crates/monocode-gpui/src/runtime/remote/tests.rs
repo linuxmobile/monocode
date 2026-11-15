@@ -457,7 +457,7 @@ fn explicit_stop_is_journaled_once_for_the_observed_run() {
 /// This crosses the production Rust client, Node HTTP server, SQLite engine,
 /// attachment parser and provider adapter. The fixture provider performs no
 /// model requests; only its local JSON-lines protocol is exercised.
-#[cfg(unix)]
+
 #[test]
 #[ignore = "requires npm run host:build and loopback networking"]
 fn built_node_host_round_trip_preserves_native_wire_commands() {

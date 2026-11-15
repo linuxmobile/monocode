@@ -42,11 +42,7 @@ actions!(
 );
 
 pub(crate) fn bind(cx: &mut App) {
-    let m = if cfg!(target_os = "macos") {
-        "cmd"
-    } else {
-        "ctrl-shift"
-    };
+    let m = "ctrl-shift";
     let c = Some("Terminal");
     // The shell owns these keys while a terminal has focus.
     cx.bind_keys([
@@ -186,8 +182,6 @@ fn spawn(cwd: &str, size: GridSize, id: u64) -> Spawned {
         working_directory: Some(workdir),
         drain_on_exit: false,
         env,
-        #[cfg(target_os = "windows")]
-        escape_args: true,
     };
     let window = WindowSize {
         num_lines: size.lines as u16,
@@ -199,7 +193,6 @@ fn spawn(cwd: &str, size: GridSize, id: u64) -> Spawned {
     let mut shell_pid = 0;
     let sender = match tty::new(&options, window, id) {
         Ok(pty) => {
-            #[cfg(unix)]
             {
                 use std::os::fd::AsRawFd;
                 master_fd = pty.file().as_raw_fd();
@@ -395,7 +388,6 @@ impl Terminal {
     }
     /// Hangs up the job holding the terminal, leaving the shell at its prompt.
     pub(crate) fn stop_foreground(&mut self, cx: &mut Context<Self>) {
-        #[cfg(unix)]
         if self.master_fd >= 0 && !self.exited {
             let pgrp = unsafe { libc::tcgetpgrp(self.master_fd) };
             if pgrp > 1 && pgrp != self.shell_pid as i32 {
@@ -705,7 +697,7 @@ impl Drop for Terminal {
             let _ = sender.send(Msg::Shutdown);
         }
         // The hangup a closing shell expects, for it and its job.
-        #[cfg(unix)]
+
         if self.shell_pid > 1 && !self.exited {
             let pid = self.shell_pid as i32;
             unsafe {
@@ -748,11 +740,7 @@ impl Render for Terminal {
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, window, cx| {
-                    if cfg!(target_os = "macos") && event.modifiers.control {
-                        this.open_context_menu(event, window, cx);
-                    } else {
-                        this.mouse_down(event, window, cx);
-                    }
+                    this.mouse_down(event, window, cx);
                 }),
             )
             .on_mouse_down(MouseButton::Right, cx.listener(Self::open_context_menu))
@@ -1392,7 +1380,7 @@ fn working_dir(cwd: &str) -> std::path::PathBuf {
 }
 /// pty.rs's foreground_label: the command holding the terminal, unless it
 /// is the shell itself.
-#[cfg(unix)]
+
 fn foreground_label(master_fd: i32, shell_pid: u32) -> Option<String> {
     if master_fd < 0 {
         return None;
@@ -1410,10 +1398,6 @@ fn foreground_label(master_fd: i32, shell_pid: u32) -> Option<String> {
     }
     let label = command_label(String::from_utf8_lossy(&output.stdout).trim())?;
     (!is_shell_name(&label)).then_some(label)
-}
-#[cfg(not(unix))]
-fn foreground_label(_: i32, _: u32) -> Option<String> {
-    None
 }
 /// Interpreters name the script they run: `node vite.js` reads `vite.js`.
 pub(crate) fn command_label(args: &str) -> Option<String> {

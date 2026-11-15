@@ -911,11 +911,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         cx.simulate_keystrokes(window.into(), &format!("{modifier}-enter"));
         cx.run_until_parked();
         window
@@ -1052,8 +1048,8 @@ mod tests {
             visual.refresh().unwrap();
             let bounds = visual.debug_bounds("send-or-stop").unwrap();
             let modifiers = gpui::Modifiers {
-                platform: cfg!(target_os = "macos"),
-                control: !cfg!(target_os = "macos"),
+                platform: false,
+                control: !false,
                 ..Default::default()
             };
             visual.simulate_click(bounds.center(), modifiers);

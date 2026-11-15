@@ -514,9 +514,7 @@ fn merge_projects(old: Option<&Value>, current: &Value, source: &Value) -> Value
 
 #[cfg(test)]
 mod tests {
-    use super::webview::{decode_webkit_value, desktop_origin};
     use super::*;
-    use rusqlite::Connection;
 
     fn prefs(entries: &[(&str, Value)]) -> DesktopPreferences {
         DesktopPreferences {
@@ -527,44 +525,6 @@ mod tests {
                 .collect(),
         }
     }
-    fn origin(scheme: &str, host: &str) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        for value in [scheme, host] {
-            bytes.extend((value.len() as u32).to_le_bytes());
-            bytes.push(1);
-            bytes.extend(value.as_bytes());
-        }
-        bytes
-    }
-
-    #[test]
-    fn reads_webkit_utf16_and_excludes_development_origins() {
-        let root = tempfile::tempdir().unwrap();
-        for (name, scheme, label) in [
-            ("production", "tauri", "Monocode 🦀"),
-            ("development", "http", "Stale name"),
-        ] {
-            let path = root.path().join(name).join(name);
-            std::fs::create_dir_all(path.join("LocalStorage")).unwrap();
-            std::fs::write(path.join("origin"), origin(scheme, "localhost")).unwrap();
-            let conn = Connection::open(path.join("LocalStorage/localstorage.sqlite3")).unwrap();
-            conn.execute_batch("CREATE TABLE ItemTable(key TEXT,value BLOB)")
-                .unwrap();
-            let value: Vec<u8> = label.encode_utf16().flat_map(u16::to_le_bytes).collect();
-            conn.execute(
-                "INSERT INTO ItemTable VALUES(?1,?2)",
-                rusqlite::params!["monocode.test", value],
-            )
-            .unwrap();
-        }
-        let preferences = DesktopPreferences::load_webkit(root.path());
-        assert_eq!(preferences.get("monocode.test"), Some("Monocode 🦀"));
-        assert!(!desktop_origin(&origin("http", "localhost")));
-        assert!(desktop_origin(&origin("https", "tauri.localhost")));
-        assert!(!desktop_origin(b"tauri localhost"));
-        assert_eq!(decode_webkit_value(&[0]), None);
-    }
-
     #[test]
     fn canonical_preferences_replace_stale_sidecar_projects_and_appearance() {
         let preferences = prefs(&[

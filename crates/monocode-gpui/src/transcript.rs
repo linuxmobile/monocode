@@ -209,8 +209,6 @@ const TOP_INSET: f32 = 20.;
 // Saved drafts are presentation rows, outside the provider transcript.
 const SAVED_DRAFT_START: usize = usize::MAX - 1;
 const BOTTOM_INSET: f32 = 40.;
-#[cfg(target_os = "macos")]
-const TOP_FADE: f32 = 24.;
 /// AgentTranscript.tsx's user bubble: `text-sm`, `max-w-[36rem]` and `px-3`.
 /// Measurement, line counting and render share these.
 const PROMPT_TEXT_SIZE: Pixels = px(14.);
@@ -6045,13 +6043,7 @@ pub(crate) fn floating_surface() -> impl IntoElement {
         |_, _, _| {},
         |bounds, _, window, _| {
             let radius = bounds.size.height / 2.;
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
-            window.paint_quad(
-                gpui::fill(bounds, content(0.04))
-                    .corner_radii(radius)
-                    .border_color(gpui::backdrop_blur_marker(12. * window.scale_factor())),
-            );
-            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+
             window.paint_quad(gpui::fill(bounds, rgb(CHAT)).corner_radii(radius));
         },
     )
@@ -6062,17 +6054,9 @@ pub(crate) fn floating_surface() -> impl IntoElement {
 }
 
 fn paint_edge_fade(bounds: Bounds<Pixels>, begin: bool, window: &mut Window) {
-    #[cfg(target_os = "macos")]
-    window.paint_quad(gpui::fill(bounds, gpui::black()).border_color(
-        gpui_apple::metal_renderer::edge_fade_marker(
-            begin,
-            TOP_FADE * window.scale_factor(),
-            BOTTOM_INSET * window.scale_factor(),
-        ),
-    ));
     // A color overlay cannot mask text without tinting the pane and creating
     // a seam above the composer. Only the Metal backend supports a real mask.
-    #[cfg(not(target_os = "macos"))]
+
     let _ = (bounds, begin, window);
 }
 
@@ -7489,33 +7473,6 @@ mod scroll_tests {
         cx.run_until_parked();
         window
             .update(cx, |view, w, cx| {
-                #[cfg(target_os = "macos")]
-                {
-                    let markers: Vec<_> = w
-                        .painted_quads()
-                        .into_iter()
-                        .filter(|q| {
-                            q.border_color
-                                == gpui_apple::metal_renderer::edge_fade_marker(
-                                    true,
-                                    TOP_FADE * w.scale_factor(),
-                                    BOTTOM_INSET * w.scale_factor(),
-                                )
-                                || q.border_color
-                                    == gpui_apple::metal_renderer::edge_fade_marker(
-                                        false,
-                                        TOP_FADE * w.scale_factor(),
-                                        BOTTOM_INSET * w.scale_factor(),
-                                    )
-                        })
-                        .collect();
-                    assert_eq!(
-                        markers.len(),
-                        2,
-                        "both mask boundaries must be painted inside the viewport"
-                    );
-                    assert_eq!(markers[0].bounds, markers[1].bounds);
-                }
                 let prompt = view
                     .rows
                     .iter()

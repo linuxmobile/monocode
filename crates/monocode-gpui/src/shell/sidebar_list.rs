@@ -140,7 +140,7 @@ fn age_label(updated_at: u64, now: u64) -> &'static str {
 fn sidebar_edge_mask(
     state: ListState,
     top_fade: bool,
-    #[cfg_attr(target_os = "macos", allow(unused_variables))] inset: bool,
+    inset: bool,
     begin: bool,
 ) -> impl IntoElement {
     gpui::canvas(
@@ -168,23 +168,7 @@ fn sidebar_edge_mask(
                     ),
                     gpui::size(bounds.size.width, height),
                 );
-                #[cfg(target_os = "macos")]
-                window.paint_quad(gpui::fill(band, gpui::black()).border_color(
-                    gpui_apple::metal_renderer::edge_fade_marker(
-                        begin,
-                        if at_top {
-                            height.as_f32() * window.scale_factor()
-                        } else {
-                            0.
-                        },
-                        if at_top {
-                            0.
-                        } else {
-                            height.as_f32() * window.scale_factor()
-                        },
-                    ),
-                ));
-                #[cfg(not(target_os = "macos"))]
+
                 if !begin {
                     let background = if inset {
                         shell_fill().blend(inset_chrome_wash())
@@ -194,9 +178,6 @@ fn sidebar_edge_mask(
                     // Without a mask the fade paints the background over the
                     // rows. Over Windows' glass that becomes an opaque band,
                     // so a translucent background keeps the list's hard edge.
-                    if cfg!(target_os = "windows") && background.a < 1. {
-                        continue;
-                    }
                     for y in 0..height.as_f32().ceil() as usize {
                         let mut color = background;
                         color.a = (1. - (y as f32 + 0.5) / height.as_f32()).clamp(0., 1.);
@@ -701,11 +682,7 @@ impl Shell {
                                 .text_size(px(11.))
                                 .font_weight(FontWeight::NORMAL)
                                 .text_color(content(0.4))
-                                .child(if cfg!(target_os = "macos") {
-                                    "⌘K"
-                                } else {
-                                    "Ctrl K"
-                                }),
+                                .child("Ctrl K"),
                         ),
                 )
             })

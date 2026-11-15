@@ -208,7 +208,7 @@ fn write(path: &Path, machines: &[StoredMachine]) -> Result<(), String> {
     let result = (|| -> Result<(), String> {
         let mut options = std::fs::OpenOptions::new();
         options.write(true).create_new(true);
-        #[cfg(unix)]
+
         {
             use std::os::unix::fs::OpenOptionsExt;
             options.mode(0o600);
@@ -781,7 +781,7 @@ mod tests {
         connections.disconnect("old").unwrap();
         assert!(connections.list().unwrap().is_empty());
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "[]");
-        #[cfg(unix)]
+
         {
             use std::os::unix::fs::PermissionsExt;
             assert_eq!(

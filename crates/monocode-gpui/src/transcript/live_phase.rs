@@ -183,17 +183,6 @@ fn edge_mask(scroll: &LiveScroll, begin: bool, enabled: bool) -> AnyElement {
 }
 
 fn paint_mask(bounds: Bounds<Pixels>, begin: bool, top: f32, bottom: f32, window: &mut Window) {
-    #[cfg(target_os = "macos")]
-    window.paint_layer(bounds, |window| {
-        window.paint_quad(gpui::fill(bounds, gpui::black()).border_color(
-            gpui_apple::metal_renderer::edge_fade_marker(
-                begin,
-                top * window.scale_factor(),
-                bottom * window.scale_factor(),
-            ),
-        ));
-    });
-    #[cfg(not(target_os = "macos"))]
     if !begin {
         // Other backends have an opaque chat surface. Match the transcript's
         // fallback while retaining the phase's conditional edge lengths.

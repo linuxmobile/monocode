@@ -336,11 +336,7 @@ mod tests {
             bind_keys(cx);
             cx.set_reduce_motion(true);
         });
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         // File-only tabs can retain a hidden chat or be detached from it.
         for detached in [false, true] {
             let (window, first, session) = window(cx);

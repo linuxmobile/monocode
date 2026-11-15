@@ -10,15 +10,15 @@ use std::sync::{
 };
 use std::time::Duration;
 pub(crate) mod contributions;
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod follow_up_tests;
 mod handoff;
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod handoff_tests;
 mod persistence;
 pub(crate) mod remote;
 mod visual_discovery;
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod visual_tests;
 use persistence::PendingSave;
 pub(crate) type Database = Arc<Mutex<Store>>;

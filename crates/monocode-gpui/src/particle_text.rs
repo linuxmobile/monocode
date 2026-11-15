@@ -403,36 +403,6 @@ fn paint_text(
     cx: &mut App,
 ) {
     window.with_content_mask(Some(ContentMask { bounds }), |window| {
-        #[cfg(target_os = "macos")]
-        {
-            let marker = |begin, window: &mut Window| {
-                if let Some((start, end)) = mask {
-                    let scale = window.scale_factor();
-                    window.paint_layer(bounds, |window| {
-                        window.paint_quad(fill(bounds, gpui::black()).border_color(
-                            gpui_apple::metal_renderer::text_reveal_marker(
-                                begin,
-                                start * scale,
-                                end * scale,
-                            ),
-                        ));
-                    });
-                }
-            };
-            marker(true, window);
-            window.paint_layer(bounds, |window| {
-                let _ = line.paint(
-                    bounds.origin,
-                    bounds.size.height,
-                    TextAlign::Left,
-                    None,
-                    window,
-                    cx,
-                );
-            });
-            marker(false, window);
-        }
-        #[cfg(not(target_os = "macos"))]
         {
             // Device-pixel strips retain the soft edge on other renderers,
             // including inside a glyph (never recolor/re-shape font runs).

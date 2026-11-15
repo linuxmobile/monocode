@@ -30,14 +30,7 @@ static MONO: OnceLock<String> = OnceLock::new();
 
 /// The monospace family for code and the terminal.
 pub(crate) fn mono() -> &'static str {
-    MONO.get().map_or(
-        if cfg!(target_os = "macos") {
-            "Menlo"
-        } else {
-            "monospace"
-        },
-        String::as_str,
-    )
+    MONO.get().map_or("monospace", String::as_str)
 }
 
 /// The terminal's lead faces, as the web build's `--font-terminal`: a Nerd
@@ -87,9 +80,6 @@ fn terminal_font(installed: &[String], mono: &str) -> Font {
 }
 
 pub(crate) fn init(cx: &App) {
-    if cfg!(target_os = "macos") {
-        return;
-    }
     if let Some(family) = pick_mono(&cx.text_system().all_font_names(), system_mono) {
         let _ = MONO.set(family);
     }
@@ -105,7 +95,7 @@ fn pick_mono(installed: &[String], system: impl FnOnce() -> Option<String>) -> O
 }
 
 /// What fontconfig maps the `monospace` alias to, as WebKitGTK does.
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+
 fn system_mono() -> Option<String> {
     let output = std::process::Command::new("fc-match")
         .args(["-f", "%{family[0]}", "monospace"])
@@ -113,11 +103,6 @@ fn system_mono() -> Option<String> {
         .ok()?;
     let name = String::from_utf8(output.stdout).ok()?.trim().to_owned();
     (output.status.success() && !name.is_empty()).then_some(name)
-}
-
-#[cfg(not(any(target_os = "linux", target_os = "freebsd")))]
-fn system_mono() -> Option<String> {
-    None
 }
 
 #[cfg(test)]

@@ -705,43 +705,6 @@ fn original_app_surfaces_keep_icon_rail_and_remember_closed_sessions(cx: &mut Te
             rail, sessions_rail,
             "{surface:?} keeps the rail below the title bar"
         );
-        #[cfg(target_os = "macos")]
-        {
-            let background = visual.debug_bounds("classic-surface-background").unwrap();
-            assert_eq!(background.top(), rail.top());
-            assert_eq!(background.bottom(), rail.bottom());
-            window
-                .update(visual, |_, window, _| {
-                    let scale = window.scale_factor();
-                    let quads = window.painted_quads();
-                    let painted_at = |color: gpui::Hsla, x: f32, y: f32| {
-                        let point = gpui::point(
-                            gpui::ScaledPixels(x * scale),
-                            gpui::ScaledPixels(y * scale),
-                        );
-                        quads.iter().any(|quad| {
-                            quad.background == color.into()
-                                && quad.bounds.contains(&point)
-                                && quad.content_mask.bounds.contains(&point)
-                        })
-                    };
-                    assert_ne!(shell_fill(), pane_fill());
-                    // Test the actual wash on both sides of the rail edge, which
-                    // passes between the native traffic lights at x=48.
-                    for x in [24., 60.] {
-                        assert!(painted_at(shell_fill(), x, 20.));
-                        assert!(
-                            !painted_at(pane_fill(), x, 20.),
-                            "{surface:?} paints content tint behind the traffic lights"
-                        );
-                    }
-                    assert!(
-                        painted_at(pane_fill(), 60., 50.),
-                        "the destination body retains its content tint"
-                    );
-                })
-                .unwrap();
-        }
         assert_eq!(
             visual.debug_bounds("rail-current-project").unwrap(),
             sessions_picker,

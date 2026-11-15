@@ -137,7 +137,7 @@ fn write_atomic(path: &Path, text: &str) -> Result<(), String> {
     let temp = path.with_extension("md.tmp");
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
+
     {
         use std::os::unix::fs::OpenOptionsExt;
         options.mode(0o600);
@@ -145,7 +145,7 @@ fn write_atomic(path: &Path, text: &str) -> Result<(), String> {
     let mut file = options
         .open(&temp)
         .map_err(|e| format!("{}: {e}", temp.display()))?;
-    #[cfg(unix)]
+
     {
         use std::os::unix::fs::PermissionsExt;
         // A temporary file left by an older version may have wider permissions.
@@ -360,7 +360,6 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
-    #[cfg(unix)]
     #[test]
     fn writes_private_files_even_with_a_leftover_public_temp_file() {
         use std::os::unix::fs::PermissionsExt;

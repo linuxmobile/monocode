@@ -19,7 +19,7 @@ fn windows_path(path: &str) -> bool {
 }
 
 fn slash(path: &str) -> String {
-    if windows_path(path) || (cfg!(windows) && !path.starts_with('/')) {
+    if windows_path(path) || (false && !path.starts_with('/')) {
         path.replace('\\', "/")
     } else {
         path.to_string()

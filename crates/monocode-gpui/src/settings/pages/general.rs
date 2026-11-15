@@ -28,7 +28,7 @@ impl SettingsView {
                 "Notifications",
                 Some("Alert when reminders are due or agents finish or need input.".into()),
                 {
-                    let mut controls = self.notification_permission_controls(cx);
+                    let mut controls = self.notification_permission_controls();
                     controls.push(self.toggle(
                         "notifications",
                         "Notifications",
@@ -101,25 +101,6 @@ impl SettingsView {
                 ],
             ),
         ];
-        if cfg!(target_os = "macos") {
-            workspace.push(self.row(
-                Some("quick-composer"),
-                false,
-                "Quick composer",
-                Some(format!(
-                    "Press {} from any app. Return starts a session in the background; ⌘Return opens it. Change the shortcut in Keybindings.",
-                    super::keybindings::quick_composer_label(&p)
-                ).into()),
-                {let mut controls=Vec::new();if let Some(error)=&self.ctx.quick_error{controls.push(super::super::widgets::note(error.clone()));}controls.push(self.toggle(
-                    "quick-composer",
-                    "Quick composer",
-                    p.quick_composer,
-                    false,
-                    cx,
-                    |this, on, cx| this.update(cx, |p| p.quick_composer = on),
-                ));controls},
-            ));
-        }
         workspace.push(self.row(
             Some("search-panel"),
             false,
@@ -181,22 +162,6 @@ impl SettingsView {
                 |this, v, cx| this.update(cx, |p| p.set_terminal_placement(v)),
             )],
         ));
-        if cfg!(target_os = "windows") {
-            workspace.push(self.row(
-                Some("close-to-tray"),
-                false,
-                "Close to tray",
-                Some("Closing a window hides it to the system tray instead of quitting, so running agents keep going. Reopen from the tray icon, and quit for real from its menu. Turn this off to have close end the window.".into()),
-                vec![self.toggle(
-                    "close-to-tray",
-                    "Close to tray",
-                    p.close_to_tray,
-                    false,
-                    cx,
-                    |this, on, cx| this.update(cx, |p| p.close_to_tray = on),
-                )],
-            ));
-        }
         let version = crate::notifications::updater::version();
         let about = vec![
             self.row(

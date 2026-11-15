@@ -53,25 +53,8 @@ pub struct Installation {
 impl Installation {
     pub fn detect() -> Result<Self, String> {
         let executable = std::env::current_exe().map_err(|e| e.to_string())?;
-        #[cfg(target_os = "macos")]
+
         {
-            let app = executable
-                .ancestors()
-                .nth(3)
-                .ok_or("Cannot locate the app bundle")?;
-            let plist = std::fs::read_to_string(app.join("Contents/Info.plist"))
-                .map_err(|_| "Updates require an installed Monocode Native app bundle")?;
-            if !plist.contains(&format!("<string>{APP_ID}</string>")) {
-                return Err("This is not a Monocode Native bundle".into());
-            }
-            Ok(Self {
-                kind: PackageKind::App,
-                path: app.to_path_buf(),
-            })
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            #[cfg(target_os = "linux")]
             if let Some(image) = std::env::var_os("APPIMAGE") {
                 let path = PathBuf::from(image);
                 if path.is_absolute() && path.is_file() {
@@ -95,11 +78,7 @@ impl Installation {
                     .map_err(|_| "Updates require an installed Monocode Native package")?,
             )
             .map_err(|e| e.to_string())?;
-            let supported = if cfg!(windows) {
-                marker.kind == PackageKind::Nsis
-            } else {
-                matches!(marker.kind, PackageKind::Deb | PackageKind::Rpm)
-            };
+            let supported = matches!(marker.kind, PackageKind::Deb | PackageKind::Rpm);
             if marker.app_id != APP_ID || !supported {
                 return Err("Unsupported native installation".into());
             }
@@ -186,18 +165,13 @@ pub fn schedule_relaunch(executable: &Path) -> Result<(), String> {
     if !executable.is_file() {
         return Err("The updated executable could not be found".into());
     }
-    #[cfg(unix)]
+
     {
         use std::{
             os::unix::process::CommandExt,
             process::{Command, Stdio},
         };
-        #[cfg(target_os = "macos")]
-        let (script, path) = (
-            "pid=$1; app=$2; shift 2; while kill -0 \"$pid\" 2>/dev/null; do sleep 0.1; done; exec /usr/bin/open -n \"$app\" --args \"$@\"",
-            executable.ancestors().nth(3).ok_or("Cannot locate the updated app bundle")?,
-        );
-        #[cfg(not(target_os = "macos"))]
+
         let (script, path) = (
             "pid=$1; executable=$2; shift 2; while kill -0 \"$pid\" 2>/dev/null; do sleep 0.1; done; exec \"$executable\" \"$@\"",
             executable,
@@ -218,11 +192,6 @@ pub fn schedule_relaunch(executable: &Path) -> Result<(), String> {
             .process_group(0);
         command.spawn().map_err(|e| e.to_string())?;
         Ok(())
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = executable;
-        Err("The native installer is responsible for relaunching this app".into())
     }
 }
 

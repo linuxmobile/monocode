@@ -14,8 +14,6 @@ impl Terminal {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        #[cfg(target_os = "macos")]
-        crate::traffic_lights::focus_content(window);
         self.stop_selection();
         self.pressed_link = None;
         window.focus(&self.focus, cx);
@@ -28,11 +26,7 @@ impl Terminal {
             .read_from_clipboard()
             .and_then(|item| item.text())
             .is_some_and(|s| !s.is_empty());
-        let modifier = if cfg!(target_os = "macos") {
-            "⌘"
-        } else {
-            "Ctrl+Shift+"
-        };
+        let modifier = "Ctrl+Shift+";
         let items = vec![
             MenuAction::new("copy", "Copy")
                 .shortcut(format!("{modifier}C"))

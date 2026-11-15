@@ -11,11 +11,7 @@ pub(super) struct EditingMenu {
 
 impl Input {
     fn editing_menu_items(&self, clipboard: bool) -> Vec<MenuItem> {
-        let modifier = if cfg!(target_os = "macos") {
-            "⌘"
-        } else {
-            "Ctrl+"
-        };
+        let modifier = "Ctrl+";
         let selected = !self.secret && !self.selection.is_empty();
         let action = |id, label, key, enabled: bool| {
             MenuAction::new(id, label)
@@ -27,16 +23,7 @@ impl Input {
         if self.code.is_some() {
             items.extend([
                 action("undo", "Undo", "Z", self.history_available(false)),
-                action(
-                    "redo",
-                    "Redo",
-                    if cfg!(target_os = "macos") {
-                        "⇧Z"
-                    } else {
-                        "Shift+Z"
-                    },
-                    self.history_available(true),
-                ),
+                action("redo", "Redo", "Shift+Z", self.history_available(true)),
                 MenuItem::Separator,
             ]);
         }
@@ -58,8 +45,6 @@ impl Input {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        #[cfg(target_os = "macos")]
-        crate::traffic_lights::focus_content(window);
         self.end_drag();
         window.focus(&self.focus, cx);
         let index = self.mouse_index(event.position);

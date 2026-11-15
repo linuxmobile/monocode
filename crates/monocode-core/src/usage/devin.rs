@@ -147,7 +147,7 @@ fn credentials_candidates() -> Vec<PathBuf> {
             .map(PathBuf::from)
     };
     candidate_paths(
-        cfg!(windows),
+        false,
         env("APPDATA"),
         env("XDG_DATA_HOME"),
         env("XDG_CONFIG_HOME"),

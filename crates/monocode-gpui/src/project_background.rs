@@ -5,10 +5,8 @@ use gpui::{
     App, Asset, Bounds, Context, ObjectFit, RenderImage, Role, Window, canvas, div, img,
     prelude::*, px,
 };
-#[cfg(any(target_os = "macos", test))]
+#[cfg(test)]
 use gpui::{Corners, Pixels};
-#[cfg(target_os = "macos")]
-use monocode_core::project_appearance::background_texture;
 use monocode_core::project_appearance::{Background, Effect, read_image};
 use std::{
     hash::{Hash, Hasher},
@@ -23,9 +21,9 @@ const FADE: Duration = Duration::from_millis(240);
 struct Key {
     path: String,
     effect: Effect,
-    #[cfg(not(target_os = "macos"))]
+
     empty: bool,
-    #[cfg(not(target_os = "macos"))]
+
     preview: bool,
 }
 
@@ -88,9 +86,7 @@ async fn prepare_texture(
     screen: (u32, u32),
 ) -> Result<Arc<RenderImage>, String> {
     let source = read_image(Path::new(&request.key.path))?;
-    #[cfg(target_os = "macos")]
-    let mut pixels = background_texture(source, request.key.effect);
-    #[cfg(not(target_os = "macos"))]
+
     let mut pixels = {
         let pixels = monocode_core::project_appearance::software_background_texture(
             &source,
@@ -233,23 +229,6 @@ impl ProjectBackground {
         canvas(
             |_, _, _| {},
             move |bounds, _, window, _| {
-                #[cfg(target_os = "macos")]
-                window.paint_quad(
-                    gpui::fill(bounds, gpui::black())
-                        .corner_radii(corners(
-                            bounds,
-                            preview,
-                            clip.as_ref().and_then(AnchorSlot::get),
-                        ))
-                        .border_widths(gpui::Edges {
-                            left: px(1.),
-                            ..Default::default()
-                        })
-                        .border_color(gpui_apple::metal_renderer::background_mask_marker(
-                            begin, empty, haze, preview, opacity,
-                        )),
-                );
-                #[cfg(not(target_os = "macos"))]
                 if !begin {
                     // Other backends have an opaque chat surface. Reveal that
                     // surface with the same view-relative stops while it resizes.
@@ -281,7 +260,7 @@ impl ProjectBackground {
 
 // Round only corners that meet the inset card's perimeter. Split headers,
 // review panes and terminal docks retain their straight interior boundaries.
-#[cfg(any(target_os = "macos", test))]
+#[cfg(test)]
 fn corners(bounds: Bounds<Pixels>, preview: bool, card: Option<Bounds<Pixels>>) -> Corners<Pixels> {
     if preview {
         return Corners::all(px(11.));
@@ -312,9 +291,9 @@ impl Render for ProjectBackground {
         let key = Key {
             path: settings.path.clone(),
             effect: settings.effect,
-            #[cfg(not(target_os = "macos"))]
+
             empty: settings.effect != Effect::GradientBlur || self.empty,
-            #[cfg(not(target_os = "macos"))]
+
             preview: settings.effect == Effect::GradientBlur && self.preview,
         };
         if self.key.as_ref() != Some(&key) || self.loading {
@@ -527,9 +506,9 @@ mod tests {
                         key: Some(Key {
                             path: "prepared-artwork".into(),
                             effect: Effect::Dither,
-                            #[cfg(not(target_os = "macos"))]
+
                             empty: true,
-                            #[cfg(not(target_os = "macos"))]
+
                             preview: false,
                         }),
                         image: Some(image.clone()),
@@ -550,39 +529,6 @@ mod tests {
                             !background.loading,
                             "resize must not schedule image processing"
                         );
-                        #[cfg(target_os = "macos")]
-                        {
-                            let marker = gpui_apple::metal_renderer::background_mask_marker(
-                                false, true, false, true, 0.24,
-                            );
-                            let quads = _window.painted_quads();
-                            let mask = quads
-                                .iter()
-                                .find(|q| q.border_color == marker)
-                                .unwrap_or_else(|| {
-                                    panic!(
-                                        "missing background mask in {} painted quads: {:?}",
-                                        quads.len(),
-                                        quads
-                                            .iter()
-                                            .map(|q| (q.bounds, q.border_color))
-                                            .collect::<Vec<_>>()
-                                    )
-                                });
-                            assert_eq!(
-                                mask.bounds.origin,
-                                gpui::point(gpui::ScaledPixels(0.), gpui::ScaledPixels(0.))
-                            );
-                            assert_eq!(
-                                mask.bounds.size.width.0,
-                                dimensions.width.as_f32() * _window.scale_factor()
-                            );
-                            assert_eq!(
-                                mask.bounds.size.height.0,
-                                dimensions.height.as_f32() * _window.scale_factor()
-                            );
-                            assert_eq!(mask.corner_radii.top_left.0, 11. * _window.scale_factor());
-                        }
                         let mut settings = background.settings.clone().unwrap();
                         settings.empty_opacity = 0.24;
                         settings.session_opacity = 0.33;

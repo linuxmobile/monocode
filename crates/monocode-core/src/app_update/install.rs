@@ -1,7 +1,7 @@
 use super::{Download, Installation, Installed, PackageKind, Update};
-#[cfg(any(target_os = "macos", test))]
+#[cfg(test)]
 use std::path::Component;
-#[cfg(any(target_os = "macos", target_os = "linux", test))]
+
 use std::path::Path;
 use std::{fs, process::Command};
 
@@ -11,11 +11,8 @@ pub(super) fn install(
     installation: &Installation,
 ) -> Result<Installed, String> {
     match installation.kind {
-        #[cfg(target_os = "macos")]
-        PackageKind::App => install_mac(update, &download.path, &installation.path),
-        #[cfg(target_os = "linux")]
         PackageKind::Appimage => install_appimage(&download.path, &installation.path),
-        #[cfg(target_os = "linux")]
+
         PackageKind::Deb | PackageKind::Rpm => {
             let extension = installation.kind.suffix();
             let package = download
@@ -38,27 +35,6 @@ pub(super) fn install(
             )?;
             Ok(Installed::Relaunch(installation.path.clone()))
         }
-        #[cfg(windows)]
-        PackageKind::Nsis => {
-            use std::os::windows::process::CommandExt;
-            let installer = download._directory.path().join("update.exe");
-            fs::rename(&download.path, &installer).map_err(|e| e.to_string())?;
-            let directory = installation
-                .path
-                .parent()
-                .ok_or("Cannot locate the installation")?;
-            // NSIS requires /D to be last and unquoted, including paths with spaces.
-            Command::new(&installer)
-                .arg("/S")
-                .arg(format!("/UPDATEPID={}", std::process::id()))
-                .raw_arg(format!("/D={}", directory.display()))
-                .spawn()
-                .map_err(|e| e.to_string())?;
-            // The installer waits for our normal quit hooks, replaces the app and
-            // launches it. Keep its executable alive after the old app exits.
-            let _ = download._directory.keep();
-            Ok(Installed::InstallerStarted)
-        }
         _ => {
             let _ = (update, download);
             Err("This installation cannot install native updates".into())
@@ -66,7 +42,6 @@ pub(super) fn install(
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn success(command: &mut Command, message: &str) -> Result<(), String> {
     let output = command.output().map_err(|e| format!("{message}: {e}"))?;
     if output.status.success() {
@@ -81,7 +56,7 @@ fn success(command: &mut Command, message: &str) -> Result<(), String> {
 
 /// Prepare first, then swap on the same filesystem, retaining the original if
 /// the second rename fails. A failed rollback leaves its backup for recovery.
-#[cfg(any(target_os = "macos", target_os = "linux", test))]
+
 fn replace(prepared: &Path, target: &Path, backup: &Path) -> Result<(), String> {
     fs::rename(target, backup).map_err(|e| e.to_string())?;
     if let Err(error) = fs::rename(prepared, target) {
@@ -98,7 +73,6 @@ fn replace(prepared: &Path, target: &Path, backup: &Path) -> Result<(), String> 
     Ok(())
 }
 
-#[cfg(target_os = "linux")]
 fn install_appimage(package: &Path, target: &Path) -> Result<Installed, String> {
     use std::io::Read;
     let mut header = [0u8; 11];
@@ -133,7 +107,7 @@ fn install_appimage(package: &Path, target: &Path) -> Result<Installed, String> 
     Ok(Installed::Relaunch(target.to_path_buf()))
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(test)]
 fn extract_app(package: &Path, directory: &Path) -> Result<(), String> {
     let file = fs::File::open(package).map_err(|e| e.to_string())?;
     let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(file));
@@ -162,80 +136,6 @@ fn extract_app(package: &Path, directory: &Path) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-#[cfg(target_os = "macos")]
-fn install_mac(update: &Update, package: &Path, target: &Path) -> Result<Installed, String> {
-    let parent = target.parent().ok_or("Cannot locate the app directory")?;
-    let (stage, authorize) = match tempfile::Builder::new()
-        .prefix(".monocode-update-")
-        .tempdir_in(parent)
-    {
-        Ok(stage) => (stage, false),
-        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => (
-            tempfile::Builder::new()
-                .prefix("monocode-update-")
-                .tempdir()
-                .map_err(|e| e.to_string())?,
-            true,
-        ),
-        Err(e) => return Err(e.to_string()),
-    };
-    extract_app(package, stage.path())?;
-    let prepared = stage.path().join("Monocode Native.app");
-    let plist =
-        fs::read_to_string(prepared.join("Contents/Info.plist")).map_err(|e| e.to_string())?;
-    for expected in [
-        format!("<string>{}</string>", super::APP_ID),
-        format!("<string>{}</string>", update.version),
-    ] {
-        if !plist.contains(&expected) {
-            return Err("The downloaded app has a different identity or version".into());
-        }
-    }
-    success(
-        Command::new("/usr/bin/codesign")
-            .args(["--verify", "--deep", "--strict"])
-            .arg(&prepared),
-        "The downloaded app signature is invalid",
-    )?;
-    success(
-        Command::new("/usr/sbin/spctl")
-            .args(["--assess", "--type", "execute"])
-            .arg(&prepared),
-        "macOS did not approve the downloaded app",
-    )?;
-    if authorize {
-        // Pass paths as quoted shell data, then quote the complete command as
-        // an AppleScript string. Never interpolate an unescaped app path.
-        let suffix = stage
-            .path()
-            .file_name()
-            .ok_or("Invalid update stage")?
-            .to_string_lossy();
-        let next = parent.join(format!(".{suffix}.new.app"));
-        let previous = parent.join(format!(".{suffix}.previous.app"));
-        let quote = |p: &Path| format!("'{}'", p.to_string_lossy().replace('\'', "'\\''"));
-        let shell = format!("set -e; /usr/bin/ditto {} {}; /bin/mv {} {}; if /bin/mv {} {}; then /bin/rm -rf {}; else /bin/mv {} {}; exit 1; fi", quote(&prepared), quote(&next), quote(target), quote(&previous), quote(&next), quote(target), quote(&previous), quote(&previous), quote(target));
-        let script = format!(
-            "do shell script {} with administrator privileges",
-            serde_json::to_string(&shell).map_err(|e| e.to_string())?
-        );
-        success(
-            Command::new("/usr/bin/osascript").arg("-e").arg(script),
-            "The app update was cancelled or failed",
-        )?;
-    } else {
-        let backup = stage.path().join("previous.app");
-        let result = replace(&prepared, target, &backup);
-        if result.is_err() && backup.exists() {
-            let _ = stage.keep();
-        }
-        result?;
-    }
-    Ok(Installed::Relaunch(
-        target.join("Contents/MacOS/monocode-gpui"),
-    ))
 }
 
 #[cfg(test)]

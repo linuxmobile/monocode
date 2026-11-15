@@ -7,12 +7,9 @@ use gpui::{AnyElement, Context, SharedString, div, prelude::*, px};
 impl SettingsView {
     pub(super) fn monos_page(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let p = self.prefs.clone();
-        let mut rows=vec![
+        let rows=vec![
             self.row(Some("monos-enabled"),true,"Show monos",Some("Agents of your own on the project rail. Each works on the projects you give it, remembers what matters and picks up habits it runs on its own. Turn this off to hide them.".into()),vec![self.toggle("monos-enabled","Show monos",p.monos,false,cx,|this,on,cx|this.update(cx,|p|p.monos=on))]),
             self.row(Some("rail-monos-pinned"),false,"Pin monos to the icon rail",Some("When the project rail is collapsed to icons, show each Mono at the top of the rail, above a divider, instead of inside the project picker.".into()),vec![self.toggle("rail-monos-pinned","Pin monos to the icon rail",p.rail_monos_pinned,!p.monos,cx,|this,on,cx|this.update(cx,|p|p.rail_monos_pinned=on))])];
-        if cfg!(target_os = "macos") {
-            rows.push(self.row(Some("mono-menu-bar-icon"),false,"Menu bar icon",Some("Chat with a Mono or open the quick composer from the macOS menu bar. Turn this off to hide the icon.".into()),vec![self.toggle("mono-menu-bar-icon","Menu bar icon",p.mono_menu_bar_icon,false,cx,|this,on,cx|this.update(cx,|p|p.mono_menu_bar_icon=on))]));
-        }
         let mut roster = Vec::new();
         for (ix, mono) in self.ctx.monos.clone().into_iter().enumerate() {
             let show_id = mono.id.clone();

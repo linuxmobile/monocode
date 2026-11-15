@@ -1378,12 +1378,6 @@ fn blur() -> impl IntoElement {
     canvas(
         |_, _, _| {},
         move |bounds, _, window, _| {
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
-            // Keep the tint on the blur quad itself. GPUI treats a fully
-            // transparent fill as border-only and strips its interior.
-            let quad = gpui::fill(bounds, content(0.02))
-                .border_color(gpui::backdrop_blur_marker(24. * window.scale_factor()));
-            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
             let quad = gpui::fill(bounds, rgb(CHAT));
             window.paint_quad(quad);
         },
@@ -1553,13 +1547,12 @@ impl Render for DiffView {
                             .items_center()
                             .justify_between()
                             .gap_3()
-                            .child(div().text_size(px(10.)).text_color(content(0.35)).child(
-                                if cfg!(target_os = "macos") {
-                                    "⌘↩ to add"
-                                } else {
-                                    "Ctrl+↩ to add"
-                                },
-                            ))
+                            .child(
+                                div()
+                                    .text_size(px(10.))
+                                    .text_color(content(0.35))
+                                    .child("Ctrl+↩ to add"),
+                            )
                             .child(
                                 div()
                                     .id("add-comment")
@@ -1852,42 +1845,6 @@ mod tests {
                 assert!(view.pending.is_none());
                 assert_eq!(view.scroll_x, 120.);
                 assert_eq!(view.top_px(), top);
-            })
-            .unwrap();
-    }
-    #[cfg(target_os = "macos")]
-    #[gpui::test]
-    fn sticky_header_retains_its_translucent_blur_surface(cx: &mut gpui::TestAppContext) {
-        let long: String = (0..60).map(|i| format!("line {i}\n")).collect();
-        let window = cx.update(|cx| {
-            cx.open_window(Default::default(), |_, cx| cx.new(DiffView::new))
-                .unwrap()
-        });
-        window
-            .update(cx, |view, _, cx| {
-                view.set_files(
-                    vec![file("a.rs", &long, &long.replace("line 30", "LINE 30"))],
-                    cx,
-                );
-                view.list.scroll_to(ListOffset {
-                    item_ix: 3,
-                    offset_in_item: px(0.),
-                });
-            })
-            .unwrap();
-        cx.refresh().unwrap();
-        window
-            .update(cx, |_, window, _| {
-                let marker = gpui::backdrop_blur_marker(24. * window.scale_factor());
-                let quads = window.painted_quads();
-                let glass = quads.iter().find(|q| q.border_color == marker).expect(
-                    "the sticky header's blur must survive GPUI's transparent-quad culling",
-                );
-                assert_eq!(glass.background, content(0.02).into());
-                assert_eq!(
-                    glass.bounds.size.height.0,
-                    FILE_HEADER * window.scale_factor()
-                );
             })
             .unwrap();
     }

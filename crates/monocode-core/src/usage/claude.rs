@@ -76,12 +76,6 @@ fn credentials(config: Option<PathBuf>) -> Option<Value> {
     // but blank (the CLI clears it when a refresh fails) means signed out; an
     // old .credentials.json must not stand in for it, or the footer would
     // promise a renewal with a long-dead refresh token and hide Sign in.
-    #[cfg(target_os = "macos")]
-    {
-        if let Some(raw) = keychain(config.as_deref()) {
-            return credential_blob(&raw);
-        }
-    }
     let dir = config.or_else(|| {
         std::env::var_os("HOME")
             .or_else(|| std::env::var_os("USERPROFILE"))
@@ -96,103 +90,6 @@ fn credential_blob(raw: &str) -> Option<Value> {
         .as_str()
         .filter(|s| !s.trim().is_empty())?;
     Some(value)
-}
-
-#[cfg(target_os = "macos")]
-pub(crate) fn delete_keychain(config: &std::path::Path) -> Result<(), String> {
-    use crate::process;
-    use std::{
-        process::{Command, Stdio},
-        time::Instant,
-    };
-    let service = keychain_service(Some(config));
-    let mut command = Command::new("/usr/bin/security");
-    command
-        .args(["delete-generic-password", "-s", &service])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
-    process::isolate(&mut command);
-    let mut child = command.spawn().map_err(|e| e.to_string())?;
-    let _registration = process::register(child.id());
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let result = loop {
-        match child.try_wait() {
-            Ok(Some(status)) if status.success() || status.code() == Some(44) => break Ok(()),
-            Ok(Some(_)) => {
-                break Err("Could not remove the account's Claude Keychain credentials".into());
-            }
-            Err(e) => break Err(e.to_string()),
-            Ok(None) if Instant::now() >= deadline => {
-                break Err("Removing Claude credentials timed out".into());
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(20)),
-        }
-    };
-    process::terminate(&mut child);
-    result
-}
-
-#[cfg(target_os = "macos")]
-fn keychain_service(config: Option<&std::path::Path>) -> String {
-    use sha2::{Digest, Sha256};
-    use unicode_normalization::UnicodeNormalization;
-    config
-        .map(|dir| {
-            let selector: String = dir.to_string_lossy().nfc().collect();
-            let digest = format!("{:x}", Sha256::digest(selector.as_bytes()));
-            format!("Claude Code-credentials-{}", &digest[..8])
-        })
-        .unwrap_or_else(|| "Claude Code-credentials".into())
-}
-
-#[cfg(target_os = "macos")]
-/// The raw Keychain secret, or None when there is no item (or it cannot be read).
-fn keychain(config: Option<&std::path::Path>) -> Option<String> {
-    use crate::process;
-    use std::{
-        process::{Command, Stdio},
-        sync::mpsc,
-        thread,
-        time::Instant,
-    };
-
-    let service = keychain_service(config);
-    let mut command = Command::new("/usr/bin/security");
-    command
-        .args(["find-generic-password", "-s", &service, "-w"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null());
-    process::isolate(&mut command);
-    let mut child = command.spawn().ok()?;
-    let _registration = process::register(child.id());
-    let output = child.stdout.take()?;
-    // Drain concurrently: waiting before reading can fill the pipe and hang.
-    let (tx, rx) = mpsc::sync_channel(1);
-    let reader = thread::spawn(move || {
-        let mut body = String::new();
-        let result = output.take(1024 * 1024).read_to_string(&mut body);
-        let _ = tx.send(result.ok().map(|_| body));
-    });
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let result = loop {
-        match child.try_wait() {
-            Ok(Some(status)) if status.success() => {
-                break rx
-                    .recv_timeout(deadline.saturating_duration_since(Instant::now()))
-                    .ok()
-                    .flatten();
-            }
-            Ok(Some(_)) | Err(_) => break None,
-            Ok(None) if Instant::now() >= deadline => break None,
-            Ok(None) => thread::sleep(Duration::from_millis(20)),
-        }
-    };
-    process::terminate(&mut child);
-    drop(rx);
-    let _ = reader.join();
-    result
 }
 
 #[cfg(test)]

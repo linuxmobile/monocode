@@ -10,9 +10,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[cfg(target_os = "macos")]
-mod macos;
-
 #[derive(Default)]
 struct Forwarding {
     native: Cell<bool>,
@@ -21,8 +18,6 @@ struct Forwarding {
 }
 pub(super) struct Shortcuts {
     _keys: Subscription,
-    #[cfg(target_os = "macos")]
-    _native: Option<macos::NativeKeys>,
 }
 
 fn workspace_action(action: &dyn Action) -> bool {
@@ -52,8 +47,6 @@ fn candidates(keys: &[Keystroke], cx: &App) -> Vec<KeyBinding> {
 pub(super) fn install(owner: WeakEntity<Shell>, window: &Window, cx: &mut App) -> Shortcuts {
     let window_id = window.window_handle().window_id();
     let forwarding = Rc::new(Forwarding::default());
-    #[cfg(target_os = "macos")]
-    let native = macos::NativeKeys::new(window, forwarding.clone());
     let pending = RefCell::new(Vec::<Keystroke>::new());
     let keys = cx.intercept_keystrokes(move |event, window, cx| {
         if window.window_handle().window_id() != window_id {
@@ -121,100 +114,12 @@ pub(super) fn install(owner: WeakEntity<Shell>, window: &Window, cx: &mut App) -
             cx.stop_propagation();
         }
     });
-    Shortcuts {
-        _keys: keys,
-        #[cfg(target_os = "macos")]
-        _native: native,
-    }
+    Shortcuts { _keys: keys }
 }
 
 #[cfg(test)]
 mod tests {
     use gpui::TestAppContext;
-
-    #[cfg(target_os = "macos")]
-    #[gpui::test]
-    fn command_l_focuses_the_active_session_prompt(cx: &mut TestAppContext) {
-        use gpui::Focusable;
-
-        cx.update(|cx| {
-            crate::input::bind(cx);
-            super::super::bind_keys(cx);
-            cx.set_reduce_motion(true);
-        });
-        let (window, first_session, second_session) = super::super::tests::window(cx);
-        for session_id in [first_session, second_session] {
-            for orphaned_focus in [false, true] {
-                let source_focus = window
-                    .update(cx, |shell, window, cx| {
-                        shell.open(session_id, window, cx);
-                        let source_focus = if orphaned_focus {
-                            cx.focus_handle()
-                        } else {
-                            shell.sidebar_focus.clone()
-                        };
-                        window.focus(&source_focus, cx);
-                        source_focus
-                    })
-                    .unwrap();
-                cx.refresh().unwrap();
-                cx.simulate_keystrokes(window.into(), "cmd-l");
-                cx.run_until_parked();
-                window
-                    .update(cx, |shell, window, cx| {
-                        assert_eq!(shell.workspace.active, Some(session_id));
-                        assert!(
-                            shell.sessions[&session_id]
-                                .read(cx)
-                                .input
-                                .focus_handle(cx)
-                                .is_focused(window)
-                        );
-                        assert!(!source_focus.is_focused(window));
-                    })
-                    .unwrap();
-            }
-        }
-    }
-
-    #[cfg(target_os = "macos")]
-    #[gpui::test]
-    fn command_l_settings_support_remapping_disabling_and_reset(cx: &mut TestAppContext) {
-        cx.update(|cx| {
-            super::super::bind_keys(cx);
-            let mut preferences = crate::settings::Preferences::default();
-            for (override_keys, expected_label) in [
-                (None, Some("⌘L")),
-                (Some(Some("cmd-alt-l")), Some("⌘⌥L")),
-                (Some(None), None),
-                (None, Some("⌘L")),
-            ] {
-                match override_keys {
-                    Some(shortcut) => {
-                        preferences
-                            .keybindings
-                            .insert("App: Focus Prompt".into(), shortcut.map(str::to_owned));
-                    }
-                    None => {
-                        preferences.keybindings.remove("App: Focus Prompt");
-                    }
-                }
-                crate::settings::apply_keybindings(&preferences, cx);
-                assert_eq!(
-                    crate::settings::command_shortcut(&preferences, "App: Focus Prompt").as_deref(),
-                    expected_label
-                );
-                let expected_shortcut = override_keys.unwrap_or(Some("cmd-l"));
-                for shortcut in ["cmd-l", "cmd-alt-l"] {
-                    let keys = [gpui::Keystroke::parse(shortcut).unwrap()];
-                    let bound = super::candidates(&keys, cx)
-                        .iter()
-                        .any(|binding| binding.action().name() == "workspace::FocusPrompt");
-                    assert_eq!(bound, Some(shortcut) == expected_shortcut);
-                }
-            }
-        });
-    }
 
     #[gpui::test]
     fn lost_focus_shortcuts_follow_live_remaps_and_disabled_bindings(cx: &mut TestAppContext) {
@@ -232,11 +137,7 @@ mod tests {
                 orphan
             })
             .unwrap();
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         cx.simulate_keystrokes(window.into(), &format!("{modifier}-b"));
         cx.run_until_parked();
         window

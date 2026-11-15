@@ -139,7 +139,7 @@ impl SettingsView {
                 |this, v, cx| this.update(cx, |p| p.apply_workspace_theme(v)),
             )],
         ));
-        #[cfg(target_os = "linux")]
+
         if cx.compositor_name() == "Wayland" {
             theme.push(self.row(
                 Some("wayland-window-decorations"),
@@ -328,11 +328,8 @@ impl SettingsView {
                     Some("new-layout-style"),
                     false,
                     "Workspace style",
-                    Some(if cfg!(target_os = "macos") {
-                        "Choose a rounded card or a full-height boxy workspace. ⌘⌥L switches between them.".into()
-                    } else {
-                        "Choose a rounded card or a full-height boxy workspace. Ctrl+Alt+L switches between them.".into()
-                    }),
+                    Some(                        "Choose a rounded card or a full-height boxy workspace. Ctrl+Alt+L switches between them.".into()
+                    ),
                     vec![self.segmented(
                         "new-layout-style",
                         "Workspace style",

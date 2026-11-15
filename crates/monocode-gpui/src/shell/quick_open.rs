@@ -190,11 +190,7 @@ mod tests {
                 w.focus(&input.focus_handle(cx), cx);
             })
             .unwrap();
-        let modifier = if cfg!(target_os = "macos") {
-            "cmd"
-        } else {
-            "ctrl"
-        };
+        let modifier = "ctrl";
         cx.simulate_keystrokes(window.into(), &format!("{modifier}-p"));
         cx.run_until_parked();
         window

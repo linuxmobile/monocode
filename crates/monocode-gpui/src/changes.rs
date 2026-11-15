@@ -32,11 +32,7 @@ use std::{
     time::Duration,
 };
 
-const MOD: &str = if cfg!(target_os = "macos") {
-    "⌘"
-} else {
-    "Ctrl+"
-};
+const MOD: &str = "Ctrl+";
 const ROW: f32 = 28.;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

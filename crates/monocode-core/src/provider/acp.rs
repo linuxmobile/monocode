@@ -52,9 +52,7 @@ pub(super) fn configure(command: &mut Command, request: &Request) -> Result<(), 
     let settings = &request.settings;
     match request.kind {
         Kind::Antigravity => {
-            if cfg!(target_os = "linux") {
-                command.arg("--uid=");
-            }
+            command.arg("--uid=");
         }
         Kind::Grok => {
             command.arg("--no-auto-update");

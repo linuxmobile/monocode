@@ -82,11 +82,6 @@ impl TranscriptView {
         self.history_pager = pager;
         self.history_failed = false;
     }
-    /// The store cursor for the turns just above the window, for a paired
-    /// phone, which sees only the window's rows, to page in the rest itself.
-    pub(crate) fn older_history_cursor(&self) -> Option<i64> {
-        self.window_before
-    }
     /// Saved turn receipts, keyed by store row, for the window's turns.
     pub(crate) fn set_turns(&mut self, turns: HashMap<usize, monocode_core::agent::TurnInfo>) {
         let base = self.base;

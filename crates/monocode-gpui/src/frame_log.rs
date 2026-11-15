@@ -89,8 +89,6 @@ fn format_line(stats: &gpui::frame_stats::FrameStats, main: Option<f64>) -> Stri
 
 /// CPU time of the thread that created it, read through Mach.
 struct MainThreadCpu {
-    #[cfg(target_os = "macos")]
-    thread: libc::mach_port_t,
     last: Option<Duration>,
 }
 
@@ -99,8 +97,6 @@ impl MainThreadCpu {
         let mut cpu = Self {
             // SAFETY: names the calling thread's Mach port without taking a
             // new right, so there is nothing to deallocate.
-            #[cfg(target_os = "macos")]
-            thread: unsafe { libc::pthread_mach_thread_np(libc::pthread_self()) },
             last: None,
         };
         cpu.last = cpu.used();
@@ -114,32 +110,6 @@ impl MainThreadCpu {
         Some(100. * busy.as_secs_f64() / wall.as_secs_f64().max(f64::EPSILON))
     }
 
-    #[cfg(target_os = "macos")]
-    fn used(&self) -> Option<Duration> {
-        let mut info = std::mem::MaybeUninit::<libc::thread_basic_info>::zeroed();
-        let mut count = libc::THREAD_BASIC_INFO_COUNT;
-        // SAFETY: the buffer is a thread_basic_info and `count` its size in
-        // integers, which is what THREAD_BASIC_INFO fills.
-        let status = unsafe {
-            libc::thread_info(
-                self.thread,
-                libc::THREAD_BASIC_INFO as u32,
-                info.as_mut_ptr().cast(),
-                &mut count,
-            )
-        };
-        if status != libc::KERN_SUCCESS {
-            return None;
-        }
-        // SAFETY: a successful call initialized the struct.
-        let info = unsafe { info.assume_init() };
-        let time = |t: libc::time_value_t| {
-            Duration::from_secs(t.seconds as u64) + Duration::from_micros(t.microseconds as u64)
-        };
-        Some(time(info.user_time) + time(info.system_time))
-    }
-
-    #[cfg(not(target_os = "macos"))]
     fn used(&self) -> Option<Duration> {
         None
     }

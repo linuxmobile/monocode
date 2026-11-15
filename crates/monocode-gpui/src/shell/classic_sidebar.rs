@@ -335,11 +335,7 @@ impl Shell {
                                     .child(
                                         icon_button(
                                             "classic-new-session",
-                                            if cfg!(target_os = "macos") {
-                                                "New session (⌘T)"
-                                            } else {
-                                                "New session (Ctrl+T)"
-                                            },
+                                            "New session (Ctrl+T)",
                                             "plus",
                                         )
                                         .debug_selector(|| "classic-new-session".into())

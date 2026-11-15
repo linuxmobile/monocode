@@ -22,7 +22,7 @@ pub(crate) fn tab_label(text: impl Into<SharedString>) -> impl IntoElement {
                 None,
             );
             let overflow = line.width() > bounds.size.width && bounds.size.width > px(0.);
-            #[cfg(not(target_os = "macos"))]
+
             let line = if overflow {
                 // Other backends use the same measured ramp at glyph centres.
                 let runs = text
@@ -45,23 +45,7 @@ pub(crate) fn tab_label(text: impl Into<SharedString>) -> impl IntoElement {
         },
         |bounds, (line, overflow), window, cx| {
             window.with_content_mask(Some(ContentMask { bounds }), |window| {
-                #[cfg(target_os = "macos")]
-                let marker = |begin, window: &mut gpui::Window| {
-                    if overflow {
-                        window.paint_layer(bounds, |window| {
-                            window.paint_quad(gpui::fill(bounds, gpui::black()).border_color(
-                                gpui_apple::metal_renderer::horizontal_fade_marker(
-                                    begin,
-                                    40. * window.scale_factor(),
-                                ),
-                            ));
-                        });
-                    }
-                };
-                #[cfg(not(target_os = "macos"))]
                 let _ = overflow;
-                #[cfg(target_os = "macos")]
-                marker(true, window);
                 // Keep both marker quads on separate layers from the glyphs:
                 // GPUI otherwise batches a layer's quads before its text.
                 window.paint_layer(bounds, |window| {
@@ -74,84 +58,8 @@ pub(crate) fn tab_label(text: impl Into<SharedString>) -> impl IntoElement {
                         cx,
                     );
                 });
-                #[cfg(target_os = "macos")]
-                marker(false, window);
             });
         },
     )
     .size_full()
-}
-
-#[cfg(all(test, target_os = "macos"))]
-mod tests {
-    use super::*;
-    use gpui::{App, Context, Render, TestAppContext, Window, div};
-    use gpui_apple::metal_renderer::horizontal_fade_marker;
-
-    struct Label {
-        width: f32,
-        text: &'static str,
-    }
-    impl Render for Label {
-        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-            div()
-                .w(px(self.width))
-                .h(px(20.))
-                .text_size(px(13.))
-                .child(tab_label(self.text))
-        }
-    }
-    #[gpui::test]
-    fn short_labels_stay_clear_and_overflow_is_remeasured_after_resize(cx: &mut TestAppContext) {
-        let window = cx.update(|cx: &mut App| {
-            cx.open_window(Default::default(), |_, cx| {
-                cx.new(|_| Label {
-                    width: 100.,
-                    text: "Short",
-                })
-            })
-            .unwrap()
-        });
-        let masked = |cx: &mut TestAppContext| {
-            cx.refresh().unwrap();
-            window
-                .update(cx, |_, window, _| {
-                    let quads = window.painted_quads();
-                    let begin = quads.iter().find(|quad| {
-                        quad.border_color
-                            == horizontal_fade_marker(true, 40. * window.scale_factor())
-                    });
-                    if let Some(begin) = begin {
-                        let end = quads
-                            .iter()
-                            .find(|quad| {
-                                quad.border_color
-                                    == horizontal_fade_marker(false, 40. * window.scale_factor())
-                            })
-                            .unwrap();
-                        assert!(
-                            begin.order < end.order,
-                            "the mask must bracket the glyph layer"
-                        );
-                    }
-                    usize::from(begin.is_some())
-                })
-                .unwrap()
-        };
-        assert_eq!(masked(cx), 0);
-        window
-            .update(cx, |label, _, cx| {
-                label.text = "A long session title that cannot fit in this tab";
-                cx.notify();
-            })
-            .unwrap();
-        assert_eq!(masked(cx), 1);
-        window
-            .update(cx, |label, _, cx| {
-                label.width = 700.;
-                cx.notify();
-            })
-            .unwrap();
-        assert_eq!(masked(cx), 0);
-    }
 }

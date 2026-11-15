@@ -8,8 +8,6 @@ use serde_json::Value;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Permission {
     Prompt,
-    Granted,
-    Denied,
     Unsupported,
 }
 
@@ -64,9 +62,7 @@ pub fn should_notify(
     window_focused: bool,
     session_visible: bool,
 ) -> bool {
-    enabled
-        && !(window_focused && session_visible)
-        && matches!(permission, Permission::Prompt | Permission::Granted)
+    enabled && !(window_focused && session_visible) && permission == Permission::Prompt
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -89,19 +85,6 @@ impl Target {
                 format!("monocode-reminder:{session_id}:{due_at}")
             }
         }
-    }
-
-    pub fn from_tag(tag: &str) -> Option<Self> {
-        if let Some(rest) = tag.strip_prefix("monocode-session:") {
-            let (id, sequence) = rest.split_once(':')?;
-            sequence.parse::<u64>().ok()?;
-            return Some(Self::Session(id.parse().ok()?));
-        }
-        let (id, due) = tag.strip_prefix("monocode-reminder:")?.split_once(':')?;
-        Some(Self::Reminder {
-            session_id: id.parse().ok()?,
-            due_at: due.parse().ok()?,
-        })
     }
 }
 

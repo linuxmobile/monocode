@@ -28,7 +28,7 @@ pub(crate) const CATEGORIES: [(&str, &str); 5] = [
 fn path_key(path: &str) -> String {
     let windows =
         path.as_bytes().get(1) == Some(&b':') || path.starts_with("\\\\") || path.starts_with("//");
-    let normalized = if windows || cfg!(target_os = "windows") {
+    let normalized = if windows || false {
         path.replace('\\', "/")
     } else {
         path.to_owned()
@@ -339,37 +339,11 @@ impl SettingsView {
             }
         }));
     }
-    pub(super) fn notification_permission_controls(
-        &self,
-        cx: &mut Context<Self>,
-    ) -> Vec<AnyElement> {
+    pub(super) fn notification_permission_controls(&self) -> Vec<AnyElement> {
         if !self.prefs.notifications {
             return Vec::new();
         }
         match self.notification_state.permission {
-            Permission::Denied => vec![
-                div()
-                    .flex()
-                    .items_center()
-                    .gap_2()
-                    .text_size(px(12.))
-                    .text_color(content(0.45))
-                    .child("Permission needed")
-                    .child(
-                        secondary_button(
-                            "notifications-system-settings",
-                            "Open System Settings",
-                            false,
-                            false,
-                        )
-                        .child("Open System Settings")
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            let _ = platform::open_settings();
-                            this.probe_notification_permission(false, cx);
-                        })),
-                    )
-                    .into_any_element(),
-            ],
             Permission::Unsupported => vec![
                 div()
                     .text_size(px(12.))

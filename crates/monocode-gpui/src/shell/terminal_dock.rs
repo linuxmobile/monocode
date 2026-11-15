@@ -1140,16 +1140,8 @@ pub(super) fn footer_separator() -> gpui::Div {
         .rounded_full()
         .bg(content(0.12))
 }
-const NEW_TERMINAL_LABEL: &str = if cfg!(target_os = "macos") {
-    "New Terminal (⌘`)"
-} else {
-    "New Terminal (Ctrl+`)"
-};
-const HIDE_TERMINAL_LABEL: &str = if cfg!(target_os = "macos") {
-    "Hide Terminal (⌘J)"
-} else {
-    "Hide Terminal (Ctrl+J)"
-};
+const NEW_TERMINAL_LABEL: &str = "New Terminal (Ctrl+`)";
+const HIDE_TERMINAL_LABEL: &str = "Hide Terminal (Ctrl+J)";
 
 #[cfg(test)]
 mod tests {

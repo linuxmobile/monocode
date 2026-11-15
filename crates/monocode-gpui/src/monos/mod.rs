@@ -7,7 +7,6 @@ mod color_picker;
 mod dashboard;
 mod files;
 mod filters;
-mod floating;
 mod host;
 mod html;
 mod memory_ui;
@@ -17,8 +16,6 @@ mod panel_stack;
 mod panels;
 mod scheduler;
 mod search;
-#[cfg(all(target_os = "macos", not(test)))]
-mod status;
 #[cfg(test)]
 mod tests;
 mod work;
@@ -53,7 +50,7 @@ use std::{
 pub(crate) struct Changed;
 pub(crate) struct TabOpened(pub String);
 pub(crate) struct ShowDetails(pub String);
-pub(crate) use notifications::{NotificationChanged, NotificationFinished, NotificationPosted};
+pub(crate) use notifications::{NotificationChanged, NotificationFinished};
 #[derive(Clone, PartialEq)]
 pub(crate) struct OverviewChrome {
     active: Option<String>,
@@ -73,8 +70,6 @@ struct RunningHabit {
     mailbox: Vec<String>,
 }
 pub(crate) struct Monos {
-    #[cfg(all(target_os = "macos", not(test)))]
-    status: Option<status::Status>,
     parent_window: Option<gpui::AnyWindowHandle>,
     owner: WeakEntity<Shell>,
     store: Database,
@@ -153,7 +148,6 @@ pub(crate) struct Monos {
     drag: Option<(String, gpui::Point<gpui::Pixels>, Option<String>)>,
     rail_bounds: HashMap<String, AnchorSlot>,
     skip_click: bool,
-    floating: Vec<gpui::AnyWindowHandle>,
     scheduling: bool,
     persisted_messages: HashSet<String>,
     failed_reports: HashSet<String>,
@@ -197,57 +191,46 @@ impl Monos {
             view.update(cx, |v, cx| v.stop_if_busy(cx));
         }
     }
+    /// The sessions a Mono keeps open, for the idle agents' bookkeeping.
+    pub(crate) fn visible_idle_sessions(&self, cx: &App) -> Vec<i64> {
+        self.chat()
+            .into_iter()
+            .map(|chat| chat.read(cx).summary.id)
+            .collect::<Vec<_>>()
+    }
+    /// Open a session in the workspace window.
+    pub(super) fn open_workspace(&self, id: i64, window: &Window, cx: &mut Context<Self>) {
+        let owner = self.owner.clone();
+        let handle = window.window_handle();
+        let app: &mut App = cx;
+        app.defer(move |cx| {
+            let _ = handle.update(cx, |_, window, cx| {
+                let _ = owner.update(cx, |owner, cx| owner.open(id, window, cx));
+            });
+        });
+    }
+    /// Move a Mono in the rail while its handle is dragged.
+    pub(crate) fn move_rail_drag(&mut self, event: &gpui::MouseMoveEvent, cx: &mut Context<Self>) {
+        if let Some((_, start, over)) = &mut self.drag {
+            if event.pressed_button != Some(MouseButton::Left) {
+                self.finish_reorder(cx);
+                return;
+            }
+            if (event.position - *start).magnitude() > 5. {
+                self.skip_click = true;
+                *over = self.rail_bounds.iter().find_map(|(id, s)| {
+                    s.get()
+                        .filter(|b| b.contains(&event.position))
+                        .map(|_| id.clone())
+                });
+            }
+        }
+    }
     pub(crate) fn bind_window(&mut self, window: &Window, cx: &mut Context<Self>) {
         self.parent_window = Some(window.window_handle());
         self.sync_status(cx);
     }
-    fn sync_status(&mut self, _cx: &mut Context<Self>) {
-        #[cfg(all(target_os = "macos", not(test)))]
-        {
-            if !self.prefs.mono_menu_bar_icon {
-                self.status = None;
-                return;
-            }
-            if self.status.is_none() {
-                self.status = status::Status::new();
-            }
-            let entity = _cx.weak_entity();
-            let app = std::cell::RefCell::new(_cx.to_async());
-            let run = std::rc::Rc::new(move |id: &str| {
-                let _ = entity.update(&mut *app.borrow_mut(), |this, cx| {
-                    if id == "quit" {
-                        cx.quit();
-                    } else if id == "composer" {
-                        // The composer is its own panel: the workspace window
-                        // stays where it is, as in the Tauri menu.
-                        if let Some(handle) = this.parent_window {
-                            let owner = this.owner.clone();
-                            let app: &mut App = cx;
-                            app.defer(move |cx| {
-                                let _ = handle.update(cx, |_, window, cx| {
-                                    let _ =
-                                        owner.update(cx, |o, cx| o.mono_quick_compose(window, cx));
-                                });
-                            });
-                        }
-                    } else if this.roster.get(id).is_some() {
-                        // Only the floating chat opens; the workspace keeps
-                        // whichever Mono or session it was showing.
-                        this.open_floating(id.into(), cx);
-                    }
-                });
-            });
-            let monos = self
-                .roster
-                .monos
-                .iter()
-                .map(|m| (m.id.clone(), m.label()))
-                .collect::<Vec<_>>();
-            if let Some(status) = &mut self.status {
-                status.update(&monos, run);
-            }
-        }
-    }
+    fn sync_status(&mut self, _cx: &mut Context<Self>) {}
     pub(crate) fn hide_html(&self, cx: &App) {
         for view in self.html_documents.values() {
             view.read(cx).hide();
@@ -315,8 +298,6 @@ impl Monos {
         let manager = cx.entity();
         let details = cx.new(|cx| overview::Overview::new(manager, cx));
         let mut this = Self {
-            #[cfg(all(target_os = "macos", not(test)))]
-            status: None,
             parent_window: None,
             owner,
             store,
@@ -383,7 +364,6 @@ impl Monos {
             drag: None,
             rail_bounds: HashMap::new(),
             skip_click: false,
-            floating: Vec::new(),
             scheduling: false,
             persisted_messages,
             failed_reports: HashSet::new(),
@@ -967,19 +947,10 @@ impl Monos {
                         .strip_prefix("mono-card:")
                         .map(|s| ("mono-card", s.to_string()))
                         .unwrap_or_else(|| ("assistant", report.clone()));
-                    let body = (role == "assistant").then(|| {
-                        text.strip_prefix("**Habit report**")
-                            .unwrap_or(&text)
-                            .trim()
-                            .to_owned()
-                    });
                     if let Err(error) = view.update(cx, |v, cx| v.mono_post(role, text, cx)) {
                         self.error = Some(error);
                         self.failed_reports.insert(id.into());
                         failed.push(report);
-                    } else if let Some(body) = body {
-                        let session = view.read(cx).summary.id;
-                        cx.emit(NotificationPosted { session, body });
                     }
                 }
                 if let Some(mono) = self.roster.get_mut(id) {
@@ -1617,9 +1588,6 @@ impl gpui::Render for Monos {
                 }
             }))
             .capture_any_mouse_down(|_, window, _| {
-                #[cfg(target_os = "macos")]
-                crate::traffic_lights::focus_content(window);
-                #[cfg(not(target_os = "macos"))]
                 let _ = window;
             })
             .child(
@@ -1637,9 +1605,7 @@ impl gpui::Render for Monos {
                             .map(|view| view.update(cx, |v, cx| v.mono_attention(window, cx))),
                     )
                     .map(|d| {
-                        if self.floating_shows(&mono.id, cx) {
-                            d.child(self.floating_placeholder(&mono, cx))
-                        } else if let Some(chat) = self.chat() {
+                        if let Some(chat) = self.chat() {
                             d.child(div().flex_1().min_h_0().child(chat))
                         } else {
                             d
