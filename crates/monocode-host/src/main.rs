@@ -4,12 +4,7 @@
 //! loopback HTTP. Every provider CLI it launches is one the user installed; the
 //! host never downloads or installs an agent runtime.
 
-mod methods;
-mod mutex;
-mod protocol;
-mod server;
-mod session;
-mod store;
+use monocode_host::{mutex, protocol, server, store};
 
 use protocol::HOST_PROTOCOL_VERSION;
 use server::HostState;
@@ -161,6 +156,7 @@ async fn serve(store: HostStore, options: Options) -> Result<(), String> {
         store: Arc::new(mutex::Mutex::new(store)),
         admin_secret: admin_secret.clone(),
         providers: providers.clone(),
+        turns: Arc::new(mutex::Mutex::new(std::collections::HashMap::new())),
         shutdown: shutdown.clone(),
     });
 

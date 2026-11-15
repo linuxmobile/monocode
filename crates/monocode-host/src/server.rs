@@ -27,6 +27,9 @@ use tokio::sync::broadcast;
 /// dominated by provider I/O, not database calls.
 pub struct HostState {
     pub store: Arc<Mutex<HostStore>>,
+    /// Provider turns currently running, keyed by session id. A second command
+    /// for a running session is refused rather than raced.
+    pub turns: Arc<Mutex<std::collections::HashMap<String, Arc<crate::turn::Turn>>>>,
     /// Local administrative credential for `/lifecycle`. Deliberately distinct
     /// from any paired device token.
     pub admin_secret: String,
@@ -218,6 +221,7 @@ mod tests {
         let (shutdown, _) = broadcast::channel(4);
         let state = Arc::new(HostState {
             store: Arc::new(Mutex::new(store)),
+            turns: Arc::new(Mutex::new(std::collections::HashMap::new())),
             admin_secret: "admin".into(),
             providers: vec![],
             shutdown,

@@ -844,7 +844,6 @@ mod tests {
 mod update_tests {
     use super::tests::{host_session, seeded};
     use super::*;
-    use crate::store::HostStore;
 
     #[test]
     fn updating_a_title_advances_the_revision() {
@@ -930,5 +929,46 @@ mod recovery_tests {
         store.clear_cache();
         // The corrupt row must not break the listing for healthy sessions.
         assert!(store.session("s1").unwrap().is_none());
+    }
+}
+
+#[cfg(test)]
+mod revision_tests {
+    use super::tests::{host_session, seeded};
+    use super::*;
+
+    #[test]
+    fn two_writes_at_the_same_revision_collide() {
+        // Guards the bug this suite was written for: a projection built from a
+        // pre-turn snapshot bumped back onto the revision the submitted-turn
+        // row already occupied, and the second insert failed with a UNIQUE
+        // constraint. The caller must build its projection from the snapshot it
+        // just wrote, not from the value it read before writing.
+        let (_dir, mut store, project) = seeded();
+        store
+            .save_session(host_session(&project, "s1", 1, vec![]), json!({}))
+            .unwrap();
+        let error = store
+            .save_session(host_session(&project, "s1", 1, vec![]), json!({}))
+            .unwrap_err();
+        assert!(
+            error.contains("UNIQUE") || error.contains("constraint"),
+            "expected a revision collision, got: {error}"
+        );
+    }
+
+    #[test]
+    fn consecutive_revisions_are_kept_apart() {
+        let (_dir, mut store, project) = seeded();
+        for revision in 1..=3 {
+            store
+                .save_session(
+                    host_session(&project, "s1", revision, vec![]),
+                    json!({ "n": revision }),
+                )
+                .unwrap();
+        }
+        let replay = store.events("s1", 0).unwrap().unwrap();
+        assert_eq!(replay.events.unwrap().len(), 3);
     }
 }

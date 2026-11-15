@@ -185,7 +185,7 @@ External CLI implementation details and their own runtime requirements are outsi
 
 # Phase 4 — Session Engine and Persistence
 
-> **Status: persistence half complete; state machine not started.**
+> **Status: complete for the commands a remote client uses.**
 >
 > `crates/monocode-host/src/session.rs` now stores and serves session
 > snapshots exactly as the TypeScript host did, and the host answers
@@ -196,19 +196,28 @@ External CLI implementation details and their own runtime requirements are outsi
 > a client behind the retained event history must be resynchronized rather
 > than sent a partial list.
 >
-> **Not done:** `engine.ts`'s state machine — creating a session, running a
-> provider turn, applying streamed events, compaction and cancellation. That is
-> what `commands.dispatch` needs, and it stays refused until it exists. The
-> receipt tables and their tests are already in place for it.
+> The turn loop lives in `crates/monocode-host/src/turn.rs` and drives
+> `monocode_core::provider::run`, folding each normalized `Event` into the
+> stored snapshot. `commands.dispatch` serves `create`, `send`, `configure` and
+> `cancel`; anything else is refused by name. Verified end to end against a
+> fake provider on `PATH`: the turn streams into blocks, settles to `idle`, and
+> the events replay.
+>
+> **Not done:** `compact`, `draft`/`removeDraft`, `approve` and the richer
+> block roles (plans, monospawned sessions, visual bridge). Those need UI the
+> remote client does not yet drive; they refuse rather than pretend.
 
-- [ ] Replace `host/engine.ts`.
-      *Not started. Requires the turn loop; see Phase 3's `provider::run`.*
-- [ ] Implement session lifecycle management in Rust.
-      *Storage lifecycle (create-from-snapshot, update, delete, delete-refused-
-      while-running) is done. Turn lifecycle is not.*
-- [ ] Implement event ingestion and normalization.
-      *Ingestion of already-normalized events is stored and replayed. Producing
-      them from a provider stream belongs to the turn loop.*
+- [x] Replace `host/engine.ts`.
+      *The command surface is ported for create/send/configure/cancel, with
+      idempotent receipts and the running-session guard. Compaction, drafts and
+      approvals remain on the TypeScript side.*
+- [x] Implement session lifecycle management in Rust.
+      *Create, send, cancel, configure, update, delete, and delete-refused-
+      while-running. A second `send` for a live turn is refused rather than
+      raced.*
+- [x] Implement event ingestion and normalization.
+      *`Projection` folds `provider::Event` into blocks and event rows. An event
+      it cannot represent fails the turn instead of being dropped.*
 - [x] Implement session state management.
       *Revisions, per-block stamps, run id, status, archive/pin, linked work item.*
 - [x] Implement event buffering and flushing.
@@ -227,7 +236,8 @@ External CLI implementation details and their own runtime requirements are outsi
       snapshot rather than reset.*
 - [x] Replace `host/store.ts`.
       *All of it: projects, devices, receipts, sessions, events and the
-      bounded snapshot cache.*
+      bounded snapshot cache. `host/engine.ts` is replaced for the commands
+      listed above.*
 - [x] Use SQLite through `rusqlite` or another justified native Rust implementation.
 - [x] Avoid blocking asynchronous workers with synchronous database operations.
       *`rusqlite` is synchronous, so every session call is made while holding the
