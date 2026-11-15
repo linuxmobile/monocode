@@ -33,11 +33,14 @@ fn card_corner_mask(begin: bool) -> impl IntoElement {
                 // chrome, just like the gutters and footer. Restoring the
                 // window's unwashed glass here leaves dark square corners.
                 // Without the mask an opaque fill covers whatever the card
-                // painted past its curve. Over Windows' glass the root's
-                // translucent fill is already there, and a second one darkens
-                // the corners.
-
-                let outside = shell_fill().blend(inset_chrome_wash());
+                // painted past its curve. Over glass the root's translucent
+                // fill is already there, and painting it again darkens the
+                // corners; only an opaque shell needs the blended wash.
+                let outside = if shell_fill().a < 1. {
+                    inset_chrome_wash()
+                } else {
+                    shell_fill().blend(inset_chrome_wash())
+                };
                 let vertices = [
                     (
                         bounds.origin,
@@ -459,7 +462,7 @@ impl Shell {
                 d.child(
                     // The right panel toggle holds the window's corner too, above
                     // the strip or an open panel's tab row. Its padding keeps
-                    // clear of Windows' controls; Linux's sit beside it.
+                    // clear of the compositor's window controls.
                     div()
                         .absolute()
                         .top_0()

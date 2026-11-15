@@ -6053,7 +6053,9 @@ pub(crate) fn floating_surface() -> impl IntoElement {
         |bounds, _, window, _| {
             let radius = bounds.size.height / 2.;
 
-            window.paint_quad(gpui_kit::fill(bounds, rgb(CHAT)).corner_radii(radius));
+            window.paint_quad(
+                gpui_kit::fill(bounds, crate::theme::background_base()).corner_radii(radius),
+            );
         },
     )
     .absolute()

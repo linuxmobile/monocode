@@ -204,17 +204,23 @@ impl Tokens {
     }
 }
 
-/// Platforms whose compositor blurs the desktop behind the window: macOS
-/// vibrancy and Windows Acrylic. Linux blur is compositor-dependent, so it
-/// stays opaque rather than exposing the raw desktop.
-pub(crate) const GLASS_PLATFORM: bool = cfg!(any(target_os = "macos", target_os = "windows"));
+/// Wayland compositors blur the desktop behind a transparent surface
+/// themselves (Hyprland, niri, KWin, and GNOME with a blur extension), so the
+/// app never asks for a particular blur protocol. The only decision left is
+/// whether translucent chrome suits the current theme.
 pub(crate) fn window_glass(p: &crate::settings::Preferences, system_light: bool) -> bool {
-    GLASS_PLATFORM && p.theme != "light" && !(p.theme == "system" && system_light)
+    let light = p.theme == "light" || (p.theme == "system" && system_light);
+    // A fully opaque appearance keeps the window Opaque, so the compositor
+    // can bake layers and text keeps subpixel antialiasing. Transparency is
+    // only requested when some surface actually shows the desktop through.
+    !light && (p.sidebar_opacity < 100 || p.body_glass)
 }
 /// What the compositor puts behind a window that does or doesn't paint glass.
+/// A transparent surface lets Wayland compositors apply their own blur; asking
+/// for their private blur protocol would blur twice or not at all.
 pub(crate) fn window_backdrop(glass: bool) -> gpui_kit::WindowBackgroundAppearance {
-    if glass && GLASS_PLATFORM {
-        gpui_kit::WindowBackgroundAppearance::Blurred
+    if glass {
+        gpui_kit::WindowBackgroundAppearance::Transparent
     } else {
         gpui_kit::WindowBackgroundAppearance::Opaque
     }
@@ -247,7 +253,12 @@ pub(crate) fn composer_fill() -> Hsla {
         background.a = 1.;
         background
     } else {
-        content(0.03)
+        // Wayland glass is a transparent surface the compositor blurs; there
+        // is no guaranteed backdrop behind the composer. A near-solid chat
+        // fill keeps the ink readable instead of relying on that blur.
+        let mut fill: Hsla = rgb(CHAT).into();
+        fill.a = 0.94;
+        fill
     }
 }
 
@@ -341,6 +352,22 @@ pub(crate) fn floating_fill() -> Hsla {
     fill
 }
 
+/// The surface a chat background fades into. It follows the theme so light
+/// mode dissolves artwork into white instead of the dark `CHAT` tone, and it
+/// stays opaque so prose keeps its contrast over a busy texture.
+pub(crate) fn reading_surface() -> Hsla {
+    if is_light() {
+        let mut fill = inset_pane_fill();
+        fill.l = fill.l.max(0.995);
+        fill.a = 1.;
+        fill
+    } else {
+        // The artwork above it is already translucent, so the desktop still
+        // shows through there; the reading area itself stays solid.
+        rgb(CHAT).into()
+    }
+}
+
 pub(crate) fn composer_border(focused: bool) -> Hsla {
     content(if focused { 0.2 } else { 0.1 })
 }
@@ -372,22 +399,15 @@ pub(crate) fn shell_fill() -> Hsla {
     if let Some(fill) = TOKENS.with(|t| t.borrow().as_ref().map(|t| t.shell)) {
         return fill;
     }
-    if GLASS_PLATFORM {
-        // #0d0d0d at 80%, with the stylesheet's #ebebeb 5% wash above it.
-        rgba(0x1b1b1bcf).into()
-    } else {
-        rgb(0x181818).into()
-    }
+    // #0d0d0d at 80%, with the stylesheet's #ebebeb 5% wash above it. The
+    // compositor supplies the blur behind it.
+    rgba(0x1b1b1bcf).into()
 }
 pub(crate) fn pane_fill() -> Hsla {
     if let Some(fill) = TOKENS.with(|t| t.borrow().as_ref().map(|t| t.pane)) {
         return fill;
     }
-    if GLASS_PLATFORM {
-        rgba(0x06060666).into()
-    } else {
-        rgb(CHAT).into()
-    }
+    rgba(0x06060666).into()
 }
 /// `--color-background-base`: the theme's opaque surface, also the ink on
 /// solid `bg-content` buttons.
@@ -667,6 +687,51 @@ mod composer_tests {
     use super::*;
 
     #[test]
+    fn glass_is_requested_only_when_a_surface_shows_through() {
+        let mut preferences = crate::settings::Preferences::default();
+        assert!(window_glass(&preferences, false));
+        // An explicit dark theme ignores the system appearance.
+        assert!(window_glass(&preferences, true));
+        preferences.theme = "system".into();
+        assert!(!window_glass(&preferences, true));
+        assert!(window_glass(&preferences, false));
+        preferences.theme = "dark".into();
+        // Opaque chrome and main pane: keep the window Opaque so the
+        // compositor can bake layers and text keeps subpixel antialiasing.
+        preferences.sidebar_opacity = 100;
+        preferences.body_glass = false;
+        assert!(!window_glass(&preferences, false));
+        // The main pane alone can still reveal the desktop.
+        preferences.body_glass = true;
+        assert!(window_glass(&preferences, false));
+        preferences.theme = "light".into();
+        assert!(!window_glass(&preferences, false));
+    }
+
+    #[test]
+    fn reading_surface_follows_the_theme() {
+        struct Restore(Option<Tokens>);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                TOKENS.with(|tokens| *tokens.borrow_mut() = self.0);
+            }
+        }
+        let _restore = Restore(TOKENS.with(|tokens| *tokens.borrow()));
+        let chat: Hsla = rgb(CHAT).into();
+        let mut preferences = crate::settings::Preferences::default();
+        configure(&preferences, false);
+        let dark = reading_surface();
+        assert_eq!((dark.h, dark.l), (chat.h, chat.l));
+        assert_eq!(dark.a, 1., "dark artwork resolves to an opaque surface");
+
+        preferences.theme = "light".into();
+        configure(&preferences, false);
+        let light = reading_surface();
+        assert!(light.l >= 0.995, "light artwork fades into a white surface");
+        assert_eq!(light.a, 1.);
+    }
+
+    #[test]
     fn composer_surface_matches_react_dark_ink_and_solid_light_background() {
         struct Restore(Option<Tokens>);
         impl Drop for Restore {
@@ -677,7 +742,11 @@ mod composer_tests {
         let _restore = Restore(TOKENS.with(|tokens| *tokens.borrow()));
         let mut preferences = crate::settings::Preferences::default();
         configure(&preferences, false);
-        assert_eq!(composer_fill(), content(0.03));
+        // No guaranteed compositor blur behind a transparent Wayland
+        // surface: the composer keeps a near-solid chat fill.
+        let mut expected: Hsla = rgb(CHAT).into();
+        expected.a = 0.94;
+        assert_eq!(composer_fill(), expected);
         assert_eq!(composer_blur(), 24.);
         assert_eq!(composer_border(false), content(0.1));
         assert_eq!(composer_border(true), content(0.2));

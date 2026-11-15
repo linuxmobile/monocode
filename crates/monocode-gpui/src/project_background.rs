@@ -230,16 +230,27 @@ impl ProjectBackground {
             |_, _, _| {},
             move |bounds, _, window, _| {
                 if !begin {
-                    // Other backends have an opaque chat surface. Reveal that
-                    // surface with the same view-relative stops while it resizes.
-                    use crate::theme::CHAT;
+                    // Resolve the artwork into the theme's own surface. Light
+                    // mode must fade into white, not the dark chat tone, or
+                    // the transcript's dark ink disappears.
                     use monocode_core::project_appearance::background_fade;
                     let _ = (preview, &clip, opacity);
+                    let surface = crate::theme::reading_surface();
+                    // Under a conversation, keep a minimum wash over the
+                    // texture so prose never sits directly on a busy dither.
+                    let veil = if empty {
+                        0.
+                    } else if crate::theme::is_light() {
+                        0.42
+                    } else {
+                        0.32
+                    };
                     let height = bounds.size.height.as_f32().ceil() as usize;
                     for y in 0..height {
-                        let mut color: gpui_kit::Hsla = gpui_kit::rgb(CHAT).into();
-                        color.a =
+                        let mut color = surface;
+                        let fade =
                             1. - background_fade((y as f32 + 0.5) / height as f32, empty, haze);
+                        color.a = fade.max(veil) * surface.a;
                         window.paint_quad(gpui_kit::fill(
                             Bounds::new(
                                 gpui_kit::point(bounds.left(), bounds.top() + px(y as f32)),
@@ -308,20 +319,26 @@ impl Render for ProjectBackground {
             .absolute()
             .size_full()
             .overflow_hidden()
+            // A transparent Wayland surface would flash the raw desktop while
+            // the texture is prepared; keep the chat surface until it is ready.
+            .when(self.image.is_none(), |d| {
+                d.bg(crate::theme::reading_surface())
+            })
             .when_some(self.image.clone(), |d, image| {
                 d.child(self.mask(true, &settings, opacity))
-                    .child(img(image).size_full().object_fit(ObjectFit::Cover).when(
-                        cfg!(not(target_os = "macos")),
-                        |image| {
-                            image.opacity(opacity).rounded(px(if self.preview {
+                    .child(
+                        img(image)
+                            .size_full()
+                            .object_fit(ObjectFit::Cover)
+                            .opacity(opacity)
+                            .rounded(px(if self.preview {
                                 11.
                             } else if self.clip.is_some() {
                                 9.
                             } else {
                                 0.
-                            }))
-                        },
-                    ))
+                            })),
+                    )
                     .child(self.mask(false, &settings, opacity))
             })
             .into_any_element()

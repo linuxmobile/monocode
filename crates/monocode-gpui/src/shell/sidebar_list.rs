@@ -176,8 +176,12 @@ fn sidebar_edge_mask(
                         shell_fill()
                     };
                     // Without a mask the fade paints the background over the
-                    // rows. Over Windows' glass that becomes an opaque band,
-                    // so a translucent background keeps the list's hard edge.
+                    // rows. Over glass that backing surface is translucent,
+                    // and stacking it over itself darkens into a visible
+                    // band; the list keeps its hard edge instead.
+                    if background.a < 1. {
+                        continue;
+                    }
                     for y in 0..height.as_f32().ceil() as usize {
                         let mut color = background;
                         color.a = (1. - (y as f32 + 0.5) / height.as_f32()).clamp(0., 1.);

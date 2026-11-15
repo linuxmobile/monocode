@@ -52,17 +52,19 @@ pub(crate) enum Tone {
 }
 impl Tone {
     fn prose(self) -> f32 {
+        // A texture can sit behind the transcript, so body ink needs more
+        // headroom than a flat surface would.
         match self {
-            Self::Normal => 0.78,
-            Self::Work => 0.65,
-            Self::Reasoning => 0.48,
+            Self::Normal => 0.86,
+            Self::Work => 0.74,
+            Self::Reasoning => 0.56,
         }
     }
     fn strong(self) -> f32 {
         match self {
             Self::Normal => 1.,
-            Self::Work => 0.8,
-            Self::Reasoning => 0.62,
+            Self::Work => 0.84,
+            Self::Reasoning => 0.68,
         }
     }
 }

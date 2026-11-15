@@ -431,6 +431,11 @@ fn main() {
             })
             .detach();
             let bounds = workspace.window.bounds(cx);
+            let system_light = matches!(
+                cx.window_appearance(),
+                gpui_kit::WindowAppearance::Light | gpui_kit::WindowAppearance::VibrantLight
+            );
+            let glass = theme::window_glass(&workspace.preferences, system_light);
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(bounds),
@@ -441,15 +446,12 @@ fn main() {
                     // Linux desktops match this to the .desktop file's
                     // StartupWMClass to show the app icon.
                     app_id: Some("dev.usemono.gpui".into()),
-                    window_background: theme::window_backdrop(true),
-                    // GPUI owns the custom chrome. AppKit must not reinterpret
-                    // its controls as native titlebar double-click/drag gestures.
+                    window_background: theme::window_backdrop(glass),
+                    // GPUI owns the custom chrome entirely.
                     app_owns_titlebar_drag: false,
                     titlebar: Some(TitlebarOptions {
                         title: Some("Monocode Native".into()),
-                        // Windows also drops its caption: the app's drag areas
-                        // hit-test as the caption and the frame still resizes.
-                        appears_transparent: cfg!(any(target_os = "macos", target_os = "windows")),
+                        appears_transparent: false,
                         traffic_light_position: None,
                     }),
                     ..Default::default()

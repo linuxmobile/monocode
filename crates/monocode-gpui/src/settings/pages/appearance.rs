@@ -256,7 +256,8 @@ impl SettingsView {
             Some(if light {
                 "Translucency is available in dark mode.".into()
             } else {
-                "How much of the desktop shows through MonoCode.".into()
+                "How much of the desktop shows through MonoCode. Your compositor blurs what is behind the window."
+                    .into()
             }),
             None,
             translucency,
@@ -291,7 +292,7 @@ impl SettingsView {
                 Some("interface-scale"),
                 false,
                 "Interface scale",
-                Some("Zoom the whole interface. You can also use Ctrl+=, Ctrl+-, and Ctrl+0 (Cmd on macOS).".into()),
+                Some("Zoom the whole interface. You can also use Ctrl+=, Ctrl+-, and Ctrl+0.".into()),
                 vec![self.select(
                     "interface-scale",
                     "Interface scale",
