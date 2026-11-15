@@ -233,7 +233,39 @@ Options:
   --data-dir <dir>  Data directory (default: ~/.monocode-host)
   --port <port>     Port to listen on (default: 3774)";
 
+/// Reads the recorded owner of a data directory, if one is still running.
+///
+/// Two hosts sharing a data directory would both write `running.json` and both
+/// clean up the other's, leaving a live host unreachable. A stale file from a
+/// crash is not an owner, so the process is checked rather than trusted.
+fn running_owner(directory: &std::path::Path) -> Option<u32> {
+    let text = std::fs::read_to_string(directory.join("running.json")).ok()?;
+    let state: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let pid = state.get("pid").and_then(serde_json::Value::as_u64)? as i32;
+    // Signal 0 tests for existence without disturbing the process.
+    #[cfg(unix)]
+    {
+        if unsafe { kill(pid, 0) } == 0 {
+            return Some(pid as u32);
+        }
+    }
+    None
+}
+
+#[cfg(unix)]
+extern "C" {
+    fn kill(pid: i32, signal: i32) -> i32;
+}
+
 async fn serve(store: HostStore, options: Options) -> Result<(), String> {
+    // Refusing is the only safe answer: a second host would overwrite the
+    // first one's state file and, on exit, delete it.
+    if let Some(pid) = running_owner(&options.directory) {
+        return Err(format!(
+            "Another MonoCode host ({pid}) is already serving {}. Stop it first, or use a different --data-dir.",
+            options.directory.display()
+        ));
+    }
     let environment_id = store.environment_id.clone();
     let providers = discover_providers();
     let (shutdown, _) = broadcast::channel(4);
@@ -245,7 +277,9 @@ async fn serve(store: HostStore, options: Options) -> Result<(), String> {
         admin_secret: admin_secret.clone(),
         providers: providers.clone(),
         transfers: std::sync::Arc::new(monocode_host::transfers::SyncTransfers::new()),
-        workspace: std::sync::Arc::new(monocode_host::workspace_commands::Workspace::new(Vec::new())),
+        workspace: std::sync::Arc::new(monocode_host::workspace_commands::Workspace::new(
+            Vec::new(),
+        )),
         turns: Arc::new(mutex::Mutex::new(std::collections::HashMap::new())),
         shutdown: shutdown.clone(),
     });
@@ -285,8 +319,12 @@ async fn serve(store: HostStore, options: Options) -> Result<(), String> {
         .await;
 
     // Remove the state file and hand back the socket before exiting, so a
-    // restart on the same port does not race the old process.
-    let _ = std::fs::remove_file(&state_path);
+    // restart on the same port does not race the old process. Only our own
+    // file is removed: if it now names another process, deleting it would make
+    // that host unreachable.
+    if running_owner(&options.directory) == Some(std::process::id()) {
+        let _ = std::fs::remove_file(&state_path);
+    }
     if result.is_err() {
         let _ = stop.send(()).await;
     }

@@ -45,7 +45,9 @@ fn git_with_input(cwd: &Path, args: &[&str], input: Option<&str>) -> Result<Stri
         } else {
             Stdio::null()
         });
-    let mut child = command.spawn().map_err(|e| format!("Could not run Git: {e}"))?;
+    let mut child = command
+        .spawn()
+        .map_err(|e| format!("Could not run Git: {e}"))?;
     if let Some(input) = input {
         use std::io::Write as _;
         if let Some(mut stdin) = child.stdin.take() {
@@ -107,11 +109,14 @@ impl Branches {
 }
 
 pub fn branches(cwd: &Path) -> Result<Branches, String> {
-    let local: Vec<String> = git(cwd, &["for-each-ref", "--format=%(refname:short)", "refs/heads"])?
-        .lines()
-        .filter(|line| !line.is_empty())
-        .map(str::to_string)
-        .collect();
+    let local: Vec<String> = git(
+        cwd,
+        &["for-each-ref", "--format=%(refname:short)", "refs/heads"],
+    )?
+    .lines()
+    .filter(|line| !line.is_empty())
+    .map(str::to_string)
+    .collect();
     // Symbolic refs like `origin/HEAD` are aliases, not branches a user picks.
     let remotes = git(
         cwd,
@@ -145,9 +150,11 @@ pub fn branches(cwd: &Path) -> Result<Branches, String> {
 
 /// True when the working copy has anything uncommitted, including untracked.
 pub fn dirty(cwd: &Path) -> Result<bool, String> {
-    Ok(!git(cwd, &["status", "--porcelain", "--untracked-files=all"])?
-        .trim()
-        .is_empty())
+    Ok(
+        !git(cwd, &["status", "--porcelain", "--untracked-files=all"])?
+            .trim()
+            .is_empty(),
+    )
 }
 
 /// Rejects a branch name Git could not accept, or one that looks like a flag.
@@ -344,7 +351,12 @@ pub fn index(cwd: &Path) -> Result<Index, String> {
         .filter(|t| !t.is_empty());
     let upstream = git(
         cwd,
-        &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
+        &[
+            "rev-parse",
+            "--abbrev-ref",
+            "--symbolic-full-name",
+            "@{upstream}",
+        ],
     )
     .ok()
     .map(|t| t.trim().to_string())
@@ -356,8 +368,10 @@ pub fn index(cwd: &Path) -> Result<Index, String> {
         .map(|_| "origin".to_string());
     let (mut ahead, mut behind) = (0, 0);
     if upstream.is_some() {
-        if let Ok(counts) = git(cwd, &["rev-list", "--left-right", "--count", "@{upstream}...HEAD"])
-        {
+        if let Ok(counts) = git(
+            cwd,
+            &["rev-list", "--left-right", "--count", "@{upstream}...HEAD"],
+        ) {
             let mut fields = counts.split_whitespace();
             behind = fields.next().and_then(|v| v.parse().ok()).unwrap_or(0);
             ahead = fields.next().and_then(|v| v.parse().ok()).unwrap_or(0);
@@ -365,7 +379,12 @@ pub fn index(cwd: &Path) -> Result<Index, String> {
     }
     let default_branch = git(
         cwd,
-        &["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"],
+        &[
+            "symbolic-ref",
+            "--quiet",
+            "--short",
+            "refs/remotes/origin/HEAD",
+        ],
     )
     .ok()
     .map(|t| t.trim().to_string())
@@ -382,7 +401,14 @@ pub fn index(cwd: &Path) -> Result<Index, String> {
     // `--numstat` gives per-file line counts in one call.
     let numstat = git(
         cwd,
-        &["diff", "--no-ext-diff", "--no-textconv", "--numstat", "HEAD", "--"],
+        &[
+            "diff",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--numstat",
+            "HEAD",
+            "--",
+        ],
     )
     .unwrap_or_default();
     let mut counts: std::collections::HashMap<&str, (u64, u64)> = std::collections::HashMap::new();
@@ -394,7 +420,10 @@ pub fn index(cwd: &Path) -> Result<Index, String> {
         };
         counts.insert(path, (add.parse().unwrap_or(0), del.parse().unwrap_or(0)));
     }
-    let status_text = git(cwd, &["status", "--porcelain=v1", "-z", "--untracked-files=all"])?;
+    let status_text = git(
+        cwd,
+        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    )?;
     let mut files = Vec::new();
     let mut parts = status_text.split('\0').peekable();
     while let Some(item) = parts.next() {
@@ -411,7 +440,9 @@ pub fn index(cwd: &Path) -> Result<Index, String> {
         // Untracked files have no diff, so count their lines directly.
         if code == "??" {
             if let Ok(meta) = std::fs::symlink_metadata(cwd.join(path)) {
-                if meta.is_file() && meta.len() <= monocode_core::files::document::MAX_TEXT_BYTES as u64 {
+                if meta.is_file()
+                    && meta.len() <= monocode_core::files::document::MAX_TEXT_BYTES as u64
+                {
                     if let Ok(content) = std::fs::read_to_string(cwd.join(path)) {
                         additions = content.lines().count() as u64;
                     }
@@ -496,7 +527,10 @@ pub fn action(
             } else if action == "stage" {
                 git(cwd, &["--literal-pathspecs", "add", "--", &file])?;
             } else {
-                git(cwd, &["--literal-pathspecs", "restore", "--staged", "--", &file])?;
+                git(
+                    cwd,
+                    &["--literal-pathspecs", "restore", "--staged", "--", &file],
+                )?;
             }
             Ok(Value::Null)
         }
@@ -789,7 +823,11 @@ mod tests {
         let (_dir, path) = repo();
         let created = create_worktree(&path, "wt-branch", Some("main"), false).unwrap();
         assert!(created.is_dir(), "worktree was not created");
-        assert!(created.file_name().unwrap().to_string_lossy().contains("wt-branch"));
+        assert!(created
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .contains("wt-branch"));
     }
 
     #[test]

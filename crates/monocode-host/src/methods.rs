@@ -53,8 +53,7 @@ pub const METHODS: [&str; 33] = [
 
 /// Methods the desktop may call that this build does not serve yet. Reported
 /// explicitly rather than treated as unknown.
-const UNIMPLEMENTED: [&str; 0] = [
-];
+const UNIMPLEMENTED: [&str; 0] = [];
 
 /// A required string parameter, reported by name when it is missing.
 fn string_param(params: &serde_json::Map<String, Value>, key: &str) -> Result<String, RpcFailure> {
@@ -258,7 +257,10 @@ impl Dispatch {
                 let project = self.project_of(&params).await?;
                 let cwd = self.worktree_cwd(&project, &params).await?;
                 let branch = string_param(&params, "branch")?;
-                let remote = params.get("remote").and_then(Value::as_str).map(str::to_string);
+                let remote = params
+                    .get("remote")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
                 blocking(move || {
                     crate::git::switch(&cwd, &branch, remote.as_deref()).map(|b| b.to_json())
                 })
@@ -283,8 +285,14 @@ impl Dispatch {
                 // worktree is created beside the project root.
                 self.worktree_cwd(&project, &params).await?;
                 let branch = string_param(&params, "branch")?;
-                let base = params.get("base").and_then(Value::as_str).map(str::to_string);
-                let existing = params.get("existing").and_then(Value::as_bool).unwrap_or(false);
+                let base = params
+                    .get("base")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                let existing = params
+                    .get("existing")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
                 let root = PathBuf::from(&project.cwd);
                 blocking(move || {
                     crate::git::create_worktree(&root, &branch, base.as_deref(), existing)
@@ -301,11 +309,26 @@ impl Dispatch {
                 let project = self.project_of(&params).await?;
                 let cwd = self.worktree_cwd(&project, &params).await?;
                 let action = string_param(&params, "action")?;
-                let path = params.get("path").and_then(Value::as_str).map(str::to_string);
-                let message = params.get("message").and_then(Value::as_str).map(str::to_string);
-                let content = params.get("content").and_then(Value::as_str).map(str::to_string);
+                let path = params
+                    .get("path")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                let message = params
+                    .get("message")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                let content = params
+                    .get("content")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
                 blocking(move || {
-                    crate::git::action(&cwd, &action, path.as_deref(), message.as_deref(), content.as_deref())
+                    crate::git::action(
+                        &cwd,
+                        &action,
+                        path.as_deref(),
+                        message.as_deref(),
+                        content.as_deref(),
+                    )
                 })
                 .await
             }
@@ -338,7 +361,10 @@ impl Dispatch {
                 let project = self.project_of(&params).await?;
                 let cwd = self.worktree_cwd(&project, &params).await?;
                 let mut options = params.clone();
-                options.insert("cwd".into(), Value::String(cwd.to_string_lossy().into_owned()));
+                options.insert(
+                    "cwd".into(),
+                    Value::String(cwd.to_string_lossy().into_owned()),
+                );
                 let options: monocode_core::search::project::SearchOptions =
                     serde_json::from_value(Value::Object(options))
                         .map_err(|e| RpcFailure::BadRequest(e.to_string()))?;
@@ -346,9 +372,7 @@ impl Dispatch {
                     let cancel = std::sync::atomic::AtomicBool::new(false);
                     let root = std::path::PathBuf::from(&options.cwd);
                     monocode_core::search::project::search_project(&root, &options, &cancel)
-                        .and_then(|result| {
-                            serde_json::to_value(result).map_err(|e| e.to_string())
-                        })
+                        .and_then(|result| serde_json::to_value(result).map_err(|e| e.to_string()))
                 })
                 .await
             }
@@ -397,11 +421,9 @@ impl Dispatch {
                         // A session belongs to one project, and this request
                         // names both, so they must agree.
                         .filter(|session| session.project_id == project.id)
-                        .ok_or_else(|| {
-                            RpcFailure::BadRequest("Session not found".to_string())
-                        })?;
-                    let size = crate::attachments::image_in_session(&session, &id)
-                        .ok_or_else(|| {
+                        .ok_or_else(|| RpcFailure::BadRequest("Session not found".to_string()))?;
+                    let size =
+                        crate::attachments::image_in_session(&session, &id).ok_or_else(|| {
                             RpcFailure::BadRequest(
                                 crate::attachments::AttachmentError::NotFound.to_string(),
                             )
@@ -416,7 +438,10 @@ impl Dispatch {
             }
             "workspace.run" => {
                 let command = string_param(&params, "command")?;
-                let args = params.get("args").cloned().unwrap_or(Value::Object(Default::default()));
+                let args = params
+                    .get("args")
+                    .cloned()
+                    .unwrap_or(Value::Object(Default::default()));
                 let workspace = std::sync::Arc::clone(&self.state.workspace);
                 blocking(move || workspace.run(&command, &args)).await
             }
@@ -441,7 +466,10 @@ impl Dispatch {
                 let project = self.project_of(&params).await?;
                 let cwd = self.worktree_cwd(&project, &params).await?;
                 let path = string_param(&params, "path")?;
-                let staged = params.get("staged").and_then(Value::as_bool).unwrap_or(false);
+                let staged = params
+                    .get("staged")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
                 blocking(move || crate::git::file_diff(&cwd, &path, staged)).await
             }
             "sessions.list" => {
@@ -524,7 +552,9 @@ impl Dispatch {
                 let offset = params
                     .get("offset")
                     .and_then(Value::as_u64)
-                    .ok_or_else(|| RpcFailure::BadRequest("Invalid session transfer offset".into()))?;
+                    .ok_or_else(|| {
+                        RpcFailure::BadRequest("Invalid session transfer offset".into())
+                    })?;
                 // The transfer was created for one session of one project, so
                 // naming a different session must not reach it.
                 {
@@ -727,9 +757,8 @@ impl Dispatch {
         } else {
             Path::new(&project.cwd).join(cwd)
         };
-        let canonical = |path: &Path| {
-            std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
-        };
+        let canonical =
+            |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
         let wanted = canonical(&requested);
         let root = canonical(Path::new(&project.cwd));
         if wanted == root {
@@ -1146,7 +1175,10 @@ mod tests {
         let handled = source
             .lines()
             .filter_map(|line| line.trim().strip_suffix(" => {"))
-            .filter_map(|line| line.strip_prefix('"').and_then(|line| line.strip_suffix('"')))
+            .filter_map(|line| {
+                line.strip_prefix('"')
+                    .and_then(|line| line.strip_suffix('"'))
+            })
             .filter(|name| name.contains('.'))
             .collect::<Vec<_>>();
         assert!(!handled.is_empty(), "no dispatcher arms were found");

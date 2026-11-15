@@ -209,7 +209,12 @@ pub fn connection_info(directory: &Path) -> Result<Connection, String> {
     let secret = state
         .get("secret")
         .and_then(serde_json::Value::as_str)
-        .filter(|secret| secret.len() == 43 && secret.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+        .filter(|secret| {
+            secret.len() == 43
+                && secret
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        })
         .ok_or_else(|| "Invalid host state".to_string())?;
     let pid = state
         .get("pid")
@@ -358,11 +363,13 @@ fn install_systemd(options: &ServiceOptions, path: &str) -> Result<(), String> {
         &["enable-linger", &username, "--no-ask-password"],
         &env,
     )
-    .and_then(|_| run(
-        "loginctl",
-        &["show-user", &username, "--property=Linger", "--value"],
-        &env,
-    ));
+    .and_then(|_| {
+        run(
+            "loginctl",
+            &["show-user", &username, "--property=Linger", "--value"],
+            &env,
+        )
+    });
     match linger {
         Ok(value) if value.trim() == "yes" => {}
         _ => {
@@ -380,10 +387,11 @@ fn install_systemd(options: &ServiceOptions, path: &str) -> Result<(), String> {
     // matching what was just asked for; a user who edits the unit is expected
     // to stop editing it and pass the flags instead.
     let unit = systemd_unit(options, path);
-    let unchanged = std::fs::read_to_string(&file).map(|old| old == unit).unwrap_or(false);
+    let unchanged = std::fs::read_to_string(&file)
+        .map(|old| old == unit)
+        .unwrap_or(false);
     if !unchanged {
-        std::fs::write(&file, &unit)
-            .map_err(|e| format!("write {}: {e}", file.display()))?;
+        std::fs::write(&file, &unit).map_err(|e| format!("write {}: {e}", file.display()))?;
         // The unit may name a credential path, so keep it private.
         use std::os::unix::fs::PermissionsExt as _;
         let _ = std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600));
@@ -413,11 +421,7 @@ pub fn uninstall_service() -> Result<Vec<String>, String> {
     let (username, uid) = current_user()?;
     let env = user_environment(uid);
     // Both may fail when nothing was ever installed; that is not an error.
-    let _ = run(
-        "systemctl",
-        &["--user", "disable", "--now", UNIT],
-        &env,
-    );
+    let _ = run("systemctl", &["--user", "disable", "--now", UNIT], &env);
     if let Ok(file) = unit_path() {
         let _ = std::fs::remove_file(file);
     }
@@ -537,4 +541,3 @@ mod tests {
         assert!(error.contains("not ready"), "got: {error}");
     }
 }
-

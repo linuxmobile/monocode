@@ -147,7 +147,9 @@ fn encoded_len(units: &[u16]) -> usize {
     // Quotes and an escape per character is the worst case, which is what must
     // fit under the cap.
     let text = String::from_utf16_lossy(units);
-    serde_json::to_string(&text).map(|s| s.len()).unwrap_or(usize::MAX)
+    serde_json::to_string(&text)
+        .map(|s| s.len())
+        .unwrap_or(usize::MAX)
 }
 
 #[cfg(test)]

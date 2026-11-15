@@ -176,9 +176,7 @@ impl Workspace {
                 let max = args.get("maxLines").and_then(Value::as_u64).unwrap_or(400);
                 self.preview(required("path")?, max, start)
             }
-            "write_text_file" => {
-                self.write_text(required("path")?, required("content")?)
-            }
+            "write_text_file" => self.write_text(required("path")?, required("content")?),
             "stat_files" => match args.get("paths").and_then(Value::as_array) {
                 Some(paths) => {
                     let paths: Vec<String> = paths
@@ -295,11 +293,13 @@ impl Workspace {
                     Value::Array(
                         files
                             .into_iter()
-                            .map(|file| json!({
-                                "path": file.path,
-                                "additions": file.additions,
-                                "deletions": file.deletions,
-                            }))
+                            .map(|file| {
+                                json!({
+                                    "path": file.path,
+                                    "additions": file.additions,
+                                    "deletions": file.deletions,
+                                })
+                            })
                             .collect(),
                     )
                 })
@@ -310,7 +310,12 @@ impl Workspace {
                 let relative = required("relative")?;
                 git::git(
                     &cwd,
-                    &["show", "--no-ext-diff", "--no-textconv", &format!("{sha}:{relative}")],
+                    &[
+                        "show",
+                        "--no-ext-diff",
+                        "--no-textconv",
+                        &format!("{sha}:{relative}"),
+                    ],
                 )
                 .map(Value::String)
             }
@@ -354,9 +359,9 @@ impl Workspace {
                 .map(|_| Value::Null)
             }
             "git_pr_status" | "git_pr_create" => self.git_pr(command, args),
-            "git_locate_files" | "git_staged_context" | "git_range_context" => {
-                Err(format!("`{command}` is not available from a remote host yet"))
-            }
+            "git_locate_files" | "git_staged_context" | "git_range_context" => Err(format!(
+                "`{command}` is not available from a remote host yet"
+            )),
             "search_project" => self.search_project(args),
             other => Err(format!("Unsupported workspace command: {other}")),
         }
@@ -578,12 +583,7 @@ impl Workspace {
         // containing newlines does not break parsing.
         let text = git::git(
             cwd,
-            &[
-                "log",
-                "-n",
-                &limit,
-                "--format=%H%x00%an%x00%at%x00%s%x1e",
-            ],
+            &["log", "-n", &limit, "--format=%H%x00%an%x00%at%x00%s%x1e"],
         )?;
         let mut out = Vec::new();
         for record in text.split('\u{1e}') {

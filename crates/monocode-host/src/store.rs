@@ -52,10 +52,7 @@ impl HostStore {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, String> {
         let path = path.as_ref();
         let conn = Connection::open(path).map_err(|e| format!("open {path:?}: {e}"))?;
-        let attachment_dir = path
-            .parent()
-            .unwrap_or(Path::new("."))
-            .join("attachments");
+        let attachment_dir = path.parent().unwrap_or(Path::new(".")).join("attachments");
         conn.execute_batch(
             "PRAGMA busy_timeout=5000;
              PRAGMA journal_mode=WAL;

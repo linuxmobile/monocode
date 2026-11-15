@@ -276,7 +276,10 @@ fn discarding_restores_tracked_files_and_removes_untracked_ones() {
         "git.action",
         serde_json::json!({ "projectId": project, "action": "discardAll" }),
     );
-    assert_eq!(std::fs::read_to_string(fixture.repo.join("a.txt")).unwrap(), "one\n");
+    assert_eq!(
+        std::fs::read_to_string(fixture.repo.join("a.txt")).unwrap(),
+        "one\n"
+    );
     assert!(!fixture.repo.join("loose.txt").exists());
 }
 
@@ -288,7 +291,10 @@ fn switching_branches_is_refused_while_the_tree_is_dirty() {
         "git.createBranch",
         serde_json::json!({ "projectId": project, "branch": "other" }),
     );
-    fixture.call("git.switch", serde_json::json!({ "projectId": project, "branch": "main" }));
+    fixture.call(
+        "git.switch",
+        serde_json::json!({ "projectId": project, "branch": "main" }),
+    );
     std::fs::write(fixture.repo.join("a.txt"), "changed\n").unwrap();
 
     let error = fixture
@@ -310,7 +316,12 @@ fn paths_outside_the_project_are_refused() {
     let fixture = Fixture::start();
     let project = fixture.project();
 
-    for path in ["../../etc/passwd", "/etc/passwd", ".git/config", "src/../../escape"] {
+    for path in [
+        "../../etc/passwd",
+        "/etc/passwd",
+        ".git/config",
+        "src/../../escape",
+    ] {
         let error = fixture
             .attempt(
                 "git.action",
@@ -348,7 +359,10 @@ fn an_unknown_action_is_refused_by_name() {
             serde_json::json!({ "projectId": project, "action": "teleport" }),
         )
         .unwrap_err();
-    assert!(error.contains("Unsupported Git action: teleport"), "got: {error}");
+    assert!(
+        error.contains("Unsupported Git action: teleport"),
+        "got: {error}"
+    );
 }
 
 #[test]
@@ -390,7 +404,10 @@ fn a_file_is_read_and_written_through_the_workspace_guard() {
             "content": "two\n",
         }),
     );
-    assert_eq!(std::fs::read_to_string(fixture.repo.join("a.txt")).unwrap(), "two\n");
+    assert_eq!(
+        std::fs::read_to_string(fixture.repo.join("a.txt")).unwrap(),
+        "two\n"
+    );
 }
 
 #[test]
@@ -414,7 +431,10 @@ fn a_write_based_on_a_stale_read_is_refused_and_leaves_the_file_alone() {
         )
         .unwrap_err();
     assert!(error.contains("changed on the host"), "got: {error}");
-    assert_eq!(std::fs::read_to_string(fixture.repo.join("a.txt")).unwrap(), "two\n");
+    assert_eq!(
+        std::fs::read_to_string(fixture.repo.join("a.txt")).unwrap(),
+        "two\n"
+    );
 }
 
 #[test]
@@ -463,10 +483,17 @@ fn the_workspace_dispatcher_serves_files_by_absolute_path() {
     };
 
     let listed = run("list_dir", serde_json::json!({ "path": repo }));
-    assert!(listed.as_array().unwrap().iter().any(|e| e["name"] == "a.txt"));
+    assert!(listed
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["name"] == "a.txt"));
 
     assert_eq!(
-        run("read_text_file", serde_json::json!({ "path": format!("{repo}/a.txt") })),
+        run(
+            "read_text_file",
+            serde_json::json!({ "path": format!("{repo}/a.txt") })
+        ),
         "one\n"
     );
     assert_eq!(
@@ -478,7 +505,10 @@ fn the_workspace_dispatcher_serves_files_by_absolute_path() {
         "write_text_file",
         serde_json::json!({ "path": format!("{repo}/a.txt"), "content": "written\n" }),
     );
-    assert_eq!(std::fs::read_to_string(fixture.repo.join("a.txt")).unwrap(), "written\n");
+    assert_eq!(
+        std::fs::read_to_string(fixture.repo.join("a.txt")).unwrap(),
+        "written\n"
+    );
 }
 
 #[test]
@@ -496,7 +526,10 @@ fn the_workspace_dispatcher_runs_git_commands() {
     let branches = run("git_branches", serde_json::json!({ "cwd": repo }));
     assert_eq!(branches["current"], "main");
 
-    let history = run("git_history", serde_json::json!({ "cwd": repo, "limit": 5 }));
+    let history = run(
+        "git_history",
+        serde_json::json!({ "cwd": repo, "limit": 5 }),
+    );
     assert_eq!(history[0]["subject"], "first");
 
     std::fs::write(fixture.repo.join("a.txt"), "changed\n").unwrap();
@@ -504,8 +537,14 @@ fn the_workspace_dispatcher_runs_git_commands() {
     assert_eq!(stats["files"], 1);
 
     run("git_stage_all", serde_json::json!({ "cwd": repo }));
-    run("git_commit", serde_json::json!({ "cwd": repo, "message": "second" }));
-    let history = run("git_history", serde_json::json!({ "cwd": repo, "limit": 1 }));
+    run(
+        "git_commit",
+        serde_json::json!({ "cwd": repo, "message": "second" }),
+    );
+    let history = run(
+        "git_history",
+        serde_json::json!({ "cwd": repo, "limit": 1 }),
+    );
     assert_eq!(history[0]["subject"], "second");
 }
 
@@ -539,12 +578,18 @@ fn every_workspace_path_is_confined_to_the_project() {
         ("read_text_file", serde_json::json!({ "path": outside })),
         ("read_binary_file", serde_json::json!({ "path": outside })),
         ("read_file_preview", serde_json::json!({ "path": outside })),
-        ("write_text_file", serde_json::json!({ "path": outside, "content": "x" })),
+        (
+            "write_text_file",
+            serde_json::json!({ "path": outside, "content": "x" }),
+        ),
         ("delete_path", serde_json::json!({ "path": outside })),
         ("git_branches", serde_json::json!({ "cwd": "/etc" })),
         ("git_diff_index", serde_json::json!({ "cwd": "/etc" })),
         ("list_project_files", serde_json::json!({ "cwd": "/etc" })),
-        ("search_project", serde_json::json!({ "options": { "cwd": "/etc", "query": "x" } })),
+        (
+            "search_project",
+            serde_json::json!({ "options": { "cwd": "/etc", "query": "x" } }),
+        ),
     ];
     for (command, args) in attempts {
         let error = fixture
@@ -581,7 +626,10 @@ fn a_named_workspace_command_that_is_unknown_is_refused() {
             serde_json::json!({ "command": "delete_everything", "args": {} }),
         )
         .unwrap_err();
-    assert!(error.contains("Unsupported workspace command"), "got: {error}");
+    assert!(
+        error.contains("Unsupported workspace command"),
+        "got: {error}"
+    );
 }
 
 /// Attachment bytes must survive the chunked round trip exactly, since a
@@ -712,12 +760,24 @@ fn base64(bytes: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::new();
     for chunk in bytes.chunks(3) {
-        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
         let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
         out.push(TABLE[(n >> 18) as usize & 63] as char);
         out.push(TABLE[(n >> 12) as usize & 63] as char);
-        out.push(if chunk.len() > 1 { TABLE[(n >> 6) as usize & 63] as char } else { '=' });
-        out.push(if chunk.len() > 2 { TABLE[n as usize & 63] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            TABLE[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            TABLE[n as usize & 63] as char
+        } else {
+            '='
+        });
     }
     out
 }

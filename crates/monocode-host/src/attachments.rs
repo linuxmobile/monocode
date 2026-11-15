@@ -290,7 +290,12 @@ mod tests {
     #[test]
     fn an_id_must_look_like_a_uuid() {
         assert!(valid_id(ID));
-        for bad in ["", "../escape", "not-a-uuid", "123e4567e89b42d3a456426614174000"] {
+        for bad in [
+            "",
+            "../escape",
+            "not-a-uuid",
+            "123e4567e89b42d3a456426614174000",
+        ] {
             assert!(!valid_id(bad), "{bad} should be refused");
         }
     }
@@ -303,10 +308,7 @@ mod tests {
         let size = 11;
         assert_eq!(write_chunk(dir.path(), ID, 0, size, &first).unwrap(), 6);
         assert_eq!(write_chunk(dir.path(), ID, 6, size, &second).unwrap(), 11);
-        assert_eq!(
-            std::fs::read(dir.path().join(ID)).unwrap(),
-            b"hello world"
-        );
+        assert_eq!(std::fs::read(dir.path().join(ID)).unwrap(), b"hello world");
     }
 
     #[test]
@@ -355,7 +357,10 @@ mod tests {
         let first = read_chunk(dir.path(), ID, 11, 0).unwrap();
         assert_eq!(first["offset"], 11);
         assert_eq!(first["size"], 11);
-        assert_eq!(base64_decode(first["data"].as_str().unwrap()).unwrap(), b"hello world");
+        assert_eq!(
+            base64_decode(first["data"].as_str().unwrap()).unwrap(),
+            b"hello world"
+        );
     }
 
     #[test]
@@ -411,8 +416,14 @@ mod tests {
             .build();
         assert_eq!(image_in_session(&session, ID), Some(42));
         // Not an image.
-        assert_eq!(image_in_session(&session, "123e4567-e89b-42d3-a456-426614174001"), None);
+        assert_eq!(
+            image_in_session(&session, "123e4567-e89b-42d3-a456-426614174001"),
+            None
+        );
         // Not in this session.
-        assert_eq!(image_in_session(&session, "123e4567-e89b-42d3-a456-426614174002"), None);
+        assert_eq!(
+            image_in_session(&session, "123e4567-e89b-42d3-a456-426614174002"),
+            None
+        );
     }
 }
