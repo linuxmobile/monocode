@@ -10,7 +10,7 @@ DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 PREFIX="$DATA_DIR/monocode-native"
 APPLICATIONS="$DATA_DIR/applications"
-ICONS="$DATA_DIR/icons/hicolor/256x256/apps"
+ICONS="$DATA_DIR/icons/hicolor"
 
 usage() {
     cat <<'EOF'
@@ -46,7 +46,17 @@ remove() {
 remove "$PREFIX"
 remove "$BIN_DIR/monocode-native"
 remove "$APPLICATIONS/monocode-native.desktop"
-remove "$ICONS/monocode-native.png"
+# Remove the icon at every size it was installed at, then drop the empty
+# per-size directories (apps/ and the size itself) so no stray skeleton is
+# left in the theme.
+for icon in "$ICONS"/*/apps/monocode-native.png; do
+    [ -e "$icon" ] || continue
+    remove "$icon"
+    rmdir "$(dirname "$icon")" 2>/dev/null || true
+    rmdir "$(dirname "$(dirname "$icon")")" 2>/dev/null || true
+done
+# The theme directory itself only exists while this app's icons do.
+rmdir "$ICONS" 2>/dev/null || true
 
 command -v update-desktop-database >/dev/null 2>&1 &&
     update-desktop-database "$APPLICATIONS" 2>/dev/null || true

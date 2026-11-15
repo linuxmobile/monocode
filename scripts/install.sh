@@ -15,7 +15,7 @@ BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 PREFIX="$DATA_DIR/monocode-native"
 APPLICATIONS="$DATA_DIR/applications"
-ICONS="$DATA_DIR/icons/hicolor/256x256/apps"
+ICONS="$DATA_DIR/icons/hicolor"
 
 usage() {
     cat <<'EOF'
@@ -87,7 +87,14 @@ done
 # build directory, which changes where it stores its data.
 printf '{"app_id":"%s","kind":"install"}\n' "$APP_ID" > "$PREFIX/native-install.json"
 
-install -m 0755 "$root/assets/icons/monocode.png" "$ICONS/monocode-native.png"
+# Every size the source tree ships, so the launcher, taskbar and Alt-Tab each
+# pick a pixel-exact icon instead of scaling the largest one down.
+for icon in "$root"/assets/icons/hicolor/*/apps/monocode-native.png; do
+    [ -f "$icon" ] || continue
+    size="$(basename "$(dirname "$(dirname "$icon")")")"
+    install -d -m 0755 "$ICONS/$size/apps"
+    install -m 0644 "$icon" "$ICONS/$size/apps/monocode-native.png"
+done
 
 # A wrapper rather than a symlink: it keeps the real path stable when a new
 # version replaces the binary, and gives one place to set the working directory.

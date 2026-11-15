@@ -106,6 +106,33 @@ fn notices(root: &Path, directory: &Path) -> Result<(), String> {
     )
 }
 
+/// Copies every icon size the source tree ships into a hicolor theme root.
+///
+/// Each size is installed separately so the launcher and the taskbar pick a
+/// pixel-exact image instead of downscaling the largest one.
+fn hicolor_icons(root: &Path, hicolor: &Path) -> Result<Vec<String>, String> {
+    let source = root.join("assets/icons/hicolor");
+    let entries =
+        std::fs::read_dir(&source).map_err(|e| format!("read {}: {e}", source.display()))?;
+    let mut sizes = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("read {}: {e}", source.display()))?;
+        let icon = entry.path().join("apps/monocode-native.png");
+        if !entry.path().is_dir() || !icon.is_file() {
+            continue;
+        }
+        let size = entry.file_name().to_string_lossy().into_owned();
+        copy(&icon, &hicolor.join(&size).join("apps/monocode-native.png"))?;
+        sizes.push(size);
+    }
+    if sizes.is_empty() {
+        return Err(format!("no icon sizes found under {}", source.display()));
+    }
+    // Directory order is arbitrary; sorting keeps the result reproducible.
+    sizes.sort();
+    Ok(sizes)
+}
+
 /// Lays out the files both the deb and the AppImage share.
 fn linux_tree(root: &Path, directory: &Path, binary: &Path, kind: &str) -> Result<String, String> {
     let app = directory.join("usr/lib/monocode-native");
@@ -136,10 +163,7 @@ fn linux_tree(root: &Path, directory: &Path, binary: &Path, kind: &str) -> Resul
         desktop,
         None,
     )?;
-    copy(
-        &root.join("assets/icons/monocode.png"),
-        &directory.join("usr/share/icons/hicolor/256x256/apps/monocode-native.png"),
-    )?;
+    hicolor_icons(root, &directory.join("usr/share/icons/hicolor"))?;
     Ok(desktop.to_string())
 }
 
@@ -260,12 +284,19 @@ pub fn package_native(
                 std::fs::create_dir_all(top.join(name))
                     .map_err(|e| format!("create {}: {e}", top.join(name).display()))?;
             }
-            linux_tree(root, &top.join("SOURCES/tree"), binary, "rpm")?;
+            let tree = top.join("SOURCES/tree");
+            linux_tree(root, &tree, binary, "rpm")?;
             let spec = top.join("SPECS/monocode-native.spec");
+            // RPM has no glob syntax for ownership, so every icon size is
+            // listed explicitly; hicolor_icons has already validated the set.
+            let icons = hicolor_icons(root, &tree.join("usr/share/icons/hicolor"))?
+                .into_iter()
+                .map(|size| format!("/usr/share/icons/hicolor/{size}/apps/monocode-native.png\n"))
+                .collect::<String>();
             write_file(
                 &spec,
                 &format!(
-                    "Name: monocode-native\nVersion: {}\nRelease: 0.preview.{}{{?dist}}\nSummary: Monocode Native experimental preview\nLicense: MIT AND Apache-2.0\nBuildArch: x86_64\nRequires: polkit\n%description\nMonocode Native experimental preview.\n%install\nmkdir -p %{{buildroot}}\ncp -a %{{_sourcedir}}/tree/. %{{buildroot}}/\n%files\n/usr/bin/monocode-native\n/usr/lib/monocode-native\n/usr/share/applications/monocode-native.desktop\n/usr/share/icons/hicolor/256x256/apps/monocode-native.png\n",
+                    "Name: monocode-native\nVersion: {}\nRelease: 0.preview.{}{{?dist}}\nSummary: Monocode Native experimental preview\nLicense: MIT AND Apache-2.0\nBuildArch: x86_64\nRequires: polkit\n%description\nMonocode Native experimental preview.\n%install\nmkdir -p %{{buildroot}}\ncp -a %{{_sourcedir}}/tree/. %{{buildroot}}/\n%files\n/usr/bin/monocode-native\n/usr/lib/monocode-native\n/usr/share/applications/monocode-native.desktop\n{icons}",
                     parsed.base, parsed.sequence
                 ),
                 None,
@@ -324,6 +355,27 @@ pub fn package_native(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_icon_size_is_copied_into_the_theme() {
+        // The launcher downscales when a size is missing, which looks blurry,
+        // so the packaged theme must carry the same sizes as the source tree.
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let theme = std::env::temp_dir().join(format!(
+            "monocode-icons-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = std::fs::remove_dir_all(&theme);
+        let sizes = hicolor_icons(&root, &theme).unwrap();
+        assert!(sizes.contains(&"16x16".to_string()));
+        assert!(sizes.contains(&"256x256".to_string()));
+        for size in &sizes {
+            let icon = theme.join(size).join("apps/monocode-native.png");
+            assert!(icon.is_file(), "missing {}", icon.display());
+        }
+        let _ = std::fs::remove_dir_all(&theme);
+    }
 
     #[test]
     fn a_preview_version_is_split_into_its_parts() {
