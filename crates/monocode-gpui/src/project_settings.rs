@@ -805,7 +805,20 @@ impl BackgroundDialog {
                             .flex()
                             .items_center()
                             .child(probe.probe())
-                            .child(div().w_full().h(px(4.)).rounded_full().bg(content(0.15)))
+                            .child(
+                                div()
+                                    .debug_selector(move || {
+                                        if empty {
+                                            "empty-background-track".into()
+                                        } else {
+                                            "session-background-track".into()
+                                        }
+                                    })
+                                    .w_full()
+                                    .h(px(4.))
+                                    .rounded_full()
+                                    .bg(content(0.15)),
+                            )
                             .child(
                                 div()
                                     .absolute()

@@ -10144,19 +10144,14 @@ mod tests {
             assert_eq!(after.top() - before.bottom(), px(20.));
         }
         assert_eq!(dialog.bottom() - remove.bottom(), px(16.));
-        window
-            .update(visual, |_, w, _| {
-                assert_eq!(
-                    w.painted_quads()
-                        .iter()
-                        .filter(|q| q.background == content(0.15).into()
-                            && q.bounds.size.width.0 == 172. * w.scale_factor()
-                            && q.bounds.size.height.0 == 4. * w.scale_factor())
-                        .count(),
-                    2
-                );
-            })
-            .unwrap();
+        // Both opacity sliders draw a 4px track across their 172px width. Read
+        // the tracks from the layout instead of the painted scene: the dialog
+        // is a deferred overlay, and Fast composites overlays into layer frames
+        // that `painted_quads` does not expose.
+        for selector in ["empty-background-track", "session-background-track"] {
+            let track = visual.debug_bounds(selector).unwrap();
+            assert_eq!(track.size, gpui_kit::size(px(172.), px(4.)), "{selector}");
+        }
         let effect_trigger = visual.debug_bounds("project-background-effect").unwrap();
         assert_eq!(effect_trigger.size, gpui_kit::size(px(144.), px(36.)));
         assert_eq!(effect_trigger.right(), preview.right());
