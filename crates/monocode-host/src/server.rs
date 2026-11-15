@@ -34,6 +34,9 @@ pub struct HostState {
     /// from any paired device token.
     pub admin_secret: String,
     pub providers: Vec<String>,
+    /// The `workspace.run` dispatcher, which confines every path it is given to
+    /// the projects this host serves.
+    pub workspace: std::sync::Arc<crate::workspace_commands::Workspace>,
     pub shutdown: broadcast::Sender<()>,
 }
 
@@ -224,6 +227,7 @@ mod tests {
             turns: Arc::new(Mutex::new(std::collections::HashMap::new())),
             admin_secret: "admin".into(),
             providers: vec![],
+            workspace: std::sync::Arc::new(crate::workspace_commands::Workspace::new(Vec::new())),
             shutdown,
         });
         (dir, state, device.token)

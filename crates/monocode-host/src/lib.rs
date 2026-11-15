@@ -13,6 +13,7 @@ pub mod session;
 pub mod store;
 pub mod turn;
 pub mod workspace;
+pub mod workspace_commands;
 
 use serde_json::json;
 

@@ -156,6 +156,7 @@ async fn serve(store: HostStore, options: Options) -> Result<(), String> {
         store: Arc::new(mutex::Mutex::new(store)),
         admin_secret: admin_secret.clone(),
         providers: providers.clone(),
+        workspace: std::sync::Arc::new(monocode_host::workspace_commands::Workspace::new(Vec::new())),
         turns: Arc::new(mutex::Mutex::new(std::collections::HashMap::new())),
         shutdown: shutdown.clone(),
     });

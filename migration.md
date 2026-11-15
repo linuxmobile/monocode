@@ -264,15 +264,21 @@ Do not introduce a different database unless there is a measurable architectural
 - [x] Replace `host/workspace.ts`.
       *Path resolution, reads, writes and diffs are in
       `crates/monocode-host/src/workspace.rs` and `git.rs`. Listing, creation,
-      rename and deletion reuse `monocode_core::files`.*
+      rename and deletion reuse `monocode_core::files`. The
+      `workspace-commands.ts` dispatcher — the Tauri-named commands a remote
+      desktop sends through `workspace.run` — is
+      `crates/monocode-host/src/workspace_commands.rs`, covering 42 of its 44
+      commands; `git_locate_files`, `git_staged_context` and `git_range_context`
+      still refuse by name.*
 - [x] Implement native filesystem operations.
       *`files.read` and `files.write`. A write carries the content the client
       last read and is refused if the file changed since, so a remote save
       cannot silently overwrite local edits. Writes go through a temporary file
       and a rename.*
 - [x] Implement file discovery and workspace management.
-      *`files.list` and `files.index` via `monocode_core::files::index`. File
-      search remains refused until its method is ported (see Phase 7).*
+      *`files.list`, `files.index`, `files.search` and `files.searchContent`,
+      via `monocode_core::files::list_project_files` and
+      `monocode_core::search::project::search_project`.*
 - [x] Preserve existing file attachment functionality.
       *`attachments.*` still refuse, and `host/` still serves them. Not deleted.*
 - [x] Replace Git-related TypeScript modules.

@@ -394,3 +394,140 @@ fn reading_outside_the_project_or_its_git_directory_is_refused() {
         assert!(error.contains("outside the workspace"), "{path}: {error}");
     }
 }
+
+/// `workspace.run` takes absolute paths, so it resolves which project contains
+/// them rather than being handed a project id. That makes its containment check
+/// the security boundary, and it is tested through the RPC surface.
+#[test]
+fn the_workspace_dispatcher_serves_files_by_absolute_path() {
+    let fixture = Fixture::start();
+    fixture.project();
+    let repo = fixture.repo.to_string_lossy().into_owned();
+    let run = |command: &str, args: serde_json::Value| {
+        fixture.call(
+            "workspace.run",
+            serde_json::json!({ "command": command, "args": args }),
+        )
+    };
+
+    let listed = run("list_dir", serde_json::json!({ "path": repo }));
+    assert!(listed.as_array().unwrap().iter().any(|e| e["name"] == "a.txt"));
+
+    assert_eq!(
+        run("read_text_file", serde_json::json!({ "path": format!("{repo}/a.txt") })),
+        "one\n"
+    );
+    assert_eq!(
+        run("list_project_files", serde_json::json!({ "cwd": repo }))[0]["relative"],
+        "a.txt"
+    );
+
+    run(
+        "write_text_file",
+        serde_json::json!({ "path": format!("{repo}/a.txt"), "content": "written\n" }),
+    );
+    assert_eq!(std::fs::read_to_string(fixture.repo.join("a.txt")).unwrap(), "written\n");
+}
+
+#[test]
+fn the_workspace_dispatcher_runs_git_commands() {
+    let fixture = Fixture::start();
+    fixture.project();
+    let repo = fixture.repo.to_string_lossy().into_owned();
+    let run = |command: &str, args: serde_json::Value| {
+        fixture.call(
+            "workspace.run",
+            serde_json::json!({ "command": command, "args": args }),
+        )
+    };
+
+    let branches = run("git_branches", serde_json::json!({ "cwd": repo }));
+    assert_eq!(branches["current"], "main");
+
+    let history = run("git_history", serde_json::json!({ "cwd": repo, "limit": 5 }));
+    assert_eq!(history[0]["subject"], "first");
+
+    std::fs::write(fixture.repo.join("a.txt"), "changed\n").unwrap();
+    let stats = run("git_diff_stats", serde_json::json!({ "cwd": repo }));
+    assert_eq!(stats["files"], 1);
+
+    run("git_stage_all", serde_json::json!({ "cwd": repo }));
+    run("git_commit", serde_json::json!({ "cwd": repo, "message": "second" }));
+    let history = run("git_history", serde_json::json!({ "cwd": repo, "limit": 1 }));
+    assert_eq!(history[0]["subject"], "second");
+}
+
+#[test]
+fn the_workspace_dispatcher_searches_the_project() {
+    let fixture = Fixture::start();
+    fixture.project();
+    let repo = fixture.repo.to_string_lossy().into_owned();
+    let found = fixture.call(
+        "workspace.run",
+        serde_json::json!({
+            "command": "search_project",
+            "args": { "options": { "cwd": repo, "query": "one" } },
+        }),
+    );
+    let matches = found["matches"].as_array().unwrap();
+    assert_eq!(matches.len(), 1, "expected one hit: {found}");
+    assert_eq!(matches[0]["relative"], "a.txt");
+}
+
+/// Every command that takes a path must refuse one outside the projects, not
+/// just the handful that happen to be checked by hand.
+#[test]
+fn every_workspace_path_is_confined_to_the_project() {
+    let fixture = Fixture::start();
+    fixture.project();
+    let outside = "/etc/passwd";
+
+    let attempts: &[(&str, serde_json::Value)] = &[
+        ("list_dir", serde_json::json!({ "path": outside })),
+        ("read_text_file", serde_json::json!({ "path": outside })),
+        ("read_binary_file", serde_json::json!({ "path": outside })),
+        ("read_file_preview", serde_json::json!({ "path": outside })),
+        ("write_text_file", serde_json::json!({ "path": outside, "content": "x" })),
+        ("delete_path", serde_json::json!({ "path": outside })),
+        ("git_branches", serde_json::json!({ "cwd": "/etc" })),
+        ("git_diff_index", serde_json::json!({ "cwd": "/etc" })),
+        ("list_project_files", serde_json::json!({ "cwd": "/etc" })),
+        ("search_project", serde_json::json!({ "options": { "cwd": "/etc", "query": "x" } })),
+    ];
+    for (command, args) in attempts {
+        let error = fixture
+            .attempt(
+                "workspace.run",
+                serde_json::json!({ "command": command, "args": args }),
+            )
+            .unwrap_err();
+        assert!(
+            error.contains("outside"),
+            "`{command}` was not confined: {error}"
+        );
+    }
+
+    // `.git` stays unreachable even though it is inside the project.
+    let error = fixture
+        .attempt(
+            "workspace.run",
+            serde_json::json!({
+                "command": "read_text_file",
+                "args": { "path": fixture.repo.join(".git/config").to_string_lossy() },
+            }),
+        )
+        .unwrap_err();
+    assert!(error.contains("outside the workspace"), "got: {error}");
+}
+
+#[test]
+fn a_named_workspace_command_that_is_unknown_is_refused() {
+    let fixture = Fixture::start();
+    let error = fixture
+        .attempt(
+            "workspace.run",
+            serde_json::json!({ "command": "delete_everything", "args": {} }),
+        )
+        .unwrap_err();
+    assert!(error.contains("Unsupported workspace command"), "got: {error}");
+}

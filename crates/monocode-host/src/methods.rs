@@ -15,10 +15,14 @@ use std::sync::Arc;
 /// The methods this host answers. Kept as one list so the descriptor and the
 /// dispatcher cannot disagree: every entry has an arm below, and every arm is
 /// listed here.
-pub const METHODS: [&str; 25] = [
+pub const METHODS: [&str; 29] = [
     "environment.describe",
     "projects.list",
     "projects.open",
+    "files.searchContent",
+    "files.search",
+    "files.index",
+    "workspace.run",
     "git.fileDiff",
     "files.write",
     "files.read",
@@ -45,14 +49,10 @@ pub const METHODS: [&str; 25] = [
 
 /// Methods the desktop may call that this build does not serve yet. Reported
 /// explicitly rather than treated as unknown.
-const UNIMPLEMENTED: [&str; 7] = [
+const UNIMPLEMENTED: [&str; 3] = [
     "attachments.read",
     "attachments.upload",
-    "files.index",
-    "files.search",
-    "files.searchContent",
     "sessions.syncChunk",
-    "workspace.run",
 ];
 
 /// A required string parameter, reported by name when it is missing.
@@ -139,6 +139,17 @@ impl Dispatch {
                 let project = store
                     .open_project(&cwd, &name)
                     .map_err(RpcFailure::BadRequest)?;
+                // `workspace.run` may only touch files inside a project this
+                // host serves, so the set is refreshed whenever one is opened.
+                if let Ok(projects) = store.projects() {
+                    self.state.workspace.set_roots(
+                        projects
+                            .iter()
+                            .map(|project| PathBuf::from(&project.cwd))
+                            .collect(),
+                    );
+                }
+                drop(store);
                 serde_json::to_value(project).map_err(|e| RpcFailure::BadRequest(e.to_string()))
             }
             "projects.browse" => {
@@ -296,6 +307,55 @@ impl Dispatch {
                     crate::git::action(&cwd, &action, path.as_deref(), message.as_deref(), content.as_deref())
                 })
                 .await
+            }
+            "files.index" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                blocking(move || {
+                    let root = cwd.to_string_lossy().into_owned();
+                    monocode_core::files::list_project_files(&root)
+                        .map(|files| serde_json::to_value(files).unwrap_or(Value::Null))
+                })
+                .await
+            }
+            "files.search" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                let query = string_param(&params, "query")?.to_lowercase();
+                blocking(move || {
+                    let root = cwd.to_string_lossy().into_owned();
+                    let mut files = monocode_core::files::list_project_files(&root)?;
+                    if !query.trim().is_empty() {
+                        files.retain(|file| file.relative.to_lowercase().contains(&query));
+                    }
+                    files.truncate(200);
+                    Ok(serde_json::to_value(files).unwrap_or(Value::Null))
+                })
+                .await
+            }
+            "files.searchContent" => {
+                let project = self.project_of(&params).await?;
+                let cwd = self.worktree_cwd(&project, &params).await?;
+                let mut options = params.clone();
+                options.insert("cwd".into(), Value::String(cwd.to_string_lossy().into_owned()));
+                let options: monocode_core::search::project::SearchOptions =
+                    serde_json::from_value(Value::Object(options))
+                        .map_err(|e| RpcFailure::BadRequest(e.to_string()))?;
+                blocking(move || {
+                    let cancel = std::sync::atomic::AtomicBool::new(false);
+                    let root = std::path::PathBuf::from(&options.cwd);
+                    monocode_core::search::project::search_project(&root, &options, &cancel)
+                        .and_then(|result| {
+                            serde_json::to_value(result).map_err(|e| e.to_string())
+                        })
+                })
+                .await
+            }
+            "workspace.run" => {
+                let command = string_param(&params, "command")?;
+                let args = params.get("args").cloned().unwrap_or(Value::Object(Default::default()));
+                let workspace = std::sync::Arc::clone(&self.state.workspace);
+                blocking(move || workspace.run(&command, &args)).await
             }
             "files.read" => {
                 let project = self.project_of(&params).await?;
@@ -997,6 +1057,7 @@ mod tests {
             store: Arc::new(crate::mutex::Mutex::new(store)),
             admin_secret: "admin".into(),
             providers: vec![],
+            workspace: std::sync::Arc::new(crate::workspace_commands::Workspace::new(Vec::new())),
             turns: Arc::new(crate::mutex::Mutex::new(std::collections::HashMap::new())),
             shutdown,
         });
