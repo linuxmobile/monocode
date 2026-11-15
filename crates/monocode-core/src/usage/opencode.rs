@@ -1,7 +1,11 @@
 use crate::provider::devin::jsonc::strip_jsonc_comments;
+use rusqlite::{Connection, OpenFlags};
 use serde::Serialize;
 use serde_json::Value;
-use std::{path::PathBuf, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 fn dirs_home() -> Option<String> {
     crate::accounts::home().map(|p| p.to_string_lossy().into_owned())
 }
@@ -100,9 +104,7 @@ fn opencode_data_dir() -> Option<PathBuf> {
     if let Some(xdg) = env_var("XDG_DATA_HOME") {
         return Some(PathBuf::from(xdg).join(app));
     }
-    let home = dirs_home().or_else(|| {
-        std::env::var_os("USERPROFILE").map(|value| value.to_string_lossy().into_owned())
-    })?;
+    let home = dirs_home()?;
     Some(PathBuf::from(home).join(".local/share").join(app))
 }
 
@@ -116,7 +118,8 @@ fn env_var(name: &str) -> Option<String> {
 /// The Go key lives at `auth.json -> "opencode-go" -> "key"` inside the
 /// OpenCode data directory. Resolution mirrors OpenCode's own precedence:
 /// the `OPENCODE_AUTH_CONTENT` blob, then an explicit provider key in
-/// opencode config, then stored credentials on disk.
+/// opencode config, then stored credentials on disk. OpenCode 2 keeps
+/// credentials in `opencode.db` instead of `auth.json`, so both are read.
 fn read_opencode_go_api_key() -> Option<String> {
     // Env-injected auth blob is authoritative when it parses: a valid blob
     // without opencode-go means "no key", not "look elsewhere".
@@ -130,26 +133,54 @@ fn read_opencode_go_api_key() -> Option<String> {
     if let Some(key) = read_opencode_config_api_key() {
         return Some(key);
     }
-    let primary = opencode_data_dir()?.join("auth.json");
-    let raw = std::fs::read_to_string(&primary)
-        .or_else(|_| {
-            // Legacy macOS location.
-            dirs_home()
-                .or_else(|| {
-                    std::env::var_os("USERPROFILE")
-                        .map(|value| value.to_string_lossy().into_owned())
-                })
-                .ok_or_else(|| {
-                    std::io::Error::new(std::io::ErrorKind::NotFound, "no home directory")
-                })
-                .and_then(|home| {
-                    std::fs::read_to_string(
-                        PathBuf::from(home).join("Library/Application Support/opencode/auth.json"),
-                    )
-                })
-        })
+    let dir = opencode_data_dir()?;
+    if let Ok(raw) = std::fs::read_to_string(dir.join("auth.json")) {
+        if let Some(key) = extract_opencode_go_api_key(&raw) {
+            return Some(key);
+        }
+    }
+    read_opencode_credential(&dir.join("opencode.db"))
+}
+
+/// OpenCode 2 stores sign-ins in the `credential` table, one row per
+/// integration, with the key serialized as `{"type":"key","key":"..."}`.
+fn read_opencode_credential(path: &Path) -> Option<String> {
+    if !path.is_file() {
+        return None;
+    }
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
+    let value: String = conn
+        .query_row(
+            "SELECT value FROM credential \
+             WHERE integration_id = 'opencode-go' AND COALESCE(active, 1) != 0 \
+             ORDER BY time_updated DESC LIMIT 1",
+            [],
+            |row| row.get(0),
+        )
         .ok()?;
-    extract_opencode_go_api_key(&raw)
+    credential_go_key(&value)
+}
+
+fn credential_go_key(raw: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(raw.trim()).ok()?;
+    if let Some(key) = value.get("key").and_then(Value::as_str) {
+        let key = key.trim();
+        if !key.is_empty() {
+            return Some(key.to_string());
+        }
+    }
+    if let Some(key) = value.get("apiKey").and_then(Value::as_str) {
+        let key = key.trim();
+        if !key.is_empty() {
+            return Some(key.to_string());
+        }
+    }
+    // Older rows stored the bare token.
+    value
+        .as_str()
+        .map(str::trim)
+        .filter(|k| !k.is_empty())
+        .map(str::to_string)
 }
 
 /// Explicit `provider.options.apiKey` for the Go provider in opencode
@@ -181,9 +212,7 @@ fn opencode_config_paths() -> Vec<PathBuf> {
         paths.push(root.join("opencode.jsonc"));
         paths.push(root.join("opencode.json"));
     }
-    if let Some(home) = dirs_home().or_else(|| {
-        std::env::var_os("USERPROFILE").map(|value| value.to_string_lossy().into_owned())
-    }) {
+    if let Some(home) = dirs_home() {
         let root = PathBuf::from(home).join(".config/opencode");
         paths.push(root.join("opencode.jsonc"));
         paths.push(root.join("opencode.json"));
@@ -278,5 +307,86 @@ pub(crate) fn extract_opencode_go_api_key(raw: &str) -> Option<String> {
         None
     } else {
         Some(key.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn credential_db(path: &Path, rows: &[(&str, bool, i64)]) {
+        let conn = Connection::open(path).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE credential (
+                id text PRIMARY KEY,
+                integration_id text,
+                label text NOT NULL,
+                value text NOT NULL,
+                connector_id text,
+                method_id text,
+                active integer,
+                time_created integer NOT NULL,
+                time_updated integer NOT NULL
+            );",
+        )
+        .unwrap();
+        for (ix, (key, active, updated)) in rows.iter().enumerate() {
+            conn.execute(
+                "INSERT INTO credential \
+                 (id, integration_id, label, value, active, time_created, time_updated) \
+                 VALUES (?1, 'opencode-go', 'OpenCode Go', ?2, ?3, ?4, ?4)",
+                (
+                    format!("cred_{ix}"),
+                    format!(r#"{{"type":"key","key":"{key}"}}"#),
+                    *active as i64,
+                    updated,
+                ),
+            )
+            .unwrap();
+        }
+    }
+
+    #[test]
+    fn reads_the_go_key_from_the_opencode_credential_table() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("opencode.db");
+        credential_db(
+            &path,
+            &[("oc_sk_first", true, 1), ("oc_sk_newest", true, 2)],
+        );
+        assert_eq!(
+            read_opencode_credential(&path).as_deref(),
+            Some("oc_sk_newest")
+        );
+    }
+
+    #[test]
+    fn skips_inactive_credentials_and_missing_databases() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("opencode.db");
+        credential_db(&path, &[("oc_sk_old", false, 2)]);
+        assert_eq!(read_opencode_credential(&path), None);
+        assert_eq!(
+            read_opencode_credential(&dir.path().join("absent.db")),
+            None
+        );
+    }
+
+    #[test]
+    fn accepts_every_credential_payload_shape() {
+        assert_eq!(
+            credential_go_key(r#"{"type":"key","key":" oc_sk_plain "}"#).as_deref(),
+            Some("oc_sk_plain")
+        );
+        assert_eq!(
+            credential_go_key(r#"{"apiKey":"oc_sk_camel"}"#).as_deref(),
+            Some("oc_sk_camel")
+        );
+        assert_eq!(
+            credential_go_key(r#""oc_sk_bare""#).as_deref(),
+            Some("oc_sk_bare")
+        );
+        assert_eq!(credential_go_key(r#"{"key":"  "}"#), None);
+        assert_eq!(credential_go_key("not json"), None);
     }
 }
