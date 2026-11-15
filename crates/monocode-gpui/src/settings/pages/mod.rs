@@ -7,7 +7,6 @@ mod general;
 mod inbox;
 mod keybindings;
 mod mcp;
-mod mobile;
 mod monos;
 mod providers;
 mod skills;
@@ -17,7 +16,6 @@ pub(super) use appearance::parse_hex;
 pub(crate) use appearance::{ACCENTS, swatch};
 pub(super) use connections::ConnectionsState;
 pub(crate) use keybindings::command_shortcut;
-pub(super) use mobile::MobileState;
 
 use super::{Section, SettingsView};
 use gpui::{AnyElement, Context, Window};
@@ -30,7 +28,6 @@ impl SettingsView {
                 // As on the earlier desktop and in the phone app's copy:
                 // Settings → Connections holds both machines and phones.
                 let mut page = self.connections_page(cx);
-                page.extend(self.mobile_page(cx));
                 page
             }
             Section::Appearance => self.appearance_page(window, cx),

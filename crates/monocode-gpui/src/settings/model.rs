@@ -177,18 +177,6 @@ pub(crate) const INDEX: &[(&str, Section, &str, &str)] = &[
         "ssh remote connect host server environment",
     ),
     (
-        "mobile-access",
-        Section::Connections,
-        "Your phones",
-        "phone iphone android mobile app pair qr code device revoke remove testflight",
-    ),
-    (
-        "mobile-remote",
-        Section::Connections,
-        "Connect away from home",
-        "router port upnp nat remote address public hostname vpn wifi",
-    ),
-    (
         "mcp-servers",
         Section::Mcp,
         "MCP servers",
@@ -391,7 +379,7 @@ pub(crate) const INDEX: &[(&str, Section, &str, &str)] = &[
         "collapse-tool-groups",
         Section::Chat,
         "Collapse tool groups",
-        "tool calls commands steps expand closed mobile compact activity",
+        "tool calls commands steps expand closed compact activity",
     ),
     (
         "fold-finished-work",

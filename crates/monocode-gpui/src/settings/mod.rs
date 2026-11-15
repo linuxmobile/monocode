@@ -61,10 +61,6 @@ pub(crate) struct SettingsContext {
     pub quick_error: Option<String>,
     pub catalogs: HashMap<String, Vec<(String, String)>>,
     pub inbox_connections: HashMap<String, (bool, String)>,
-    /// Mobile access, or `None` when this desktop cannot offer it.
-    pub mobile: Option<monocode_core::mobile::Status>,
-    /// The pairing code on show.
-    pub mobile_invite: Option<monocode_core::mobile::Invite>,
 }
 impl PartialEq for SettingsContext {
     fn eq(&self, other: &Self) -> bool {
@@ -85,8 +81,6 @@ impl PartialEq for SettingsContext {
             && self.quick_error == other.quick_error
             && self.catalogs == other.catalogs
             && self.inbox_connections == other.inbox_connections
-            && self.mobile == other.mobile
-            && self.mobile_invite == other.mobile_invite
     }
 }
 #[derive(Clone, Debug, PartialEq)]
@@ -123,17 +117,6 @@ pub(crate) enum SettingsEvent {
     },
     ResetMono(String),
     MonoSidebar(String, bool, bool),
-    /// Read mobile access again: the router and pairing change on their own.
-    MobileRefresh,
-    MobileConfigure {
-        enabled: bool,
-        open_router: bool,
-        remote_address: String,
-    },
-    /// Start listening when needed, then make a new pairing code.
-    MobilePair,
-    MobileCancelInvite,
-    MobileRevoke(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -258,7 +241,6 @@ pub(crate) struct SettingsView {
     accent_custom: Entity<Input>,
     accent_custom_open: bool,
     accent_anchor: AnchorSlot,
-    mobile: pages::MobileState,
     _subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<SettingsEvent> for SettingsView {}
@@ -408,10 +390,8 @@ impl SettingsView {
             accent_custom,
             accent_custom_open: false,
             accent_anchor: AnchorSlot::default(),
-            mobile: pages::MobileState::default(),
             _subscriptions: subscriptions,
         };
-        this.watch_mobile(cx);
         this.watch_connections(cx);
         if this.prefs.notifications {
             this.probe_notification_permission(false, cx);
@@ -457,7 +437,6 @@ impl SettingsView {
                 _ => true,
             };
             self.ctx = ctx;
-            self.mobile_context_changed(cx);
             if remote_changed {
                 self.leave_connections(cx);
                 self.watch_connections(cx);
@@ -479,10 +458,8 @@ impl SettingsView {
             }
             self.management = None;
             self.management_generation += 1;
-            self.leave_mobile(cx);
             self.leave_connections(cx);
             self.section = section;
-            self.watch_mobile(cx);
             self.watch_connections(cx);
             if section == Section::Mcp {
                 self.refresh_mcp_health(cx);
@@ -500,9 +477,6 @@ impl SettingsView {
         cx: &mut Context<Self>,
     ) -> bool {
         if self.dismiss_notification_transient(window, cx) {
-            return true;
-        }
-        if self.dismiss_mobile(cx) {
             return true;
         }
         if self.dismiss_connections(cx) {

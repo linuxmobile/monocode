@@ -135,10 +135,6 @@ impl Shell {
                 .as_ref()
                 .is_some_and(|monos| monos.read(cx).is_mono_session(id))
         {
-            // Ended with no finish to send, as when stopped.
-            if ended {
-                self.mobile_turn_ended(id);
-            }
             return;
         }
         let summary = chat.summary.clone();
@@ -277,12 +273,6 @@ impl Shell {
                 |this, _, _: &crate::monos::NotificationChanged, cx| {
                     this.process_notification_inputs(cx);
                     cx.notify()
-                },
-            ));
-            self.observations.push(cx.subscribe(
-                &monos,
-                |this, _, event: &crate::monos::NotificationPosted, cx| {
-                    this.notify_mobile_post(event.session, &event.body, cx)
                 },
             ));
             self.observations.push(cx.subscribe(
@@ -522,9 +512,6 @@ impl Shell {
         self.notification_state
             .responding
             .retain(|id| live_ids.contains(id));
-        for id in quiet {
-            self.mobile_turn_ended(id);
-        }
         let badge = delivery::dock_badge_count(
             snapshots
                 .iter()
@@ -613,7 +600,6 @@ impl Shell {
         cue: Option<crate::sound::Cue>,
         cx: &mut Context<Self>,
     ) {
-        self.notify_mobile(summary, category, body, cx);
         self.dispatch_notice(
             summary,
             category,

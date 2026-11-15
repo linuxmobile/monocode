@@ -11,7 +11,6 @@ mod floating;
 mod host;
 mod html;
 mod memory_ui;
-mod mobile;
 mod notifications;
 mod overview;
 mod panel_stack;
@@ -573,15 +572,6 @@ impl Monos {
     pub(crate) fn open_chat(&self, id: &str) -> Option<Entity<Conversation>> {
         self.chats.get(id).cloned()
     }
-    /// A Mono's chat for a paired phone, opening it in the background when
-    /// it is not open yet.
-    pub(crate) fn mobile_chat(
-        &mut self,
-        id: &str,
-        cx: &mut Context<Self>,
-    ) -> Option<Entity<Conversation>> {
-        self.pane_chat(id, cx)
-    }
     /// A Mono's chat for a split pane, loading it when it is not open yet.
     pub(crate) fn pane_chat(
         &mut self,
@@ -590,21 +580,6 @@ impl Monos {
     ) -> Option<Entity<Conversation>> {
         self.ensure_chat(id, cx);
         self.chats.get(id).cloned()
-    }
-    /// A phone's message to a Mono, queued as one typed in its chat.
-    pub(crate) fn mobile_send(
-        &mut self,
-        id: &str,
-        text: String,
-        attachments: Vec<String>,
-        cx: &mut Context<Self>,
-    ) -> Result<(), String> {
-        if self.roster.get(id).is_none() {
-            return Err("Mono is no longer available".into());
-        }
-        self.ensure_chat(id, cx);
-        self.enqueue(id, text, attachments, false, cx);
-        Ok(())
     }
     pub(crate) fn account_changed(
         &mut self,

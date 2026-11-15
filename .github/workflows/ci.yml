@@ -10,28 +10,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mobile:
-    name: Mobile checks
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: mobile/package-lock.json
-      - run: npm ci
-        working-directory: mobile
-      - run: npm run lint
-        working-directory: mobile
-      - run: npx tsc --noEmit
-        working-directory: mobile
-      - run: npx vitest run --config mobile/vitest.config.ts
-
   host:
     name: Host checks (${{ matrix.os }})
     strategy:

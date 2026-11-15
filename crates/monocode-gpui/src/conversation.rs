@@ -11,7 +11,6 @@ mod edit_last_turn;
 mod follow_up;
 pub(crate) mod git_actions;
 mod history;
-mod mobile;
 mod mono;
 mod notifications;
 mod remote;
@@ -41,9 +40,6 @@ pub(crate) use accounts::UsageResumed;
 use gpui::{
     AnyElement, Context, CursorStyle, Entity, EventEmitter, Focusable, MouseButton, Role,
     SharedString, StyleRefinement, Subscription, Window, canvas, div, prelude::*, px,
-};
-pub(crate) use mobile::{
-    Waiting as MobileWaiting, mobile_access_modes, usage_state as mobile_usage_state,
 };
 pub(crate) use mono::QueueChanged as MonoQueueChanged;
 pub(crate) use mono::Submitted as MonoSubmitted;
@@ -1980,6 +1976,15 @@ impl Conversation {
         }
         self.settings = settings;
         cx.notify();
+    }
+    /// Arm or disarm the automatic turn restart after a usage limit resets.
+    pub(super) fn set_usage_resume_at_reset(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        if let Some(limit) = &mut self.settings.usage_limit {
+            limit.resume_at_reset = enabled;
+            self.save_settings(cx);
+            cx.emit(SessionChanged);
+            cx.notify();
+        }
     }
     fn save_settings(&mut self, cx: &mut Context<Self>) {
         self.settings.revision = std::time::SystemTime::now()

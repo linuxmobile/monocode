@@ -1,4 +1,4 @@
-//! UI-independent services shared by the native migration and Tauri.
+//! UI-independent services shared by the native app.
 pub mod accounts;
 pub mod agent;
 pub mod app_access;
@@ -16,7 +16,6 @@ pub mod git;
 pub mod github_star;
 pub mod harness_updates;
 pub mod inbox;
-pub mod mobile;
 pub mod mono;
 pub mod notes;
 pub mod process;

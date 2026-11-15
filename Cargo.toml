@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/mobile-link", "crates/native-sign"]
+members = ["crates/native-sign"]
 exclude = ["vendor/portable-pty", "vendor/gpui-pre", "vendor/gpui-pre-apple", "vendor/gpui-pre-linux", "vendor/gpui-pre-macos", "vendor/gpui-pre-windows", "crates/monocode-core", "crates/monocode-gpui"]
 
 [workspace.package]
