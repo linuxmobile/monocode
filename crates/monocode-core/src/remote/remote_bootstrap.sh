@@ -47,8 +47,8 @@ if [ ! -x "$ENTRY" ] || [ "$FORCE_UPGRADE" = 1 ]; then
   # Concurrent installations never replace a directory used by a running host.
   mv "$TMP/unpacked" "$DEST"
   [ "$("$DEST/monocode-host" --version)" = "$VERSION" ] || exit 1
-  # Keep a real wrapper (rather than a symlink): it resolves the packaged Node
-  # relative to the versioned executable, not this bin directory.
+  # Keep a real wrapper rather than a symlink: it resolves the versioned
+  # directory, so an upgrade never rewrites a path a running host is using.
   printf '%s\n' "$DEST" > "$TMP/runtime-path"
   mv "$TMP/runtime-path" "$BASE/runtime-path"
   cat > "$TMP/launcher" <<'SH'
@@ -63,7 +63,7 @@ SH
 fi
 
 if [ "$EXISTED" = 1 ] && [ "$FORCE_UPGRADE" = 1 ]; then
-  "$ENTRY" service uninstall >/dev/null
+  "$ENTRY" uninstall >/dev/null
 fi
-"$ENTRY" service install --port "$HOST_PORT" >/dev/null
+"$ENTRY" install --port "$HOST_PORT" >/dev/null
 "$ENTRY" connection-info

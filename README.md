@@ -46,13 +46,13 @@ MonoCode is still early. If something breaks, [report a bug](https://github.com/
 
 ## Build from source
 
-You’ll need Node.js 22+ and a stable Rust toolchain on Linux with Wayland. See
+You’ll need a stable Rust toolchain on Linux with Wayland. No Node.js. See
 [build setup](docs/building.md) for platform dependencies and packaging.
 
 ```bash
-npm run native:dev     # launch with a separate development database
-npm run native:build   # create an optimized build
-npm run native:check   # run native checks
+cargo xtask dev               # launch with a separate development database
+cargo xtask build --release   # create an optimized build
+./scripts/install.sh          # install into ~/.local
 ```
 
 Type `r` then Enter in the development terminal to rebuild and restart; there is

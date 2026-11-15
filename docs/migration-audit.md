@@ -7,6 +7,15 @@ Audited revision: `2dd99794997866635b529e1115dc3dd65dbf4a4e`
 
 No files were deleted or modified to produce this report.
 
+> **Status: superseded.** This documents the repository as it stood at the
+> audited revision, before any migration work. Everything described here as
+> TypeScript or Node.js has since been removed: `host/` was deleted in Phase 9
+> once `crates/monocode-host` served all 33 protocol methods, and the build
+> scripts were replaced by `xtask` in Phase 7. Six embedded `.js` assets remain
+> deliberately as product data; see
+> [embedded assets](native/embedded-assets.md). Read this file as the starting
+> inventory, not as a description of the current tree.
+
 ---
 
 ## 0. Executive summary

@@ -161,3 +161,48 @@ for line in sys.stdin:
         "cancellation must not look like a crash"
     );
 }
+
+/// Plan mode must change how approvals are answered.
+///
+/// A planning turn is supposed to inspect and propose without changing files.
+/// The guard is that a permission request is denied while planning: if the flag
+/// were dropped, the agent would start editing files while the user believed it
+/// was only drafting a plan.
+#[test]
+fn plan_mode_denies_permission_requests() {
+    let (dir, binary) = fake_provider(
+        r#"
+for line in sys.stdin:
+    value = json.loads(line)
+    kind = value.get("type", "")
+    if kind == "control_request":
+        # Ask for permission to write a file.
+        print(json.dumps({"type":"control_request","request_id":"perm-1","request":{"subtype":"can_use_tool","tool_name":"Write","input":{"file_path":"x"},"permission_suggestions":[]}}), flush=True)
+    elif kind == "control_response":
+        # Record the answer the host gave, then finish.
+        with open("answer", "a") as handle:
+            handle.write(json.dumps(value) + "\n")
+        print(json.dumps({"type":"result","subtype":"success","result":"ok","session_id":"p"}), flush=True)
+        break
+    else:
+        print(json.dumps({"type":"result","subtype":"success","result":"ok","session_id":"p"}), flush=True)
+        break
+"#,
+    );
+    let mut request = request(binary, dir.path().to_path_buf());
+    // Full access would normally approve a file change, so denying here can
+    // only come from plan mode. Without this the test passes either way, since
+    // the default access mode denies regardless.
+    request.settings.access = monocode_core::agent::AccessMode::FullAccess;
+    request.settings.plan = true;
+    let turn = Turn::new("plan".into());
+    let projection = Projection::new(HostSessionFixture::new("plan").build());
+    let _ = run_turn(&turn, request, projection, |_| Ok(()));
+
+    let answer = std::fs::read_to_string(dir.path().join("answer"))
+        .expect("the host never answered the permission request");
+    assert!(
+        answer.contains("deny"),
+        "planning mode allowed a file change: {answer}"
+    );
+}

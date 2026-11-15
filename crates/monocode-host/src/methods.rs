@@ -7,7 +7,7 @@
 //! were not.
 
 use crate::{protocol::RpcFailure, server::HostState};
-use monocode_core::{files, git};
+use monocode_core::{agent::Settings, files, git};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -113,7 +113,7 @@ impl Dispatch {
                     environment_id: store.environment_id.clone(),
                     name: hostname(),
                     providers: self.state.providers.clone(),
-                    capabilities: METHODS.iter().map(|m| (*m).to_string()).collect(),
+                    capabilities: capabilities(),
                 };
                 serde_json::to_value(descriptor).map_err(|e| RpcFailure::BadRequest(e.to_string()))
             }
@@ -496,7 +496,6 @@ impl Dispatch {
                 Ok(Value::Array(summaries))
             }
             "sessions.get" => {
-                let project = self.project_of(&params).await?;
                 let id = string_param(&params, "sessionId")?;
                 let revision = params.get("revision").and_then(Value::as_i64);
                 let mut store = self.state.store.lock().await;
@@ -505,11 +504,7 @@ impl Dispatch {
                         "Session not found on this machine".into(),
                     ));
                 };
-                if session.project_id != project.id {
-                    return Err(RpcFailure::BadRequest(
-                        "Session belongs to another project".into(),
-                    ));
-                }
+                self.check_project(&params, &session.project_id)?;
                 // A client that is already current is answered with null, so
                 // it does not re-download an unchanged transcript.
                 if revision == Some(session.revision) {
@@ -519,7 +514,6 @@ impl Dispatch {
                     .map_err(|e| RpcFailure::BadRequest(e.to_string()))?)
             }
             "sessions.sync" => {
-                let project = self.project_of(&params).await?;
                 let id = string_param(&params, "sessionId")?;
                 let revision = params.get("revision").and_then(Value::as_i64);
                 let mut store = self.state.store.lock().await;
@@ -528,11 +522,7 @@ impl Dispatch {
                         "Session not found on this machine".into(),
                     ));
                 };
-                if session.project_id != project.id {
-                    return Err(RpcFailure::BadRequest(
-                        "Session belongs to another project".into(),
-                    ));
-                }
+                self.check_project(&params, &session.project_id)?;
                 let sync = store
                     .sync(&id, revision)
                     .map_err(RpcFailure::BadRequest)?
@@ -737,6 +727,26 @@ impl Dispatch {
         store.project(id).map_err(RpcFailure::BadRequest)
     }
 
+    /// Rejects a session request that names a different project than the
+    /// session belongs to.
+    ///
+    /// `projectId` is optional here because the documented protocol scopes
+    /// `sessions.*` and `events.read` by session id alone. When a client does
+    /// send one, it must agree; otherwise a caller could read a session through
+    /// the wrong project's permission scope.
+    fn check_project(
+        &self,
+        params: &serde_json::Map<String, Value>,
+        session_project: &str,
+    ) -> Result<(), RpcFailure> {
+        match params.get("projectId").and_then(Value::as_str) {
+            Some(named) if named != session_project => Err(RpcFailure::BadRequest(
+                "Session belongs to another project".into(),
+            )),
+            _ => Ok(()),
+        }
+    }
+
     /// A request may name a worktree; otherwise it means the project root.
     /// Resolves the working copy a request names.
     ///
@@ -852,6 +862,8 @@ impl Dispatch {
             "send" => self.send_turn(&command).await,
             "cancel" => self.cancel_turn(&command).await,
             "configure" => self.configure_session(&command).await,
+            "draft" => self.draft_turn(&command).await,
+            "removeDraft" => self.remove_draft(&command).await,
             other => Err(RpcFailure::BadRequest(format!(
                 "The host cannot apply a `{other}` command yet"
             ))),
@@ -952,6 +964,121 @@ impl Dispatch {
         Ok(it_receipt(command, summary))
     }
 
+    /// Saves text the user typed but has not sent.
+    ///
+    /// A draft is a block with `draft: true` and no turn behind it, so a client
+    /// that reattaches shows the text still waiting to be sent rather than
+    /// losing it.
+    async fn draft_turn(&self, command: &Value) -> Result<Value, RpcFailure> {
+        let id = string_param_command(command, "sessionId")?;
+        let text = command
+            .get("text")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let mut store = self.state.store.lock().await;
+        let mut current = store
+            .session(&id)
+            .map_err(RpcFailure::BadRequest)?
+            .ok_or_else(|| RpcFailure::BadRequest("Session not found on this machine".into()))?;
+        if current.status == "running" {
+            return Err(RpcFailure::BadRequest(
+                "This session cannot save another draft right now".into(),
+            ));
+        }
+        let Some(blocks) = current
+            .session
+            .get_mut("blocks")
+            .and_then(Value::as_array_mut)
+        else {
+            return Err(RpcFailure::BadRequest(
+                "Session snapshot is malformed".into(),
+            ));
+        };
+        if blocks
+            .iter()
+            .any(|block| block.get("draft").and_then(Value::as_bool) == Some(true))
+        {
+            return Err(RpcFailure::BadRequest(
+                "This session cannot save another draft right now".into(),
+            ));
+        }
+        // The block id is the command id, so a retried draft replaces rather
+        // than duplicates.
+        let block_id = command
+            .get("commandId")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .unwrap_or_else(crate::turn::new_id);
+        let mut block = json!({
+            "id": block_id,
+            "role": "user",
+            "text": text,
+            "draft": true,
+        });
+        let attachments: Vec<Value> = command
+            .get("attachments")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter(|item| item.get("id").and_then(Value::as_str).is_some())
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        if !attachments.is_empty() {
+            block["attachments"] = Value::Array(attachments);
+        }
+        blocks.push(block);
+        current.revision += 1;
+        current.updated_at = crate::turn::now_ms();
+        let summary = crate::session::summary(&current);
+        store
+            .save_session(current, json!({ "type": "session.draft" }))
+            .map_err(RpcFailure::BadRequest)?;
+        Ok(it_receipt(command, summary))
+    }
+
+    /// Discards a saved draft. The block id is named, so a retried removal is
+    /// harmless.
+    async fn remove_draft(&self, command: &Value) -> Result<Value, RpcFailure> {
+        let id = string_param_command(command, "sessionId")?;
+        let draft_id = command
+            .get("draftBlockId")
+            .and_then(Value::as_str)
+            .ok_or_else(|| RpcFailure::BadRequest("`draftBlockId` is required".into()))?;
+        let mut store = self.state.store.lock().await;
+        let mut current = store
+            .session(&id)
+            .map_err(RpcFailure::BadRequest)?
+            .ok_or_else(|| RpcFailure::BadRequest("Session not found on this machine".into()))?;
+        let Some(blocks) = current
+            .session
+            .get_mut("blocks")
+            .and_then(Value::as_array_mut)
+        else {
+            return Err(RpcFailure::BadRequest(
+                "Session snapshot is malformed".into(),
+            ));
+        };
+        let before = blocks.len();
+        blocks.retain(|block| {
+            !(block.get("id").and_then(Value::as_str) == Some(draft_id)
+                && block.get("draft").and_then(Value::as_bool) == Some(true))
+        });
+        if blocks.len() == before {
+            return Err(RpcFailure::BadRequest("Draft not found".into()));
+        }
+        current.revision += 1;
+        current.updated_at = crate::turn::now_ms();
+        let summary = crate::session::summary(&current);
+        store
+            .save_session(current, json!({ "type": "session.draftRemoved" }))
+            .map_err(RpcFailure::BadRequest)?;
+        Ok(it_receipt(command, summary))
+    }
+
     async fn cancel_turn(&self, command: &Value) -> Result<Value, RpcFailure> {
         let id = string_param_command(command, "sessionId")?;
         let turn = {
@@ -1008,6 +1135,10 @@ impl Dispatch {
             .to_string();
         let model = session.session["model"].as_str().map(str::to_string);
         let cwd_path = std::path::PathBuf::from(&cwd);
+        // Everything beyond the plain prompt is a setting the desktop sends with
+        // the command. Dropping it silently would mean a remote Plan-mode turn
+        // behaved like an ordinary one, which is worse than refusing.
+        let settings = turn_settings(command, &session.session, model.clone())?;
 
         // A second turn for the same session must not race the first.
         let turn = {
@@ -1036,13 +1167,32 @@ impl Dispatch {
                 .get_mut("blocks")
                 .and_then(Value::as_array_mut)
             {
-                blocks.push(json!({
+                // Attachments are recorded on the user block so a client that
+                // reattaches later still sees what was sent. The provider reads
+                // the bytes through `attachments.read`, so the block only needs
+                // the metadata the desktop supplied.
+                let attachments: Vec<Value> = command
+                    .get("attachments")
+                    .and_then(Value::as_array)
+                    .map(|items| {
+                        items
+                            .iter()
+                            .filter(|item| item.get("id").and_then(Value::as_str).is_some())
+                            .cloned()
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let mut block = json!({
                     "id": crate::turn::new_id(),
                     "role": "user",
                     "text": text,
                     "streaming": false,
                     "draft": false,
-                }));
+                });
+                if !attachments.is_empty() {
+                    block["attachments"] = Value::Array(attachments);
+                }
+                blocks.push(block);
             }
             current.session = session_value;
             let submitted = current.clone();
@@ -1084,7 +1234,7 @@ impl Dispatch {
             prompt: text,
             provider_id,
             model,
-            settings: Default::default(),
+            settings,
         });
         let turn_for_worker = turn.clone();
         let id_for_worker = id.clone();
@@ -1124,10 +1274,138 @@ fn string_param_command(command: &Value, key: &str) -> Result<String, RpcFailure
         .ok_or_else(|| RpcFailure::BadRequest(format!("`{key}` is required")))
 }
 
+/// Behaviours this host implements that are not separate RPC methods.
+///
+/// The desktop gates features on capability names. Plan and Draft mode are
+/// handled inside `commands.dispatch`, so without these two entries the desktop
+/// would refuse to offer modes the host actually supports.
+const CAPABILITIES: [&str; 2] = ["sessions.draft", "sessions.plan"];
+
+/// Everything this host advertises, methods first then capabilities.
+fn capabilities() -> Vec<String> {
+    METHODS
+        .iter()
+        .map(|method| (*method).to_string())
+        .chain(CAPABILITIES.iter().map(|name| (*name).to_string()))
+        .collect()
+}
+
+/// Builds the provider settings a turn should run with.
+///
+/// The desktop sends Plan mode, the chosen model and similar controls with each
+/// command. A host that ignored them would quietly run an ordinary turn when a
+/// user asked for a plan, so every recognised field is forwarded and an unknown
+/// one is refused rather than dropped.
+fn turn_settings(
+    command: &Value,
+    session: &Value,
+    model: Option<String>,
+) -> Result<Settings, RpcFailure> {
+    let mut settings = Settings {
+        model: model.clone().or_else(|| {
+            command
+                .get("model")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        }),
+        ..Default::default()
+    };
+    if let Some(plan) = command.get("plan").and_then(Value::as_bool) {
+        settings.plan = plan;
+    }
+    if let Some(effort) = command.get("effort").and_then(Value::as_str) {
+        settings.effort = Some(effort.to_string());
+    }
+    // The desktop sends the reasoning effort inside `modelSettings`, keyed per
+    // provider (`reasoningEffort` for Codex, `effort` otherwise), because that
+    // is what the provider's own settings carry. Reading only a top-level
+    // `effort` would silently run every remote turn at the provider default.
+    if settings.effort.is_none() {
+        let provider = session.get("harness").and_then(Value::as_str).unwrap_or("");
+        let key = if provider == "codex" {
+            "reasoningEffort"
+        } else {
+            "effort"
+        };
+        // A `send` may not repeat the settings the session was created with, so
+        // fall back to the session snapshot before giving up.
+        if let Some(effort) = command
+            .get("modelSettings")
+            .and_then(|value| value.get(key))
+            .or_else(|| {
+                session
+                    .get("modelSettings")
+                    .and_then(|value| value.get(key))
+            })
+            .and_then(Value::as_str)
+        {
+            settings.effort = Some(effort.to_string());
+        }
+    }
+    if let Some(thinking) = command.get("thinking").and_then(Value::as_bool) {
+        settings.thinking = Some(thinking);
+    }
+    if let Some(fast) = command.get("fast").and_then(Value::as_bool) {
+        settings.fast = fast;
+    }
+    if let Some(tier) = command.get("serviceTier").and_then(Value::as_str) {
+        settings.service_tier = Some(tier.to_string());
+    }
+    if let Some(access) = session.get("access").and_then(Value::as_str) {
+        // `from_id` falls back to Supervised, which would silently narrow or
+        // widen what the user chose, so the id is checked against the known set.
+        let known = [
+            "read-only",
+            "supervised",
+            "auto-accept-edits",
+            "auto",
+            "full-access",
+        ];
+        if !known.contains(&access) {
+            return Err(RpcFailure::BadRequest(format!(
+                "Session names an unknown access mode: {access}"
+            )));
+        }
+        settings.access = monocode_core::agent::AccessMode::from_id(access);
+    }
+    if let Some(controls) = command.get("modelSettings").and_then(Value::as_object) {
+        for (key, value) in controls {
+            let Some(text) = value.as_str() else {
+                return Err(RpcFailure::BadRequest(format!(
+                    "Model setting `{key}` must be a string"
+                )));
+            };
+            settings
+                .model_settings
+                .insert(key.clone(), text.to_string());
+        }
+    }
+    Ok(settings)
+}
+
 /// Wraps a command's effect with its id, which is what a client correlates.
+/// Builds a command receipt in the shape the desktop's outbox expects.
+///
+/// The desktop journals each command before sending it and only clears it
+/// after checking `sessionId`, `commandId` and `revision` on the receipt. A
+/// receipt without those fields is rejected as "no session identity", so the
+/// command would be retried forever against a host that had already applied
+/// it.
 fn it_receipt(command: &Value, effect: Value) -> Value {
     json!({
         "commandId": command.get("commandId").cloned().unwrap_or(Value::Null),
+        "sessionId": effect
+            .get("id")
+            .or_else(|| effect.get("sessionId"))
+            .cloned()
+            .unwrap_or_else(|| command.get("sessionId").cloned().unwrap_or(Value::Null)),
+        // A receipt without a revision is rejected by the desktop, and a made-up
+        // one would make it discard the next delta as already applied.
+        "revision": effect
+            .get("revision")
+            .cloned()
+            .or_else(|| command.get("revision").cloned())
+            .unwrap_or_else(|| Value::from(0)),
         "result": effect,
     })
 }
@@ -1146,12 +1424,92 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
+    fn plan_mode_reaches_the_provider_settings() {
+        // A remote turn that silently ran as an ordinary turn when the user
+        // asked for a plan would be wrong in a way nobody notices until the
+        // agent starts editing files.
+        let command = json!({"plan": true, "effort": "high", "fast": true});
+        let settings = turn_settings(&command, &json!({}), Some("opus".into())).unwrap();
+        assert!(settings.plan, "plan mode was dropped");
+        assert_eq!(settings.effort.as_deref(), Some("high"));
+        assert!(settings.fast);
+        assert_eq!(settings.model.as_deref(), Some("opus"));
+    }
+
+    #[test]
+    fn an_unrequested_turn_does_not_enable_plan_mode() {
+        // The mirror case: an absent field must not become `true` by default.
+        let settings = turn_settings(&json!({}), &json!({}), None).unwrap();
+        assert!(!settings.plan);
+        assert!(settings.effort.is_none());
+        assert!(!settings.fast);
+    }
+
+    #[test]
+    fn the_session_access_mode_is_forwarded() {
+        let settings = turn_settings(&json!({}), &json!({"access": "full-access"}), None).unwrap();
+        assert_eq!(
+            settings.access,
+            monocode_core::agent::AccessMode::FullAccess
+        );
+    }
+
+    #[test]
+    fn an_unknown_access_mode_is_refused_rather_than_defaulted() {
+        // `from_id` falls back to Supervised; running with the wrong access
+        // mode is a security-relevant silent change.
+        let error = turn_settings(&json!({}), &json!({"access": "yolo"}), None).unwrap_err();
+        assert!(
+            format!("{error:?}").contains("unknown access mode"),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn model_settings_are_forwarded_and_must_be_strings() {
+        let settings = turn_settings(
+            &json!({"modelSettings": {"reasoning": "high"}}),
+            &json!({}),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            settings.model_settings.get("reasoning").map(String::as_str),
+            Some("high")
+        );
+        // A number would be silently stringified or dropped; refusing is honest.
+        let error = turn_settings(
+            &json!({"modelSettings": {"reasoning": 3}}),
+            &json!({}),
+            None,
+        )
+        .unwrap_err();
+        assert!(
+            format!("{error:?}").contains("must be a string"),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn plan_and_draft_capabilities_are_advertised() {
+        // The desktop refuses to offer Plan or Draft mode without these, so a
+        // working implementation that omits them is invisible.
+        let advertised = capabilities();
+        for capability in ["sessions.plan", "sessions.draft"] {
+            assert!(
+                advertised.iter().any(|name| name == capability),
+                "{capability} is not advertised"
+            );
+        }
+    }
+
+    #[test]
     fn advertised_capabilities_are_unique() {
-        let unique: HashSet<_> = METHODS.iter().collect();
+        let unique: HashSet<_> = capabilities().into_iter().collect();
         assert_eq!(
             unique.len(),
-            METHODS.len(),
-            "a duplicated capability would misreport the host"
+            METHODS.len() + CAPABILITIES.len(),
+            "a capability or method is advertised twice"
         );
     }
 

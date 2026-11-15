@@ -39,18 +39,17 @@ Features that read or run on this computer are not available in these projects: 
 
 ## Manual connection (advanced / development)
 
-Use Node.js 24 or newer on the host. Install and sign in to the providers you want under the same OS account that runs the host. The host uses that account's default provider credentials and searches its PATH and common per-user and system installation directories.
+The host is a single Rust binary. Node.js is not required. Install and sign in to the providers you want under the same OS account that runs the host. The host uses that account's default provider credentials and searches its PATH and common per-user and system installation directories.
 
 From a checkout of this version of MonoCode on the host:
 
 ```sh
-npm ci
-npm run host:build
-node build/host/monocode-host.mjs start
-node build/host/monocode-host.mjs pair --name "My laptop"
+cargo xtask build --release
+crates/monocode-gpui/target/release/monocode-host install
+crates/monocode-gpui/target/release/monocode-host pair --name "My laptop"
 ```
 
-`start` launches the host independently of the terminal. `pair` prints a device ID and a device token; copy the token to the receiving desktop. Create a separate credential for each desktop. Tokens grant control of the host as its OS user, including provider execution and workspace reads.
+`install` registers a systemd user service and starts it, so the host survives logout and starts again after a reboot. It needs no root. `pair` prints a device ID and a device token; copy the token to the receiving desktop. Create a separate credential for each desktop. Tokens grant control of the host as its OS user, including provider execution and workspace reads.
 
 The host binds only to `127.0.0.1:3774`. State and logs live in `~/.monocode-host`. Unix permissions restrict access to the owner. Use `--data-dir` and `--port` to override them. `serve` runs in the foreground for debugging.
 
@@ -69,26 +68,26 @@ HTTPS endpoints can also be entered if you operate a reverse proxy to the loopba
 ## Manage the host
 
 ```sh
-node build/host/monocode-host.mjs status
-node build/host/monocode-host.mjs devices
-node build/host/monocode-host.mjs revoke DEVICE_ID
-node build/host/monocode-host.mjs stop
-node build/host/monocode-host.mjs service uninstall
+monocode-host status
+monocode-host devices
+monocode-host revoke DEVICE_ID
+monocode-host stop
+monocode-host uninstall
 ```
 
 SSH setup names each device credential after the desktop's computer name. Removing a saved connection from the desktop does not stop the host. It revokes the device credential only when you choose **Revoke access and remove**. Otherwise, use `devices` and `revoke` on the host to remove access. Stopping the host interrupts active turns; restarting retains their transcripts and marks them interrupted. No uncertain provider operation is automatically replayed after a host crash.
 
-`service uninstall` is the cleanup path for a host you no longer want running. It removes the systemd user service. It then stops the host, including a manually started one, and interrupts any running turns. It never deletes the data directory. Sessions, logs, and device credentials stay in `~/.monocode-host` until you delete that directory yourself. To remove access without stopping the host, use `revoke` instead. On Linux, the command prints how to turn off lingering if nothing else needs it.
+`uninstall` is the cleanup path for a host you no longer want running. It removes the systemd user service. It then stops the host, including a manually started one, and interrupts any running turns. It never deletes the data directory. Sessions, logs, and device credentials stay in `~/.monocode-host` until you delete that directory yourself. To remove access without stopping the host, use `revoke` instead. On Linux, the command prints how to turn off lingering if nothing else needs it.
 
-The machine must remain awake. Manual `start` launches a detached process. `service install` installs a user service; SSH setup runs it automatically. Only one host may own a data directory. Restart the host after changing its provider installation or PATH. Service installs preserve an already-running host, including one previously started manually.
+The machine must remain awake. Where systemd is available, `install` registers a user unit and enables lingering, so the host starts at boot; elsewhere it launches a detached process that still survives logout. Only one host may own a data directory, and a second one refuses with the pid already there. Restart the host after changing its provider installation or PATH. Installing again preserves an already-running host, including one started by an older build.
 
-SSH-installed hosts have a launcher at `~/.monocode-host/bin/monocode-host`; use it in place of `node build/host/monocode-host.mjs` in management commands. The service is named `monocode-host.service`. A service manager can restart a stopped process, so use `service uninstall` rather than `stop` to keep the host stopped. Normal cancellation and shutdown stop the provider's process tree.
+SSH-installed hosts have a launcher at `~/.monocode-host/bin/monocode-host`; use it in place of the build-tree path in management commands. The service is named `monocode-host.service`. A service manager can restart a stopped process, so use `uninstall` rather than `stop` to keep the host stopped. Normal cancellation and shutdown stop the provider's process tree.
 
 ## Release packaging
 
-`npm run host:package` builds a self-contained package for the current Linux architecture. `npm run host:package -- --all` builds both archives, using pinned official Node binaries and checksums. Archives contain the host bundle, runtime, launcher, and licenses. `host/package.mjs` pins the runtime version.
+The host is a statically linked Rust binary, so an archive contains the executable and its licences with no runtime to bundle.
 
-The release workflow publishes `monocode-host-linux-{arm64,x64}.tar.gz` and their `.sha256` files alongside the desktop release. SSH setup downloads from the exact desktop version's GitHub release, then installs under `~/.monocode-host/runtime`.
+The release workflow publishes `monocode-host-linux-{arm64,x64}.tar.gz` and their `.sha256` files alongside the desktop release. SSH setup downloads from the exact desktop version's GitHub release, verifies the checksum and the reported version, then installs under `~/.monocode-host/runtime`.
 
 **Unreleased development builds:** automatic first-time installation and **Update Host** require host archives published for the desktop version. Release builds from v0.5.0 onward include the matching archives; an unreleased checkout may not have them. Until the matching release is available, use the manual development connection above. A missing archive produces an explicit error in Settings. No fallback to an arbitrary latest release or unverified download is used. Connecting does not automatically upgrade a running host. When an SSH host lacks Explorer or Changes, Settings → Connections offers **Update Host**. This downloads and verifies the matching package, restarts the host service, and reconnects using the existing device credential. The restart interrupts active agent turns; sessions and history remain on the host. URL connections must be updated on the host manually.
 
@@ -98,21 +97,18 @@ Supported: persistent remote text conversations with all ten local provider adap
 
 Remote history appears in the Sessions sidebar of each project on a machine. Host snapshots also populate the app's normal session state while the tab is open; they are not written to the local session store. Remote `/compact` uses the provider's context compaction, and `/plan` selects the host provider's plan mode. Queued follow-ups and editing the last message still need host commands. Other local slash commands and skill expansion are not yet available remotely. Worktree deletion, terminals, generated image output, named provider accounts, `/operator`, automations, orchestration, LAN discovery, and account-based tunnels are not implemented yet. Other remote prompts are sent directly to the provider.
 
-The headless host runs the reused TypeScript adapters with a Node process backend. It proves the execution boundary without introducing the planned Rust daemon/worker IPC yet. Node is included in host release archives, separately from the desktop application.
+The headless host is `crates/monocode-host`, which reuses the provider adapters in `monocode-core`. It is the same code the desktop runs, so a remote turn behaves like a local one.
 
 ## Verify
 
 ```sh
-npm run host:build
-npm run test:host
-npm run check:web
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test
+cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-host --profile native-dev
+cargo fmt --manifest-path crates/monocode-gpui/Cargo.toml --all --check
+cargo clippy --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-host --all-targets --profile native-dev -- -D warnings
 ```
 
-Host tests use fake provider executables and temporary loopback servers. They do not contact paid models. They cover the Codex and Claude transports, Pi/OMP RPC, ACP providers, OpenCode HTTP and event streaming, cross-client reattachment, duplicate sends, approval races, interruption recovery, device revocation, path checks, and detached host lifecycle. On Node 26, use `NODE_OPTIONS=--no-experimental-webstorage npm run check:web` to avoid its experimental global storage interfering with the existing happy-dom tests.
+Host tests use fake provider executables and temporary loopback servers. They do not contact paid models. They cover the Codex and Claude transports, Pi/OMP RPC, ACP providers, OpenCode HTTP and event streaming, cross-client reattachment, duplicate sends, approval races, interruption recovery, device revocation, path checks, and detached host lifecycle.
 
-For the real OpenSSH transport and native askpass smoke test on Linux, build with `npm run host:package` and `cargo build --bin monocode`, then run `python3 scripts/test-remote-ssh.py`. It uses a disposable loopback sshd, temporary keys and known-hosts file, and an isolated packaged host. It leaves personal SSH configuration, provider credentials, and OS services untouched.
+For the real OpenSSH transport and native askpass smoke test on Linux, build with `cargo xtask build --release`, then run `python3 scripts/test-remote-ssh.py`. It uses a disposable loopback sshd, temporary keys and known-hosts file, and an isolated packaged host. It leaves personal SSH configuration, provider credentials, and OS services untouched.
 
 Host CI runs on Linux.

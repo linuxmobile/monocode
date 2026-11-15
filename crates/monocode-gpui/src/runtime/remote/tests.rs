@@ -454,48 +454,56 @@ fn explicit_stop_is_journaled_once_for_the_observed_run() {
     assert_eq!(stops.load(Ordering::Relaxed), 1);
 }
 
-/// This crosses the production Rust client, Node HTTP server, SQLite engine,
+/// This crosses the production Rust client, the Rust HTTP host, SQLite engine,
 /// attachment parser and provider adapter. The fixture provider performs no
 /// model requests; only its local JSON-lines protocol is exercised.
 #[test]
-#[ignore = "requires npm run host:build and loopback networking"]
-fn built_node_host_round_trip_preserves_native_wire_commands() {
+#[ignore = "requires a built monocode-host and loopback networking"]
+fn built_host_round_trip_preserves_native_wire_commands() {
     use std::{
         os::unix::fs::PermissionsExt,
         process::{Command, Stdio},
     };
     let directory = Directory::new();
+    // The host is a Rust binary now, so it is launched directly rather than
+    // through an interpreter.
     let cli = std::env::var_os("MONOCODE_TEST_HOST_BINARY")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../build/host/monocode-host.mjs")
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../monocode-gpui/target/native-dev/monocode-host")
         });
-    assert!(cli.is_file(), "Run npm run host:build first");
-    let node = std::env::var("MONOCODE_TEST_NODE").unwrap_or_else(|_| "node".into());
+    assert!(
+        cli.is_file(),
+        "Build monocode-host first: cargo build --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-host --profile native-dev"
+    );
     let bin = directory.0.join("bin");
     std::fs::create_dir_all(&bin).unwrap();
     let provider = bin.join("codex");
-    std::fs::write(&provider,r#"#!/usr/bin/env node
-const fs = require('node:fs');
-const path = require('node:path');
-const send = value => process.stdout.write(JSON.stringify(value) + '\n');
-if (process.argv.includes('--version')) { console.log('codex fixture'); process.exit(0); }
-require('node:readline').createInterface({input:process.stdin}).on('line', line => {
-  const request = JSON.parse(line);
-  if (request.id == null) return;
-  if (request.method === 'initialize') send({id:request.id,result:{}});
-  else if (request.method === 'account/read') send({id:request.id,result:{account:{type:'fixture'},requiresOpenaiAuth:false}});
-  else if (request.method === 'model/list') send({id:request.id,result:{data:[{model:'fixture-model',displayName:'Fixture',supportedReasoningEfforts:[{reasoningEffort:'high'}]}],nextCursor:null}});
-  else if (request.method === 'thread/start' || request.method === 'thread/resume') send({id:request.id,result:{thread:{id:'fixture-thread'}}});
-  else if (request.method === 'turn/start') {
-    fs.appendFileSync(path.join(__dirname,'calls.log'),JSON.stringify(request.params)+'\n');
-    send({id:request.id,result:{turn:{id:'fixture-turn'}}});
-    setTimeout(() => {
-      send({method:'item/agentMessage/delta',params:{threadId:'fixture-thread',turnId:'fixture-turn',itemId:'message',delta:'Native fixture completed'}});
-      send({method:'turn/completed',params:{threadId:'fixture-thread',turn:{id:'fixture-turn',status:'completed'}}});
-    },30);
-  } else send({id:request.id,result:{}});
-});
+    // A shell fixture: the host must not need an interpreter of its own.
+    std::fs::write(&provider,r#"#!/bin/sh
+if [ "$1" = "--version" ]; then echo "codex fixture"; exit 0; fi
+log="$(dirname "$0")/calls.log"
+inlog="$(dirname "$0")/stdin.log"
+while IFS= read -r line; do
+  printf '%s\n' "$line" >> "$inlog"
+  id=$(printf '%s' "$line" | sed -n 's/.*"id":\([0-9]*\).*/\1/p')
+  [ -z "$id" ] && continue
+  case "$line" in
+    *'"initialize"'*) printf '{"id":%s,"result":{}}\n' "$id" ;;
+    *'"account/read"'*) printf '{"id":%s,"result":{"account":{"type":"fixture"},"requiresOpenaiAuth":false}}\n' "$id" ;;
+    *'"model/list"'*) printf '{"id":%s,"result":{"data":[{"model":"fixture-model","displayName":"Fixture","supportedReasoningEfforts":[{"reasoningEffort":"high"}]}],"nextCursor":null}}\n' "$id" ;;
+    *'"thread/start"'*|*'"thread/resume"'*) printf '{"id":%s,"result":{"thread":{"id":"fixture-thread"}}}\n' "$id" ;;
+    *'"turn/start"'*)
+      printf '%s\n' "$line" >> "$log"
+      printf '{"id":%s,"result":{"turn":{"id":"fixture-turn"}}}\n' "$id"
+      sleep 0.03
+      printf '{"method":"item/agentMessage/delta","params":{"threadId":"fixture-thread","turnId":"fixture-turn","itemId":"message","delta":"Native fixture completed"}}\n'
+      printf '{"method":"turn/completed","params":{"threadId":"fixture-thread","turn":{"id":"fixture-turn","status":"completed"}}}\n'
+      ;;
+    *) printf '{"id":%s,"result":{}}\n' "$id" ;;
+  esac
+done
 "#).unwrap();
     std::fs::set_permissions(&provider, std::fs::Permissions::from_mode(0o700)).unwrap();
     let data = directory.0.join("host");
@@ -509,13 +517,11 @@ require('node:readline').createInterface({input:process.stdin}).on('line', line 
         bin.display(),
         std::env::var("PATH").unwrap_or_default()
     );
-    let child = Command::new(&node)
-        .arg(&cli)
+    let child = Command::new(&cli)
         .args(["serve", "--data-dir"])
         .arg(&data)
         .args(["--port", &port.to_string()])
         .env("PATH", fake_path)
-        .env("NODE_OPTIONS", "--no-experimental-webstorage")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::from(log))
@@ -523,17 +529,14 @@ require('node:readline').createInterface({input:process.stdin}).on('line', line 
         .unwrap();
     struct RunningHost {
         child: std::process::Child,
-        node: String,
         cli: PathBuf,
         data: PathBuf,
     }
     impl Drop for RunningHost {
         fn drop(&mut self) {
-            let _ = Command::new(&self.node)
-                .arg(&self.cli)
+            let _ = Command::new(&self.cli)
                 .args(["stop", "--data-dir"])
                 .arg(&self.data)
-                .env("NODE_OPTIONS", "--no-experimental-webstorage")
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .status();
@@ -550,7 +553,6 @@ require('node:readline').createInterface({input:process.stdin}).on('line', line 
     }
     let mut host = RunningHost {
         child,
-        node: node.clone(),
         cli: cli.clone(),
         data: data.clone(),
     };
@@ -568,11 +570,9 @@ require('node:readline').createInterface({input:process.stdin}).on('line', line 
         );
         thread::sleep(Duration::from_millis(50));
     }
-    let pair = Command::new(&node)
-        .arg(&cli)
+    let pair = Command::new(&cli)
         .args(["pair", "--name", "Native fixture", "--json", "--data-dir"])
         .arg(&data)
-        .env("NODE_OPTIONS", "--no-experimental-webstorage")
         .output()
         .unwrap();
     assert!(
@@ -666,10 +666,15 @@ require('node:readline').createInterface({input:process.stdin}).on('line', line 
         0
     );
     let calls = std::fs::read_to_string(bin.join("calls.log")).unwrap();
+    // The fixture records whole JSON-RPC messages, so the parameters sit under
+    // `params`. The reasoning effort reaching the provider at all is the point:
+    // a remote turn must not run at the provider default when the user chose one.
     assert!(
-        calls
-            .lines()
-            .any(|line| serde_json::from_str::<Value>(line).unwrap()["effort"] == "high")
+        calls.lines().any(|line| {
+            let message: Value = serde_json::from_str(line).unwrap();
+            message["params"]["effort"] == "high"
+        }),
+        "the reasoning effort never reached the provider: {calls}"
     );
     let draft = Settings {
         model: Some("codex:fixture-model".into()),

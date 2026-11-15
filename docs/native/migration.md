@@ -11,11 +11,9 @@ client.
 | `crates/monocode-core/` | Provider transports, persistence, accounts, Git/files, remote connections and shared services |
 | `crates/monocode-gpui/` | Native shell, composer, transcript, editor, settings and platform UI |
 | `crates/monocode-gpui/Cargo.toml` | Independent native Cargo workspace, profiles and dependency patches |
-| `host/` | Headless remote host and the shared TypeScript models it serves |
-| `crates/monocode-host/` | Native replacement for `host/`: Axum server, device pairing, host database |
-| `scripts/dev-native.mjs` | Development build and manual restart runner |
-| `scripts/build-native.mjs` | Optimized build |
-| `scripts/native-editor/`, `scripts/native-settings/` | Generators for embedded JavaScript assets |
+| `crates/monocode-host/` | Headless remote host: Axum server, device pairing, host database |
+| `xtask/` | Development runner, version bumping, packaging and release |
+| `scripts/install.sh`, `scripts/uninstall.sh` | XDG install and removal, no root |
 | `vendor/gpui-pre*/` | Pinned framework and the Linux platform patch |
 
 `monocode-core` has no GPUI dependency. Keep provider and storage behavior in
@@ -77,9 +75,9 @@ providers' CLI authentication and conversation IDs.
 
 ## The remote host
 
-`crates/monocode-host` serves one machine to a paired desktop. It replaces the
-TypeScript `host/` and speaks the same protocol version 1, so
-`monocode_core::remote` is the reference client for any change here.
+`crates/monocode-host` serves one machine to a paired desktop. It speaks
+protocol version 1, so `monocode_core::remote` is the reference client for any
+change here. The TypeScript `host/` it replaced was deleted in Phase 9.
 
 - **Transport.** Axum over Tokio, bound to loopback. `POST /rpc` carries the
   protocol; `POST /lifecycle` is local administration (`status`, `stop`) and
@@ -135,17 +133,14 @@ Composer input should not rebuild the transcript. Transcript rows have stable
 identities, bounded blocks and virtualized layout; streaming updates should
 preserve the reader's position. Cancellation must remain responsive under load.
 
-The editor embeds generated analysis and formatting bundles, and the settings
-screen embeds a generated game bundle. These are committed build artifacts: the
-app embeds them with `include_str!`, so nothing needs regenerating to build,
-test or release.
+The editor embeds analysis and formatting bundles, and the settings screen
+embeds a game bundle. These are vendored data: the app embeds them with
+`include_str!`, so nothing needs regenerating to build, test or release, and no
+Node.js is involved anywhere.
 
-Their generators (`scripts/native-editor/`, `scripts/native-settings/`) still
-require Node, npm and esbuild, and still read TypeScript sources from `host/src`.
-They are the last Node dependency in the repository and are removed together with
-`host/` rather than ported, because the sources they bundle disappear at the same
-time. Until then, regenerating an asset needs Node; building and shipping the app
-does not.
+Their generators were deleted with `host/`, whose TypeScript sources they
+bundled. See [embedded assets](embedded-assets.md) for provenance, the interface
+contract each file must keep, and what to do if one must change.
 
 ## Task runner
 

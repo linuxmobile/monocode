@@ -58,7 +58,7 @@ def main():
     if not desktop.is_file():
         raise RuntimeError(f"Run {build_hint} first, or pass --desktop with an existing build")
     if not LAUNCHER.is_file():
-        raise RuntimeError("Run npm run host:package first")
+        raise RuntimeError("Run cargo xtask build --release first")
     sshd = shutil.which("sshd") or "/usr/sbin/sshd"
     with tempfile.TemporaryDirectory(prefix="monocode-ssh-integration-") as directory:
         folder = pathlib.Path(directory)

@@ -1,12 +1,14 @@
 # Build from source
 
 MonoCode is a Rust + GPUI desktop app. This branch targets Linux on Wayland.
-You need Node.js 22+, a current stable Rust toolchain, and at least one agent CLI
-installed and signed in using [provider setup](providers.md).
+You need a current stable Rust toolchain and at least one agent CLI installed and
+signed in using [provider setup](providers.md).
+
+Node.js is not needed for anything: not building, testing, installing, releasing,
+or running the remote host. Everything is Rust, Cargo and Bash.
 
 The GPUI app has its own Cargo workspace and lockfile under
-`crates/monocode-gpui/`. It does not need the repository's npm dependencies for a
-normal build.
+`crates/monocode-gpui/`.
 
 ## Linux prerequisites
 
@@ -30,14 +32,13 @@ branch.
 From the repository root:
 
 ```bash
-npm install          # only needed for host checks and bundled asset generators
-npm run native:dev   # launch with a separate development database
+cargo xtask dev      # launch with a separate development database
 ```
 
 To open a particular project:
 
 ```bash
-npm run native:dev -- --cwd /path/to/project
+cargo xtask dev -- --cwd /path/to/project
 ```
 
 Type `r` then Enter in the terminal to rebuild and restart. The current app stays
@@ -47,7 +48,7 @@ hot reload or automatic rebuild on save.
 ## Build
 
 ```bash
-npm run native:build
+cargo xtask build --release
 ```
 
 The executable is written under
@@ -62,15 +63,36 @@ Linux packaging for this branch is built by the
 ## Checks
 
 ```bash
-npm run check
+cargo test --locked --manifest-path xtask/Cargo.toml
+cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-core --profile native-dev
+cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-gpui --profile native-dev -- --test-threads=1
+cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-host --profile native-dev
+cargo fmt --manifest-path crates/monocode-gpui/Cargo.toml --all --check
+cargo clippy --locked --manifest-path crates/monocode-gpui/Cargo.toml \
+    -p monocode-core -p monocode-gpui -p monocode-host --all-targets --profile native-dev -- -D warnings
 ```
 
-This runs the host typecheck and tests, the native script tests, Rust formatting,
-strict Clippy and the native test suites. Use `npm run check:host` or
-`npm run native:check` to run one half.
+`scripts/perf/baseline.sh` records performance numbers for comparison over time.
 
 ## Remote host
 
-The headless remote host lives in [`host/`](../host/) and is built from the same
-repository. See [remote access](remote-access.md) for its packaging and
-deployment instructions.
+The headless remote host is `crates/monocode-host`, a Rust binary built from the
+same workspace. On the machine you want to reach:
+
+```bash
+cargo xtask build --release
+target/release/monocode-host install    # systemd user service, no root needed
+target/release/monocode-host pair       # issue a credential for a desktop
+```
+
+See [remote access](remote-access.md) for pairing, lifecycle commands and
+deployment.
+
+## Installing
+
+```bash
+./scripts/install.sh       # files under ~/.local, no root
+./scripts/uninstall.sh     # keeps your data unless --purge
+```
+
+Desktop entries, icons and licence notices are installed alongside the binary.

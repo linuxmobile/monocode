@@ -724,7 +724,16 @@ mod tests {
         assert!(script.contains("--proto '=https'"));
         assert!(script.contains("checksum mismatch"));
         assert!(script.contains("\"$FORCE_UPGRADE\" = 1"));
-        assert!(script.contains("service uninstall"));
+        // The Rust host names its lifecycle commands without a `service` prefix.
+        assert!(script.contains(" uninstall"));
+        assert!(script.contains(" install --port"));
+        // The desktop parses the last line as JSON and needs its port, so the
+        // bootstrap must finish by asking for the connection details. Ending on
+        // `status`, which prints prose, would break every SSH setup.
+        assert!(
+            script.trim_end().ends_with("connection-info"),
+            "the bootstrap must end by reporting the connection details"
+        );
         assert!(upgrade_script(3774).starts_with("MONOCODE_HOST_FORCE_UPGRADE=1"));
         assert!(!upgrade_script(3774).contains('\r'));
     }

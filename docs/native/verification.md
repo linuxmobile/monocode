@@ -13,6 +13,29 @@ results, not a release certification. Later dated sections supplement this
 snapshot. See [preview limitations](parity.md) for
 remaining runtime and platform work.
 
+## Phase 9 — Node.js removal (current)
+
+Recorded after deleting `host/`, `package.json`, `package-lock.json` and the two
+asset generators, on Linux.
+
+| Check | Result |
+| --- | --- |
+| `git ls-files` for `.mjs`/`.cjs`/`.ts`/`.tsx` | 0 files |
+| `git ls-files` for `package.json`/lockfile/`tsconfig`/`vitest.config` | 0 files |
+| Embedded `.js` assets retained | 6, all evaluated by the app's QuickJS runtime (see [embedded assets](embedded-assets.md)) |
+| `monocode-host` library tests | 121 passed |
+| `monocode-host` integration tests | 8 serve, 27 git/workspace, 4 turn, 4 process-lifecycle, 7 service, 4 attachments, 1 memory |
+| Desktop↔host contract (`built_host_round_trip`) | Passed against the Rust host; previously only runnable against the TypeScript one |
+| `monocode-core` tests | 666 passed, 2 ignored |
+| `xtask` tests | 37 passed |
+| Rust formatting and strict Clippy | Clean for `monocode-host` and `xtask` |
+| CI workflows installing Node | 0 |
+| CI check that fails on reintroduced Node.js source | Present in `ci.yml` |
+
+The contract test found five defects the host's own tests could not see; they are
+listed in `migration.md`. Each was fixed, and the reasoning-effort assertion was
+proven able to fail by disabling the forwarding it checks.
+
 ## Recorded results
 
 | Check | Result |

@@ -16,15 +16,15 @@ avoid duplicated work.
 
 ## Get it running
 
-You need Node.js 22+, a current stable Rust toolchain, and at least one provider
-CLI installed and logged in. See [provider setup](docs/providers.md) for
+You need a current stable Rust toolchain and at least one provider CLI installed
+and logged in. Node.js is not needed. See [provider setup](docs/providers.md) for
 installation and login instructions.
 
 See [building from source](docs/building.md) for Linux/Wayland prerequisites and
 packaging commands.
 
 ```bash
-npm run native:dev
+cargo xtask dev
 ```
 
 ## Where things live
@@ -41,15 +41,11 @@ off the UI thread.
 
 ## Embedded editor and settings assets
 
-The native editor embeds generated analysis and formatting bundles. After
-changing their sources or dependencies, run `npm ci` and `npm run build` inside
-`scripts/native-editor/`. Generated bundles and their license notices belong in
-the repository. The settings arcade bundle is built with
-`node scripts/native-settings/build-arcade.mjs`.
-
-These two generators are the only remaining Node dependency. They are removed
-with `host/`, because they bundle its TypeScript sources; building, testing and
-releasing the app never runs them.
+The editor, formatter and settings arcade embed JavaScript bundles that are
+committed in `crates/monocode-gpui/assets/`. They are embedded data, not build
+source: nothing in the build, test or release path regenerates them, and no
+Node.js is involved. See [embedded assets](docs/native/embedded-assets.md) for
+what each one is, how it is wired to Rust, and what to do if one must change.
 
 ## Before you push
 
@@ -62,8 +58,8 @@ cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-
 cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-gpui --profile native-dev -- --test-threads=1
 ```
 
-Those are the native checks and need no Node. While `host/` still exists, its own
-typecheck and tests run with `npm run check:host`.
+All of those are Rust. There is no Node.js anywhere in the repository, so no
+step of building, testing, installing or releasing needs it.
 
 ## New providers
 

@@ -526,26 +526,99 @@ Avoid premature optimization. Profile first, optimize bottlenecks, and benchmark
 
 This is a mandatory release requirement.
 
-- [ ] Remove `package.json`.
-- [ ] Remove `package-lock.json`.
-- [ ] Remove all `*.js`, `*.mjs`, `*.cjs`, and `*.ts` project source files.
-- [ ] Remove Node.js-specific configuration files.
-- [ ] Remove `node_modules`.
-- [ ] Remove esbuild and Vitest.
-- [ ] Remove Node.js download and bundling logic.
-- [ ] Remove Node.js runtime detection and setup.
-- [ ] Remove Node.js-specific documentation.
-- [ ] Remove npm-based scripts and commands.
-- [ ] Remove references to `npx` and npm-based agent installation.
-- [ ] Update CI workflows to eliminate Node.js setup.
-- [ ] Update developer documentation.
-- [ ] Update installation and deployment documentation.
-- [ ] Ensure no application component requires Node.js.
-- [ ] Ensure no first-party JavaScript or TypeScript source remains.
+- [x] Remove `package.json`.
+- [x] Remove `package-lock.json`.
+- [x] Remove all `*.js`, `*.mjs`, `*.cjs`, and `*.ts` project source files.
+- [x] Remove Node.js-specific configuration files.
+- [x] Remove `node_modules`.
+- [x] Remove esbuild and Vitest.
+- [x] Remove Node.js download and bundling logic.
+- [x] Remove Node.js runtime detection and setup.
+- [x] Remove Node.js-specific documentation.
+- [x] Remove npm-based scripts and commands.
+- [x] Remove references to `npx` and npm-based agent installation.
+- [x] Update CI workflows to eliminate Node.js setup.
+- [x] Update developer documentation.
+- [x] Update installation and deployment documentation.
+- [x] Ensure no application component requires Node.js.
+- [x] Ensure no first-party JavaScript or TypeScript source remains.
 
 Run repository-wide checks using `rg` and other appropriate tools to identify remaining references.
 
 Distinguish legitimate references in documentation about external tools from actual runtime dependencies. Document any remaining exceptions.
+
+## What was removed
+
+181 tracked files: `host/` (the TypeScript remote host, 173 files including its
+19 Vitest suites), `scripts/native-editor/`, `scripts/native-settings/`,
+`package.json`, `package-lock.json`, and the six deleted `.mjs` build scripts
+from Phase 7. `git ls-files` now reports **no** `.mjs`, `.cjs`, `.ts` or `.tsx`
+files and no `package.json`, `package-lock.json`, `tsconfig.json` or
+`vitest.config.ts`.
+
+`.github/workflows/ci.yml` previously existed only to run `npm ci` and test
+`host/`. It now installs no Node, runs the Rust format, Clippy and test
+commands, tests `xtask`, and **fails if Node.js source or configuration is
+reintroduced**.
+
+## Remaining exceptions
+
+Six `.js` files remain deliberately. All six are **embedded data**, evaluated by
+the app's own QuickJS runtime, not build source. Nothing in the build, test,
+install or release path regenerates or executes them outside the app, and none
+needs Node.js. They are documented in
+[`docs/native/embedded-assets.md`](docs/native/embedded-assets.md):
+
+| File | Why it stays |
+| --- | --- |
+| `crates/monocode-gpui/assets/native-editor.js` | CodeMirror bundle, `include_str!` in `editor_analysis.rs` |
+| `crates/monocode-gpui/assets/native-format.js` | Prettier bundle, `include_str!` in `editor_analysis.rs` |
+| `crates/monocode-gpui/assets/settings-arcade.js` | Arcade and composer runner, `include_str!` in `arcade.rs` |
+| `crates/monocode-core/src/visual/sdk.js` | The `visual` API for user-authored visual programs |
+| `docs/native/examples/visual-dashboard.js` | Sample visual program embedded by `fixtures.rs` |
+| `docs/native/examples/visual-scene.js` | Sample visual program embedded by `fixtures.rs` |
+
+Writing a visual program in JavaScript is a product feature, so JavaScript
+appearing where a user writes one is expected.
+
+Their generators were deleted, because they bundled TypeScript from `host/src`
+that no longer exists. Reimplementing esbuild would be a large amount of
+machinery for four rarely-changing assets; they are vendored the way any
+third-party bundle is, with provenance and an interface contract recorded.
+
+## Legitimate references kept
+
+- `npm i -g @earendil-works/pi-coding-agent` in `provider/kind.rs` and
+  `docs/providers.md`: how the *user* installs the third-party Pi agent CLI.
+  This is a provider we integrate with, not tooling we ship.
+- `registry.npmjs.org` in `harness_updates.rs`: the update feed for that same
+  third-party CLI.
+- `npm run build` and similar strings in provider and tool-presentation tests:
+  fixture command text, not executed by the build.
+
+## Bugs this phase surfaced
+
+Deleting `host/` made the desktop-to-host contract test (`built_host_round_trip`)
+runnable against the Rust host instead of the TypeScript one. Repointing it found
+five real defects that the host's own tests could not see, because they asserted
+against the host's own assumptions rather than the desktop:
+
+1. `commands.dispatch` receipts omitted `sessionId`, `commandId` and `revision`.
+   The desktop's outbox rejects such a receipt as "no session identity" and
+   retries forever against a host that had already applied the command.
+2. `sessions.get`/`sessions.sync` demanded a `projectId` the protocol never
+   sends, so **every** remote session load failed.
+3. `send` dropped `modelSettings`, so a remote turn silently ran at the provider
+   default reasoning effort instead of the one the user chose.
+4. `send` dropped `attachments`, so an uploaded file never appeared on the user
+   block of the transcript.
+5. `draft`/`removeDraft` were unimplemented, so saving a draft over remote failed.
+
+Plan mode was also verified end-to-end in this phase rather than assumed: with
+`settings.access = FullAccess`, a planning turn denies a file-change approval
+that it would otherwise allow. The first version of that test passed with plan
+mode disabled, because the default access mode denies regardless; it now asserts
+the difference.
 
 # Phase 10 — Final Validation
 

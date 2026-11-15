@@ -5,12 +5,15 @@ their own Cargo workspace and lockfile.
 
 ## Requirements
 
-- Node.js 22+ and a current stable Rust toolchain.
+- A current stable Rust toolchain. Node.js is not needed.
 - Linux core checks need D-Bus headers and pkg-config (`libdbus-1-dev` and
   `pkg-config` on Debian/Ubuntu).
 - At least one installed, signed-in agent CLI. See [provider setup](../providers.md).
 
-The native commands do not require `npm install` or a frontend build.
+The native commands do not require `npm install` or a frontend build; there is
+no package manager step at all. No part of building, testing, installing or
+releasing needs Node.js. The JavaScript bundles the editor and settings screen
+embed are vendored data; see [embedded assets](embedded-assets.md).
 Linux is the only supported platform. A Linux ARM64 source build has been
 smoke-tested in a VM; the Linux x64 packages still need runtime testing. See
 [preview limitations](parity.md).
@@ -57,13 +60,13 @@ see [verification](verification.md).
 From the repository root:
 
 ```sh
-npm run native:dev
+cargo xtask dev
 ```
 
 Development uses a separate database. To open a particular project:
 
 ```sh
-npm run native:dev -- --cwd /path/to/project
+cargo xtask dev -- --cwd /path/to/project
 ```
 
 Type `r` then Enter in the terminal to rebuild and restart. The current app stays
@@ -73,7 +76,7 @@ hot reload or automatic rebuild on save.
 ## Build
 
 ```sh
-npm run native:build
+cargo xtask build --release
 ```
 
 This creates an optimized build without launching it. **The release app uses the
@@ -133,10 +136,10 @@ continues to use each provider's existing sign-in.
 ## Checks and fixtures
 
 ```sh
-npm run native:check
+cargo test --locked --manifest-path xtask/Cargo.toml
+cargo test --locked --manifest-path crates/monocode-gpui/Cargo.toml -p monocode-core --profile native-dev
 ```
 
-This runs the script tests, Rust formatting, strict Clippy and native tests.
 See [verification](verification.md) for individual commands, optional provider
 checks and the latest recorded results.
 
@@ -144,7 +147,7 @@ A synthetic long-history fixture uses development data and makes no provider
 request:
 
 ```sh
-MONOCODE_NATIVE_DATA_DIR=/tmp/monocode-native-lab npm run native:dev -- --fixture
+MONOCODE_NATIVE_DATA_DIR=/tmp/monocode-native-lab cargo xtask dev -- --fixture
 ```
 
 Fixtures are refused with production data. Use a fresh temporary directory when
