@@ -40,6 +40,19 @@ fn allowed(prefs: &Preferences, cwd: &str, kind: Kind) -> bool {
 }
 
 pub(crate) fn resolve(prefs: &Preferences, cwd: &str) -> NewChatChoice {
+    resolve_with(prefs, cwd, monocode_core::provider::installed)
+}
+
+/// `resolve` with the installation probe injected.
+///
+/// Step 4 turns on what is installed, so the tests must supply that answer
+/// rather than inherit the developer's machine, which would make the suite pass
+/// or fail depending on which CLIs happen to be present.
+pub(crate) fn resolve_with(
+    prefs: &Preferences,
+    cwd: &str,
+    installed: impl Fn(Kind) -> bool,
+) -> NewChatChoice {
     // 1. The project's provider.
     // 2. The Settings provider.
     for id in [
@@ -62,11 +75,23 @@ pub(crate) fn resolve(prefs: &Preferences, cwd: &str) -> NewChatChoice {
             default_model(prefs, cwd, kind).or_else(|| recent.model.clone()),
         );
     }
-    // 4. Codex, or the first provider left.
-    let kind = [Kind::Codex]
+    // 4. Codex if it is installed, otherwise the first provider that is.
+    //
+    // Preferring Codex unconditionally made a fresh install on a machine
+    // without it open a new chat that could never run, while an installed
+    // provider sat unused; the status bar then showed the unusable choice as
+    // disabled. Installation is checked before preference so the default is
+    // always something that can actually start a turn.
+    let candidates = [Kind::Codex]
         .into_iter()
         .chain(Kind::ALL)
-        .find(|k| allowed(prefs, cwd, *k))
+        .filter(|k| allowed(prefs, cwd, *k));
+    let kind = candidates
+        .clone()
+        .find(|k| installed(*k))
+        // 5. Nothing is installed: name a provider so the UI can explain what
+        // to install, rather than leaving the choice empty.
+        .or_else(|| candidates.into_iter().next())
         .unwrap_or(Kind::Codex);
     NewChatChoice::of(kind, default_model(prefs, cwd, kind))
 }

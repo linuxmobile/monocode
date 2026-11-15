@@ -30,14 +30,59 @@ fn project(
     p.hidden = hidden.iter().map(|s| s.to_string()).collect();
 }
 
+/// Steps 1-3 predate installation and are independent of it, so these use the
+/// real probe and swap it out only where step 4 is what is under test.
 fn pick(prefs: &Preferences, cwd: &str) -> (Kind, Option<String>) {
     let c = resolve(prefs, cwd);
     (c.kind, c.model)
 }
 
+/// Resolve with an explicit installation answer, so the result never depends on
+/// which CLIs the machine running the tests happens to have.
+fn pick_installed(
+    prefs: &Preferences,
+    cwd: &str,
+    installed: &'static [Kind],
+) -> (Kind, Option<String>) {
+    let c = resolve_with(prefs, cwd, |kind| installed.contains(&kind));
+    (c.kind, c.model)
+}
+
 #[test]
-fn nothing_set_starts_codex() {
-    assert_eq!(pick(&Preferences::default(), LOCAL), (Kind::Codex, None));
+fn nothing_set_starts_codex_when_codex_is_installed() {
+    assert_eq!(
+        pick_installed(
+            &Preferences::default(),
+            LOCAL,
+            &[Kind::Codex, Kind::OpenCode]
+        ),
+        (Kind::Codex, None)
+    );
+}
+
+/// The bug a user hit: Codex was chosen for a machine that had OpenCode but no
+/// Codex, so the new chat opened on a provider that could never run and the
+/// status bar showed it as disabled.
+#[test]
+fn an_uninstalled_codex_does_not_beat_an_installed_provider() {
+    assert_eq!(
+        pick_installed(&Preferences::default(), LOCAL, &[Kind::OpenCode]),
+        (Kind::OpenCode, None)
+    );
+    assert_eq!(
+        pick_installed(&Preferences::default(), LOCAL, &[Kind::Pi]),
+        (Kind::Pi, None)
+    );
+}
+
+/// Nothing installed still has to name something, so the UI can say what to
+/// install instead of leaving the choice empty.
+#[test]
+fn a_machine_with_nothing_installed_still_names_a_provider() {
+    assert_eq!(
+        pick_installed(&Preferences::default(), LOCAL, &[]),
+        (Kind::Codex, None)
+    );
 }
 
 #[test]
@@ -92,27 +137,42 @@ fn last_choice_is_used_and_defaults_win_over_its_model() {
 
 #[test]
 fn hidden_providers_are_skipped_step_by_step() {
+    // Every provider counts as installed so this asserts the hidden-list order
+    // alone, and not what this machine happens to have.
+    const ALL_KEYS: &[Kind] = &[
+        Kind::Claude,
+        Kind::Codex,
+        Kind::Cursor,
+        Kind::Grok,
+        Kind::OpenCode,
+        Kind::Pi,
+        Kind::Omp,
+        Kind::Fx,
+        Kind::Hermes,
+        Kind::Antigravity,
+        Kind::Devin,
+    ];
     let mut prefs = Preferences {
         default_provider: Some("claude".into()),
         recent_models: vec![recent("pi", Some("pi-1"))],
         hidden_providers: vec!["claude".into(), "pi".into()],
         ..Default::default()
     };
-    assert_eq!(pick(&prefs, LOCAL), (Kind::Codex, None));
+    assert_eq!(pick_installed(&prefs, LOCAL, ALL_KEYS), (Kind::Codex, None));
     // The first provider left when Codex is hidden too.
     prefs.hidden_providers.push("codex".into());
-    assert_eq!(pick(&prefs, LOCAL).0, Kind::Cursor);
+    assert_eq!(pick_installed(&prefs, LOCAL, ALL_KEYS).0, Kind::Cursor);
     // Everything hidden falls back to Codex.
     prefs.hidden_providers = Kind::ALL.iter().map(|k| k.id().into()).collect();
-    assert_eq!(pick(&prefs, LOCAL).0, Kind::Codex);
+    assert_eq!(pick_installed(&prefs, LOCAL, ALL_KEYS).0, Kind::Codex);
     // A project's own hidden list counts for that project.
     let mut prefs = Preferences {
         recent_models: vec![recent("pi", Some("pi-1"))],
         ..Default::default()
     };
     project(&mut prefs, LOCAL, None, &[], &["pi"]);
-    assert_eq!(pick(&prefs, LOCAL).0, Kind::Codex);
-    assert_eq!(pick(&prefs, "/work/other").0, Kind::Pi);
+    assert_eq!(pick_installed(&prefs, LOCAL, ALL_KEYS).0, Kind::Codex);
+    assert_eq!(pick_installed(&prefs, "/work/other", ALL_KEYS).0, Kind::Pi);
 }
 
 #[test]
@@ -122,8 +182,14 @@ fn remote_projects_ignore_the_hidden_list() {
         hidden_providers: vec!["claude".into()],
         ..Default::default()
     };
-    assert_eq!(pick(&prefs, LOCAL).0, Kind::Codex);
-    assert_eq!(pick(&prefs, REMOTE).0, Kind::Claude);
+    assert_eq!(
+        pick_installed(&prefs, LOCAL, &[Kind::Codex, Kind::Claude]).0,
+        Kind::Codex
+    );
+    assert_eq!(
+        pick_installed(&prefs, REMOTE, &[Kind::Codex, Kind::Claude]).0,
+        Kind::Claude
+    );
 }
 
 #[test]
@@ -178,14 +244,25 @@ fn ordinary_shell_new_chat_follows_the_last_choice(cx: &mut TestAppContext) {
             .update(cx, |shell, _, cx| created(shell, cx))
             .unwrap()
     };
-    assert_eq!(new_chat(cx, vec![], &[]), ("codex".into(), None));
+    // With no preference, the default is whatever this machine can run. Assert
+    // that it is installable rather than naming one, so the test does not fail
+    // on a machine with a different set of CLIs.
+    let fallback = new_chat(cx, vec![], &[]);
+    assert!(
+        monocode_core::provider::installed(Kind::parse(&fallback.0).unwrap()),
+        "the default provider {} is not installed here",
+        fallback.0
+    );
     assert_eq!(
         new_chat(cx, vec![recent("claude", Some("opus"))], &[]),
         ("claude".into(), Some("opus".into()))
     );
-    // A hidden last choice is skipped.
-    assert_eq!(
-        new_chat(cx, vec![recent("claude", Some("opus"))], &["claude"]),
-        ("codex".into(), None)
+    // A hidden last choice is skipped, landing back on a runnable default.
+    let skipped = new_chat(cx, vec![recent("claude", Some("opus"))], &["claude"]);
+    assert_ne!(skipped.0, "claude");
+    assert!(
+        monocode_core::provider::installed(Kind::parse(&skipped.0).unwrap()),
+        "the fallback provider {} is not installed here",
+        skipped.0
     );
 }

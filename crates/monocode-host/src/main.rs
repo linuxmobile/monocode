@@ -30,12 +30,24 @@ fn main() {
 }
 
 fn run(args: Vec<String>) -> Result<(), String> {
+    // The remote bootstrap compares this against the desktop's version to prove
+    // it unpacked the build it asked for. The wording has to match the desktop
+    // exactly, or every SSH host install fails its version check.
+    if matches!(args.first().map(String::as_str), Some("--version" | "-V")) {
+        println!("Monocode Native {}", version());
+        return Ok(());
+    }
     let options = Options::parse(&args)?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .map_err(|e| format!("start the runtime: {e}"))?;
     runtime.block_on(async_main(options, &args))
+}
+
+/// Set by the packaging step so a built archive reports its release version.
+fn version() -> &'static str {
+    option_env!("MONOCODE_NATIVE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
 }
 
 struct Options {
@@ -411,6 +423,25 @@ mod tests {
 
     fn args(values: &[&str]) -> Vec<String> {
         values.iter().map(|value| (*value).to_string()).collect()
+    }
+
+    /// The remote bootstrap compares this output to the desktop's version
+    /// string. A host that cannot report its version fails every SSH install at
+    /// the unpack or install check, so the exact form is part of the contract.
+    #[test]
+    fn the_version_is_reported_in_the_form_the_bootstrap_compares() {
+        let printed = format!("Monocode Native {}", version());
+        assert!(
+            printed.starts_with("Monocode Native "),
+            "unexpected version form: {printed}"
+        );
+        let reported = printed.strip_prefix("Monocode Native ").expect("prefix");
+        assert!(!reported.is_empty());
+        // Accepting `--version` and `-V`, and nothing that looks like a command.
+        for flag in ["--version", "-V"] {
+            assert!(matches!(Some(flag), Some("--version" | "-V")));
+        }
+        assert!(!matches!(Some("serve"), Some("--version" | "-V")));
     }
 
     #[test]

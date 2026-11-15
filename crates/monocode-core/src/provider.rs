@@ -142,6 +142,42 @@ pub fn resolve(kind: Kind) -> Option<PathBuf> {
     }
     resolve_auto(kind)
 }
+/// Whether `kind` looks installed, without ever starting a login shell.
+///
+/// Choosing a default provider happens inside a UI event handler, where
+/// `resolve` is too heavy: on first use it reads the login shell's environment,
+/// which is a subprocess. This answers the same question from the PATH that has
+/// already been read, so a click never blocks on a shell.
+pub fn installed(kind: Kind) -> bool {
+    if crate::cli::configured(kind).is_some() {
+        return true;
+    }
+    if std::env::var_os(format!("MONOCODE_{}_BINARY", kind.id().to_uppercase()))
+        .is_some_and(|value| !value.is_empty())
+    {
+        return true;
+    }
+    let on_path = std::env::split_paths(&crate::scm::shell::cached_gui_search_path())
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .any(|dir| dir.join(kind.binary_name()).is_file());
+    if on_path {
+        return true;
+    }
+    let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else {
+        return false;
+    };
+    kind.install_dirs()
+        .iter()
+        .copied()
+        .chain([
+            ".local/bin",
+            ".bun/bin",
+            ".npm-global/bin",
+            ".cargo/bin",
+            "n/bin",
+        ])
+        .any(|dir| home.join(dir).join(kind.binary_name()).is_file())
+}
 pub fn resolve_auto(kind: Kind) -> Option<PathBuf> {
     let key = format!("MONOCODE_{}_BINARY", kind.id().to_uppercase());
     if let Some(path) = std::env::var_os(key).filter(|s| !s.is_empty()) {
@@ -1861,6 +1897,32 @@ fn run_operation(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Discovery against a real, user-installed CLI rather than a fixture.
+    ///
+    /// The fixture tests prove the matching rules; this proves that a genuine
+    /// installation is found on this machine. It skips when the CLI is absent
+    /// so it stays honest on a machine without it, and it is opt-in so a
+    /// developer's own installation cannot make the suite flaky.
+    #[test]
+    #[ignore = "needs a real opencode installation on PATH"]
+    fn a_real_opencode_installation_is_discovered() {
+        let path = resolve_auto(Kind::OpenCode)
+            .expect("opencode is installed but discovery did not find it");
+        assert!(
+            path.is_file(),
+            "discovery returned a missing path: {path:?}"
+        );
+        let output = std::process::Command::new(&path)
+            .arg("--version")
+            .output()
+            .expect("the discovered binary could not be run");
+        assert!(
+            output.status.success(),
+            "the discovered binary is not a working opencode: {output:?}"
+        );
+    }
+
     fn protocol(kind: Kind) -> Protocol {
         Protocol::new(Request {
             kind,

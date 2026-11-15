@@ -67,6 +67,12 @@ if [ "$purge" -eq 1 ]; then
         fi
     done
 else
-    echo "Your data was kept. MonoCode stores it under $HOME/.monocode-host and"
-    echo "$DATA_DIR/monocode-native. Re-run with --purge to delete it."
+    # `--purge` only removes the remote host's state directory. The desktop's
+    # own data lives elsewhere and is never deleted here, so say where it is
+    # instead of implying this script could remove it.
+    echo "MonoCode's application files were removed."
+    echo "Your own data was kept:"
+    echo "  ${XDG_DATA_HOME:-$HOME/.local/share}/Monocode Development   (sessions and settings)"
+    echo "  $HOME/.monocode-host                                        (remote host state, if any)"
+    echo "Re-run with --purge to remove the remote host state directory as well."
 fi
