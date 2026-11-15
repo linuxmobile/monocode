@@ -121,6 +121,40 @@ fn restart(cx: &mut App) {
     .detach();
 }
 
+/// Say so when saved conversations exist somewhere this launch is not reading.
+///
+/// A development build opens an isolated database, and a first run opens an
+/// empty one, so an existing MonoCode database can sit beside an empty window.
+/// Starting blank looks exactly like data loss, so name the file that has the
+/// conversations and how to open it. Nothing is copied and nothing is written.
+fn warn_about_existing_desktop_data(db: &Store, database: &std::path::Path, use_monocode: bool) {
+    if use_monocode {
+        return;
+    }
+    let desktop = monocode_core::store::monocode_database();
+    if desktop == database || !desktop.is_file() {
+        return;
+    }
+    if db.sessions().is_ok_and(|sessions| !sessions.is_empty()) {
+        return;
+    }
+    // Count through the same store the app would use, read-only.
+    let saved = Store::read_monocode(&desktop)
+        .and_then(|store| store.sessions())
+        .map(|sessions| sessions.len())
+        .unwrap_or(0);
+    if saved == 0 {
+        return;
+    }
+    eprintln!(
+        "This development build is using {}\n\
+         {saved} saved conversation(s) are in {}\n\
+         Open them with --monocode-data (the release build uses that database).",
+        database.display(),
+        desktop.display()
+    );
+}
+
 fn data_dir() -> PathBuf {
     if let Some(path) = std::env::var_os("MONOCODE_NATIVE_DATA_DIR") {
         return path.into();
@@ -284,6 +318,7 @@ fn main() {
         }
         return;
     }
+    warn_about_existing_desktop_data(&db, &database, use_monocode);
     monocode_core::checkpoint::init(
         database
             .parent()

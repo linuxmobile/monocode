@@ -266,3 +266,12 @@ fn ordinary_shell_new_chat_follows_the_last_choice(cx: &mut TestAppContext) {
         skipped.0
     );
 }
+
+/// The preferences this machine actually has: every list empty. This is the
+/// case the user hit, so it must not choose an uninstalled provider.
+#[test]
+fn real_empty_preferences_do_not_choose_an_uninstalled_provider() {
+    let prefs = Preferences::default();
+    let (kind, _) = pick_installed(&prefs, LOCAL, &[Kind::OpenCode]);
+    assert_eq!(kind, Kind::OpenCode);
+}
