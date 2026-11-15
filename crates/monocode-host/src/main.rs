@@ -8,6 +8,7 @@ mod methods;
 mod mutex;
 mod protocol;
 mod server;
+mod session;
 mod store;
 
 use protocol::HOST_PROTOCOL_VERSION;

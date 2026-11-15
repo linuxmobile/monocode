@@ -38,6 +38,10 @@ pub struct IssuedDevice {
 pub struct HostStore {
     conn: Connection,
     pub environment_id: String,
+    /// Recently used snapshots, so a polling client does not make the host
+    /// re-parse a whole transcript on every request. Bounded by insertion
+    /// order; the oldest entry is dropped when it fills.
+    cache: Vec<(String, crate::session::HostSession)>,
 }
 
 impl HostStore {
@@ -92,38 +96,45 @@ impl HostStore {
         Ok(Self {
             conn,
             environment_id,
+            cache: Vec::new(),
         })
     }
 
-    /// Runs `body` inside `BEGIN IMMEDIATE`, rolling back on error.
-    ///
-    /// Session writes and receipt insertion use this; the methods that do are
-    /// still being ported, so nothing calls it yet.
-    #[allow(dead_code)]
-    pub fn transaction<T>(
-        &mut self,
-        body: impl FnOnce(&Connection) -> Result<T, String>,
-    ) -> Result<T, String> {
-        self.conn
-            .execute_batch("BEGIN IMMEDIATE")
-            .map_err(|e| e.to_string())?;
-        match body(&self.conn) {
-            Ok(value) => {
-                if let Err(error) = self.conn.execute_batch("COMMIT") {
-                    let _ = self.conn.execute_batch("ROLLBACK");
-                    return Err(error.to_string());
-                }
-                Ok(value)
-            }
-            Err(error) => {
-                // A rollback can itself fail if the connection is unusable;
-                // the original error stays the one worth reporting.
-                if let Err(rollback) = self.conn.execute_batch("ROLLBACK") {
-                    log::error!("host transaction rollback failed: {rollback}");
-                }
-                Err(error)
-            }
+    /// The live connection, for reads that do not need a transaction.
+    pub(crate) fn connection(&self) -> &Connection {
+        &self.conn
+    }
+
+    pub(crate) fn connection_mut(&mut self) -> &mut Connection {
+        &mut self.conn
+    }
+
+    /// Most recently used snapshots, oldest first.
+    pub(crate) fn cached(&mut self, id: &str) -> Option<crate::session::HostSession> {
+        let index = self.cache.iter().position(|(key, _)| key == id)?;
+        let entry = self.cache.remove(index);
+        let value = entry.1.clone();
+        self.remember(value.clone());
+        Some(value)
+    }
+
+    pub(crate) fn remember(&mut self, value: crate::session::HostSession) {
+        let Some(id) = value.id().map(str::to_string) else {
+            return;
+        };
+        self.cache.retain(|(key, _)| key != &id);
+        self.cache.push((id, value));
+        if self.cache.len() > 32 {
+            self.cache.remove(0);
         }
+    }
+
+    pub(crate) fn forget(&mut self, id: &str) {
+        self.cache.retain(|(key, _)| key != id);
+    }
+
+    pub(crate) fn clear_cache(&mut self) {
+        self.cache.clear();
     }
 
     pub fn project(&self, id: &str) -> Result<Project, String> {
@@ -362,7 +373,7 @@ mod tests {
     fn a_failed_transaction_rolls_back() {
         let (_dir, mut store) = store();
         let error = store
-            .transaction(|conn| {
+            .in_transaction(|conn| {
                 conn.execute(
                     "INSERT INTO projects (id, cwd, name) VALUES ('p', '/tmp/x', 'x')",
                     [],

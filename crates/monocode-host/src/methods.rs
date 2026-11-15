@@ -15,7 +15,7 @@ use std::sync::Arc;
 /// The methods this host answers. Kept as one list so the descriptor and the
 /// dispatcher cannot disagree: every entry has an arm below, and every arm is
 /// listed here.
-pub const METHODS: [&str; 10] = [
+pub const METHODS: [&str; 14] = [
     "environment.describe",
     "projects.list",
     "projects.open",
@@ -24,17 +24,20 @@ pub const METHODS: [&str; 10] = [
     "files.create",
     "git.worktrees",
     "models.list",
+    "sessions.delete",
+    "sessions.get",
     "sessions.list",
+    "sessions.update",
+    "sessions.sync",
     "devices.revokeSelf",
 ];
 
 /// Methods the desktop may call that this build does not serve yet. Reported
 /// explicitly rather than treated as unknown.
-const UNIMPLEMENTED: [&str; 23] = [
+const UNIMPLEMENTED: [&str; 18] = [
     "attachments.read",
     "attachments.upload",
     "commands.dispatch",
-    "events.read",
     "files.index",
     "files.read",
     "files.search",
@@ -48,13 +51,18 @@ const UNIMPLEMENTED: [&str; 23] = [
     "git.index",
     "git.switch",
     "git.worktreeCreate",
-    "sessions.delete",
-    "sessions.get",
-    "sessions.sync",
     "sessions.syncChunk",
-    "sessions.update",
     "workspace.run",
 ];
+
+/// A required string parameter, reported by name when it is missing.
+fn string_param(params: &serde_json::Map<String, Value>, key: &str) -> Result<String, RpcFailure> {
+    params
+        .get(key)
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| RpcFailure::BadRequest(format!("`{key}` is required")))
+}
 
 pub struct Dispatch {
     pub state: Arc<HostState>,
@@ -229,7 +237,213 @@ impl Dispatch {
                 })
                 .await
             }
-            "sessions.list" => Ok(json!([])),
+            "sessions.list" => {
+                let project = self.project_of(&params).await?;
+                let mut store = self.state.store.lock().await;
+                let sessions = store
+                    .sessions(Some(&project.id))
+                    .map_err(RpcFailure::BadRequest)?;
+                let mut summaries = Vec::with_capacity(sessions.len());
+                for session in &sessions {
+                    let mut summary = crate::session::summary(session);
+                    if let Some(object) = summary.as_object_mut() {
+                        object.insert("repo".into(), Value::String(project.name.clone()));
+                        // A session recorded away from the project root is a
+                        // worktree checkout, which the desktop labels.
+                        let cwd = session.session.get("cwd").and_then(Value::as_str);
+                        if let Some(cwd) = cwd.filter(|cwd| *cwd != project.cwd) {
+                            object.insert("worktreeCwd".into(), Value::String(cwd.into()));
+                        }
+                    }
+                    summaries.push(summary);
+                }
+                summaries.sort_by(|a, b| b["updatedAt"].as_u64().cmp(&a["updatedAt"].as_u64()));
+                Ok(Value::Array(summaries))
+            }
+            "sessions.get" => {
+                let project = self.project_of(&params).await?;
+                let id = string_param(&params, "sessionId")?;
+                let revision = params.get("revision").and_then(Value::as_i64);
+                let mut store = self.state.store.lock().await;
+                let Some(session) = store.session(&id).map_err(RpcFailure::BadRequest)? else {
+                    return Err(RpcFailure::BadRequest(
+                        "Session not found on this machine".into(),
+                    ));
+                };
+                if session.project_id != project.id {
+                    return Err(RpcFailure::BadRequest(
+                        "Session belongs to another project".into(),
+                    ));
+                }
+                // A client that is already current is answered with null, so
+                // it does not re-download an unchanged transcript.
+                if revision == Some(session.revision) {
+                    return Ok(Value::Null);
+                }
+                Ok(serde_json::to_value(session)
+                    .map_err(|e| RpcFailure::BadRequest(e.to_string()))?)
+            }
+            "sessions.sync" => {
+                let project = self.project_of(&params).await?;
+                let id = string_param(&params, "sessionId")?;
+                let revision = params.get("revision").and_then(Value::as_i64);
+                let mut store = self.state.store.lock().await;
+                let Some(session) = store.session(&id).map_err(RpcFailure::BadRequest)? else {
+                    return Err(RpcFailure::BadRequest(
+                        "Session not found on this machine".into(),
+                    ));
+                };
+                if session.project_id != project.id {
+                    return Err(RpcFailure::BadRequest(
+                        "Session belongs to another project".into(),
+                    ));
+                }
+                let sync = store
+                    .sync(&id, revision)
+                    .map_err(RpcFailure::BadRequest)?
+                    .ok_or_else(|| {
+                        RpcFailure::BadRequest("Session not found on this machine".into())
+                    })?;
+                Ok(
+                    serde_json::to_value(sync)
+                        .map_err(|e| RpcFailure::BadRequest(e.to_string()))?,
+                )
+            }
+            "events.read" => {
+                let project = self.project_of(&params).await?;
+                let id = string_param(&params, "sessionId")?;
+                let after = params
+                    .get("after")
+                    .and_then(Value::as_i64)
+                    .filter(|after| *after >= 0)
+                    .ok_or_else(|| RpcFailure::BadRequest("Invalid event cursor".into()))?;
+                let mut store = self.state.store.lock().await;
+                let Some(session) = store.session(&id).map_err(RpcFailure::BadRequest)? else {
+                    return Err(RpcFailure::BadRequest(
+                        "Session not found on this machine".into(),
+                    ));
+                };
+                if session.project_id != project.id {
+                    return Err(RpcFailure::BadRequest(
+                        "Session belongs to another project".into(),
+                    ));
+                }
+                let replay = store
+                    .events(&id, after)
+                    .map_err(RpcFailure::BadRequest)?
+                    .ok_or_else(|| {
+                        RpcFailure::BadRequest("Session not found on this machine".into())
+                    })?;
+                Ok(serde_json::to_value(replay)
+                    .map_err(|e| RpcFailure::BadRequest(e.to_string()))?)
+            }
+            "sessions.update" => {
+                let project = self.project_of(&params).await?;
+                let id = string_param(&params, "sessionId")?;
+                let mut store = self.state.store.lock().await;
+                let Some(mut current) = store.session(&id).map_err(RpcFailure::BadRequest)? else {
+                    return Err(RpcFailure::BadRequest(
+                        "Session not found on this machine".into(),
+                    ));
+                };
+                if current.project_id != project.id {
+                    return Err(RpcFailure::BadRequest(
+                        "Session belongs to another project".into(),
+                    ));
+                }
+                let mut changed = false;
+                if let Some(title) = params.get("title") {
+                    let title = title
+                        .as_str()
+                        .ok_or_else(|| RpcFailure::BadRequest("Invalid session title".into()))?;
+                    if title.trim().is_empty() || title.len() > 200 {
+                        return Err(RpcFailure::BadRequest("Invalid session title".into()));
+                    }
+                    if let Some(session) = current.session.as_object_mut() {
+                        session.insert("title".into(), Value::String(title.trim().into()));
+                    }
+                    changed = true;
+                }
+                for (key, name) in [("archived", "archive"), ("pinned", "pin")] {
+                    let Some(value) = params.get(key) else {
+                        continue;
+                    };
+                    let value = value
+                        .as_bool()
+                        .ok_or_else(|| RpcFailure::BadRequest(format!("Invalid {name} value")))?;
+                    let slot = if key == "archived" {
+                        &mut current.archived
+                    } else {
+                        &mut current.pinned
+                    };
+                    *slot = Some(value);
+                    changed = true;
+                }
+                if let Some(item) = params.get("linkedWorkItem") {
+                    let linked = if item.is_null() {
+                        None
+                    } else {
+                        // The desktop only links one recognised GitHub issue or
+                        // pull request; anything else is a client bug.
+                        let url = item.get("url").and_then(Value::as_str).ok_or_else(|| {
+                            RpcFailure::BadRequest("Invalid linked work item".into())
+                        })?;
+                        let parsed = monocode_core::session_groups::parse_github_work_item(url)
+                            .ok_or_else(|| {
+                                RpcFailure::BadRequest("Invalid linked work item".into())
+                            })?;
+                        let matches = item.get("kind").and_then(Value::as_str)
+                            == Some(parsed.kind.as_str())
+                            && item.get("repo").and_then(Value::as_str)
+                                == Some(parsed.repo.as_str())
+                            && item.get("number").and_then(Value::as_u64)
+                                == Some(parsed.number as u64)
+                            && item.get("url").and_then(Value::as_str) == Some(parsed.url.as_str());
+                        if !matches {
+                            return Err(RpcFailure::BadRequest("Invalid linked work item".into()));
+                        }
+                        Some(item.clone())
+                    };
+                    if let Some(session) = current.session.as_object_mut() {
+                        match linked {
+                            Some(linked) => session.insert("linkedWorkItem".into(), linked),
+                            None => session.remove("linkedWorkItem"),
+                        };
+                    }
+                    changed = true;
+                }
+                if !changed {
+                    return Err(RpcFailure::BadRequest("No session changes supplied".into()));
+                }
+                current.revision += 1;
+                store
+                    .save_session(current, json!({ "type": "session.metadata" }))
+                    .map_err(RpcFailure::BadRequest)?;
+                let saved = store
+                    .session(&id)
+                    .map_err(RpcFailure::BadRequest)?
+                    .ok_or_else(|| {
+                        RpcFailure::BadRequest("Session not found on this machine".into())
+                    })?;
+                Ok(crate::session::summary(&saved))
+            }
+            "sessions.delete" => {
+                let project = self.project_of(&params).await?;
+                let id = string_param(&params, "sessionId")?;
+                let mut store = self.state.store.lock().await;
+                let Some(session) = store.session(&id).map_err(RpcFailure::BadRequest)? else {
+                    return Err(RpcFailure::BadRequest(
+                        "Session not found on this machine".into(),
+                    ));
+                };
+                if session.project_id != project.id {
+                    return Err(RpcFailure::BadRequest(
+                        "Session belongs to another project".into(),
+                    ));
+                }
+                store.delete_session(&id).map_err(RpcFailure::BadRequest)?;
+                Ok(Value::Null)
+            }
             "devices.revokeSelf" => {
                 let store = self.state.store.lock().await;
                 let revoked = store

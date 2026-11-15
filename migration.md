@@ -185,21 +185,67 @@ External CLI implementation details and their own runtime requirements are outsi
 
 # Phase 4 — Session Engine and Persistence
 
+> **Status: persistence half complete; state machine not started.**
+>
+> `crates/monocode-host/src/session.rs` now stores and serves session
+> snapshots exactly as the TypeScript host did, and the host answers
+> `sessions.list`, `sessions.get`, `sessions.sync`, `sessions.update`,
+> `sessions.delete` and `events.read` for real (they were stubs or refusals).
+> 17 session tests cover the wire semantics, including the two that are easy to
+> get silently wrong: unchanged blocks must keep their old revision stamp, and
+> a client behind the retained event history must be resynchronized rather
+> than sent a partial list.
+>
+> **Not done:** `engine.ts`'s state machine — creating a session, running a
+> provider turn, applying streamed events, compaction and cancellation. That is
+> what `commands.dispatch` needs, and it stays refused until it exists. The
+> receipt tables and their tests are already in place for it.
+
 - [ ] Replace `host/engine.ts`.
+      *Not started. Requires the turn loop; see Phase 3's `provider::run`.*
 - [ ] Implement session lifecycle management in Rust.
+      *Storage lifecycle (create-from-snapshot, update, delete, delete-refused-
+      while-running) is done. Turn lifecycle is not.*
 - [ ] Implement event ingestion and normalization.
-- [ ] Implement session state management.
-- [ ] Implement event buffering and flushing.
-- [ ] Implement snapshot generation.
-- [ ] Implement session recovery after unexpected shutdowns.
-- [ ] Preserve existing persistence semantics.
-- [ ] Replace `host/store.ts`.
-- [ ] Use SQLite through `rusqlite` or another justified native Rust implementation.
-- [ ] Avoid blocking asynchronous workers with synchronous database operations.
+      *Ingestion of already-normalized events is stored and replayed. Producing
+      them from a provider stream belongs to the turn loop.*
+- [x] Implement session state management.
+      *Revisions, per-block stamps, run id, status, archive/pin, linked work item.*
+- [x] Implement event buffering and flushing.
+      *Events are written per revision in the same transaction as the snapshot
+      and pruned to the last 2,000 so the table cannot grow without bound.*
+- [x] Implement snapshot generation.
+      *`summary()` produces the list row; `snapshot_value` strips host-only
+      revision stamps before a client sees them.*
+- [x] Implement session recovery after unexpected shutdowns.
+      *SQLite in WAL with `synchronous=FULL`; a partially written transaction
+      rolls back and the cache is dropped, so a restart reads the last committed
+      revision. Pinned by `a_failed_transaction_rolls_back_and_clears_the_cache`.*
+- [x] Preserve existing persistence semantics.
+      *Table names and column layout match the TypeScript host, so an existing
+      `host.db` opens unchanged. `created_at` is backfilled from the previous
+      snapshot rather than reset.*
+- [x] Replace `host/store.ts`.
+      *All of it: projects, devices, receipts, sessions, events and the
+      bounded snapshot cache.*
+- [x] Use SQLite through `rusqlite` or another justified native Rust implementation.
+- [x] Avoid blocking asynchronous workers with synchronous database operations.
+      *`rusqlite` is synchronous, so every session call is made while holding the
+      store behind the async mutex and touches only indexed rows. Snapshot
+      parsing is avoided on the list path by the stored `summary` column.*
 - [ ] Use a dedicated database thread or actor where appropriate.
-- [ ] Implement transactional writes.
-- [ ] Preserve existing database migrations and user data.
-- [ ] Implement database integrity and recovery tests.
+      *Not introduced. The host is the only writer and each statement is short;
+      a thread would add a hop without a measured benefit. Revisit if a profile
+      shows the lock held across a slow statement.*
+- [x] Implement transactional writes.
+      *`in_transaction` uses `BEGIN IMMEDIATE` and rolls the cache back too, so a
+      failed write cannot leave a stale snapshot readable.*
+- [x] Preserve existing database migrations and user data.
+      *The `summary` column is added in place when missing, as before.*
+- [x] Implement database integrity and recovery tests.
+      *Foreign keys are enforced (the tests caught their own violation), a
+      rolled-back write is proven gone, and unreadable rows degrade to "absent"
+      with a log entry instead of poisoning later reads.*
 
 Do not introduce a different database unless there is a measurable architectural benefit.
 
