@@ -215,6 +215,12 @@ External CLI implementation details and their own runtime requirements are outsi
       *Create, send, cancel, configure, update, delete, and delete-refused-
       while-running. A second `send` for a live turn is refused rather than
       raced.*
+- [x] Serve every RPC method the TypeScript host serves.
+      *33 of 33. `sessions.syncChunk` streams a transcript too large for one
+      response as slices of the serialized sync, held briefly in
+      `crates/monocode-host/src/transfers.rs`. `UNIMPLEMENTED` is now empty:
+      nothing is advertised that the host cannot do, and nothing it can do is
+      left unadvertised.*
 - [x] Implement event ingestion and normalization.
       *`Projection` folds `provider::Event` into blocks and event rows. An event
       it cannot represent fails the turn instead of being dropped.*

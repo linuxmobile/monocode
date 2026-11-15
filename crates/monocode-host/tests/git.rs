@@ -146,6 +146,28 @@ impl Fixture {
             .unwrap();
     }
 
+    /// Writes a session whose transcript is larger than one response.
+    fn write_large_session(&self, project: &str, id: &str, blocks: usize) {
+        let snapshot = serde_json::json!({
+            "id": id,
+            "projectId": project,
+            "revision": 1,
+            "runId": "r",
+            "status": "idle",
+            "updatedAt": 1,
+            "session": { "blocks": (0..blocks)
+                .map(|index| serde_json::json!({ "id": format!("b{index}"), "text": "x".repeat(1000) }))
+                .collect::<Vec<_>>() },
+        });
+        let connection = rusqlite::Connection::open(self.directory.join("host.db")).unwrap();
+        connection
+            .execute(
+                "INSERT OR REPLACE INTO sessions (id, project_id, snapshot) VALUES (?1, ?2, ?3)",
+                rusqlite::params![id, project, snapshot.to_string()],
+            )
+            .unwrap();
+    }
+
     fn project(&self) -> String {
         self.call("projects.open", serde_json::json!({ "cwd": self.repo }))
             .get("id")
@@ -732,4 +754,88 @@ fn unbase64(text: &str) -> Vec<u8> {
         }
     }
     out
+}
+
+/// A transcript too large for one response must arrive complete via chunks,
+/// not truncated. This is the path a long session takes.
+#[test]
+fn a_large_session_sync_is_reassembled_from_chunks() {
+    let fixture = Fixture::start();
+    let project = fixture.project();
+    fixture.write_large_session(&project, "big", 6000);
+
+    let marker = fixture.call(
+        "sessions.sync",
+        serde_json::json!({ "projectId": project, "sessionId": "big" }),
+    );
+    assert_eq!(marker["kind"], "chunked", "expected a chunked transfer");
+    let transfer = marker["transfer"].as_str().unwrap().to_string();
+    let declared = marker["length"].as_u64().unwrap() as usize;
+
+    let mut assembled = String::new();
+    let mut offset = 0usize;
+    let mut chunks = 0;
+    while offset < declared {
+        let piece = fixture.call(
+            "sessions.syncChunk",
+            serde_json::json!({
+                "projectId": project,
+                "sessionId": "big",
+                "transfer": transfer,
+                "offset": offset,
+            }),
+        );
+        let data = piece["data"].as_str().unwrap();
+        if data.is_empty() {
+            break;
+        }
+        assembled.push_str(data);
+        offset += data.encode_utf16().count();
+        chunks += 1;
+        assert!(chunks < 40, "chunking did not terminate");
+    }
+
+    assert_eq!(assembled.len(), declared, "a chunk was lost or duplicated");
+    let parsed: serde_json::Value = serde_json::from_str(&assembled).unwrap();
+    let blocks = parsed["value"]["session"]["blocks"].as_array().unwrap();
+    assert_eq!(blocks.len(), 6000);
+}
+
+#[test]
+fn a_small_session_sync_is_returned_inline() {
+    let fixture = Fixture::start();
+    let project = fixture.project();
+    fixture.attach_to_session(&project, "123e4567-e89b-42d3-a456-426614174000", 1);
+    let sync = fixture.call(
+        "sessions.sync",
+        serde_json::json!({ "projectId": project, "sessionId": "s1" }),
+    );
+    // A small transcript needs no transfer.
+    assert_ne!(sync["kind"], "chunked");
+}
+
+/// A transfer belongs to the session that created it.
+#[test]
+fn a_transfer_cannot_be_read_through_another_session() {
+    let fixture = Fixture::start();
+    let project = fixture.project();
+    fixture.write_large_session(&project, "big", 6000);
+    let marker = fixture.call(
+        "sessions.sync",
+        serde_json::json!({ "projectId": project, "sessionId": "big" }),
+    );
+    let transfer = marker["transfer"].as_str().unwrap().to_string();
+
+    let error = fixture
+        .attempt(
+            "sessions.syncChunk",
+            serde_json::json!({
+                "projectId": project,
+                "sessionId": "123e4567-e89b-42d3-a456-426614174000",
+                "transfer": transfer,
+                "offset": 0,
+            }),
+        )
+        .unwrap_err();
+    assert!(error.contains("Session not found"), "got: {error}");
 }

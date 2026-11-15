@@ -15,10 +15,11 @@ use std::sync::Arc;
 /// The methods this host answers. Kept as one list so the descriptor and the
 /// dispatcher cannot disagree: every entry has an arm below, and every arm is
 /// listed here.
-pub const METHODS: [&str; 31] = [
+pub const METHODS: [&str; 33] = [
     "environment.describe",
     "projects.list",
     "projects.open",
+    "sessions.syncChunk",
     "attachments.read",
     "attachments.upload",
     "files.searchContent",
@@ -46,13 +47,13 @@ pub const METHODS: [&str; 31] = [
     "sessions.list",
     "sessions.update",
     "sessions.sync",
+    "events.read",
     "devices.revokeSelf",
 ];
 
 /// Methods the desktop may call that this build does not serve yet. Reported
 /// explicitly rather than treated as unknown.
-const UNIMPLEMENTED: [&str; 1] = [
-    "sessions.syncChunk",
+const UNIMPLEMENTED: [&str; 0] = [
 ];
 
 /// A required string parameter, reported by name when it is missing.
@@ -510,10 +511,39 @@ impl Dispatch {
                     .ok_or_else(|| {
                         RpcFailure::BadRequest("Session not found on this machine".into())
                     })?;
-                Ok(
-                    serde_json::to_value(sync)
-                        .map_err(|e| RpcFailure::BadRequest(e.to_string()))?,
-                )
+                let value = serde_json::to_value(sync)
+                    .map_err(|e| RpcFailure::BadRequest(e.to_string()))?;
+                // A transcript too large for one response is offered as a
+                // chunked transfer instead of being truncated.
+                Ok(self.state.transfers.respond(&id, value))
+            }
+            "sessions.syncChunk" => {
+                let project = self.project_of(&params).await?;
+                let id = string_param(&params, "sessionId")?;
+                let transfer = string_param(&params, "transfer")?;
+                let offset = params
+                    .get("offset")
+                    .and_then(Value::as_u64)
+                    .ok_or_else(|| RpcFailure::BadRequest("Invalid session transfer offset".into()))?;
+                // The transfer was created for one session of one project, so
+                // naming a different session must not reach it.
+                {
+                    let mut store = self.state.store.lock().await;
+                    let session = store
+                        .session(&id)
+                        .map_err(RpcFailure::BadRequest)?
+                        .filter(|session| session.project_id == project.id)
+                        .ok_or_else(|| {
+                            RpcFailure::BadRequest("Session not found on this machine".into())
+                        })?;
+                    drop(session);
+                }
+                let data = self
+                    .state
+                    .transfers
+                    .chunk(&id, &transfer, offset as usize)
+                    .map_err(RpcFailure::BadRequest)?;
+                Ok(serde_json::json!({ "data": data }))
             }
             "events.read" => {
                 let project = self.project_of(&params).await?;
@@ -1106,6 +1136,28 @@ mod tests {
         }
     }
 
+    /// Drift can go the other way too: a handler added to the dispatcher but
+    /// left out of `METHODS` works, but is never advertised, so a client that
+    /// asks what the host can do will not learn about it. This reads the
+    /// dispatcher's own arms and requires each to be listed.
+    #[test]
+    fn every_handled_method_is_advertised() {
+        let source = include_str!("methods.rs");
+        let handled = source
+            .lines()
+            .filter_map(|line| line.trim().strip_suffix(" => {"))
+            .filter_map(|line| line.strip_prefix('"').and_then(|line| line.strip_suffix('"')))
+            .filter(|name| name.contains('.'))
+            .collect::<Vec<_>>();
+        assert!(!handled.is_empty(), "no dispatcher arms were found");
+        for name in handled {
+            assert!(
+                METHODS.contains(&name),
+                "`{name}` has a handler but is not advertised in METHODS"
+            );
+        }
+    }
+
     /// The descriptor, the dispatcher and this list must agree. A method that
     /// is advertised but has no arm would reach the `Unsupported host method`
     /// branch, which is exactly the drift this test prevents.
@@ -1119,6 +1171,7 @@ mod tests {
             store: Arc::new(crate::mutex::Mutex::new(store)),
             admin_secret: "admin".into(),
             providers: vec![],
+            transfers: std::sync::Arc::new(crate::transfers::SyncTransfers::new()),
             workspace: std::sync::Arc::new(crate::workspace_commands::Workspace::new(Vec::new())),
             turns: Arc::new(crate::mutex::Mutex::new(std::collections::HashMap::new())),
             shutdown,

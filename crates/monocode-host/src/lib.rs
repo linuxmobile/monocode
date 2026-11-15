@@ -12,6 +12,7 @@ pub mod protocol;
 pub mod server;
 pub mod session;
 pub mod store;
+pub mod transfers;
 pub mod turn;
 pub mod workspace;
 pub mod workspace_commands;

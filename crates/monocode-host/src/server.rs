@@ -34,6 +34,8 @@ pub struct HostState {
     /// from any paired device token.
     pub admin_secret: String,
     pub providers: Vec<String>,
+    /// Large session syncs currently being streamed to a client.
+    pub transfers: std::sync::Arc<crate::transfers::SyncTransfers>,
     /// The `workspace.run` dispatcher, which confines every path it is given to
     /// the projects this host serves.
     pub workspace: std::sync::Arc<crate::workspace_commands::Workspace>,
@@ -227,6 +229,7 @@ mod tests {
             turns: Arc::new(Mutex::new(std::collections::HashMap::new())),
             admin_secret: "admin".into(),
             providers: vec![],
+            transfers: std::sync::Arc::new(crate::transfers::SyncTransfers::new()),
             workspace: std::sync::Arc::new(crate::workspace_commands::Workspace::new(Vec::new())),
             shutdown,
         });

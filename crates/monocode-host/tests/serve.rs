@@ -248,7 +248,7 @@ fn projects_open_registers_a_folder_and_persists_it() {
 }
 
 #[test]
-fn an_unimplemented_method_says_so_instead_of_lying() {
+fn an_unknown_method_is_refused_instead_of_lied_about() {
     let mut host = Host::new();
     let token = host.pair("Laptop");
     host.start();
@@ -262,18 +262,19 @@ fn an_unimplemented_method_says_so_instead_of_lying() {
         )
         .expect("connect");
 
-    // An unported method must fail loudly rather than report a fake success.
-    // This names one that is deliberately still refused, so the assertion keeps
-    // testing the refusal path as more methods land.
+    // Every method the host knows is now served, so this names one it does
+    // not. The host must say so plainly rather than return a plausible-looking
+    // success: a client that believed a fake result would trust a transcript
+    // that never existed here.
     let error = client
         .request(
             &machine.id,
-            "sessions.syncChunk",
+            "sessions.imaginary",
             serde_json::json!({ "projectId": "x", "sessionId": "y" }),
         )
         .unwrap_err();
     assert!(
-        error.contains("cannot serve"),
+        error.contains("cannot serve") || error.contains("Unsupported"),
         "expected an explicit refusal, got: {error}"
     );
 }
