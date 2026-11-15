@@ -106,22 +106,45 @@ impl TranscriptView {
         if self.list.is_following_tail() || max - scrolled <= NEAR_END {
             return Some(last);
         }
-        let mut above = None;
-        for &prompt in prompts {
-            let Some((first, end)) = self.prompt_rows(prompt) else {
-                continue;
-            };
+        // Walk out from the prompt drawn active last frame: scrolling keeps it
+        // in place, so a frame usually checks one prompt instead of all of them.
+        let from = self
+            .outline
+            .active
+            .and_then(|active| prompts.binary_search(&active).ok())
+            .unwrap_or(0);
+        if let Some((first, end)) = self.prompt_rows(prompts[from]) {
             if self.list.item_is_above_viewport(end - 1) == Some(true) {
-                above = Some(prompt);
-                continue;
+                return prompts[from + 1..]
+                    .iter()
+                    .find_map(|&prompt| self.prompt_at_viewport(prompt))
+                    .or(Some(prompts[from]));
             }
-            // Unmeasured rows lie past the viewport, as do all later prompts.
             if self.list.item_is_below_viewport(first) != Some(false) {
-                break;
+                return prompts[..from]
+                    .iter()
+                    .rev()
+                    .find(|&&prompt| {
+                        self.prompt_rows(prompt).is_some_and(|(_, end)| {
+                            self.list.item_is_above_viewport(end - 1) != Some(true)
+                        })
+                    })
+                    .copied()
+                    .or(prompts.first().copied());
             }
-            return Some(prompt);
+            return Some(prompts[from]);
         }
-        above.or(prompts.first().copied())
+        prompts
+            .iter()
+            .copied()
+            .find_map(|prompt| self.prompt_at_viewport(prompt))
+    }
+    /// The prompt whose section holds the top of the viewport, if this one does.
+    fn prompt_at_viewport(&self, prompt: usize) -> Option<usize> {
+        let (first, end) = self.prompt_rows(prompt)?;
+        (self.list.item_is_above_viewport(end - 1) != Some(true)
+            && self.list.item_is_below_viewport(first) == Some(false))
+        .then_some(prompt)
     }
     fn hover_prompt(&mut self, prompt: usize, cx: &mut Context<Self>) {
         self.outline.hovered = Some(prompt);

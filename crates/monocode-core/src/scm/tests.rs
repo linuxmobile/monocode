@@ -1026,3 +1026,42 @@ fn commit_files_and_diffs_include_the_root_commit() {
     assert_eq!(commit_files(dir.path(), &root).unwrap().len(), 1);
     assert!(commit_files(dir.path(), "not-a-sha").is_err());
 }
+
+#[test]
+fn batched_commit_diffs_stream_one_process_and_match_per_file_reads() {
+    let dir = tmp();
+    assert!(init_git_commit(
+        dir.path(),
+        &[("a.txt", "one\ntwo\nthree\n"), ("big.bin", "z\0z")]
+    ));
+    std::fs::write(dir.path().join("a.txt"), "one\nTWO\nthree\n").unwrap();
+    std::fs::write(dir.path().join("big.bin"), "z\0Z\n").unwrap();
+    std::fs::write(dir.path().join("gone.txt"), "bye\n").unwrap();
+    assert!(git(dir.path(), &["add", "."]) && git(dir.path(), &["commit", "-m", "second"]));
+    let head = git_stdout(dir.path(), &["rev-parse", "HEAD"]).unwrap();
+    let files = commit_files(dir.path(), &head).unwrap();
+
+    let streamed: Vec<(String, String, bool)> = commit_file_diffs(dir.path(), &head, files.clone())
+        .unwrap()
+        .map(|(relative, outcome)| {
+            let diff = outcome.unwrap();
+            (relative, diff.current, diff.binary)
+        })
+        .collect();
+    assert_eq!(streamed[0].0, "a.txt");
+    assert_eq!(streamed[0].1, "one\nTWO\nthree\n");
+    assert!(!streamed[0].2);
+    let big = streamed.iter().find(|(r, _, _)| r == "big.bin").unwrap();
+    assert!(big.2, "NUL bytes stay binary");
+
+    for file in &files {
+        let per_file = commit_file_diff(dir.path(), &head, &file.relative).unwrap();
+        let batched = commit_file_diffs(dir.path(), &head, vec![file.clone()])
+            .unwrap()
+            .next()
+            .unwrap()
+            .1
+            .unwrap();
+        assert_eq!(batched, per_file, "batched {}", file.relative);
+    }
+}

@@ -376,16 +376,46 @@ impl DiffView {
         if unchanged {
             return;
         }
+        let same_structure = files.len() == self.files.len()
+            && files.iter().zip(&self.files).all(|(a, b)| a.id == b.id);
         let ids: HashSet<SharedString> = files.iter().map(|f| f.id.clone()).collect();
         self.open.retain(|id| ids.contains(id));
+        let mut newly_open = false;
         for id in &ids {
             if !self.known.contains(id) {
                 self.open.insert(id.clone());
+                newly_open = true;
             }
         }
         self.known = ids;
+        let changed: Vec<usize> = if same_structure {
+            files
+                .iter()
+                .enumerate()
+                .filter(|(ix, file)| !self.files[*ix].same_content(file))
+                .map(|(ix, _)| ix)
+                .collect()
+        } else {
+            Vec::new()
+        };
         self.files = files;
-        self.rebuild(cx);
+        if !same_structure || newly_open {
+            self.rebuild(cx);
+            return;
+        }
+        // A review that streams its files in patches each arrived file's rows
+        // instead of copying every other file's rows and losing the reader's
+        // place once per file.
+        for &file in &changed {
+            self.prepare_body(file);
+        }
+        for &file in &changed {
+            self.patch_file(file);
+        }
+        if !changed.is_empty() {
+            self.clamp_scroll_x();
+            cx.notify();
+        }
     }
     /// The file a review was opened on: expanded and scrolled to the top.
     pub(crate) fn focus_file(&mut self, id: Option<SharedString>, cx: &mut Context<Self>) {
@@ -393,14 +423,15 @@ impl DiffView {
             return;
         }
         self.focus_id = id.clone();
-        if let Some(id) = id {
+        if let Some(id) = id
+            && let Some(&ix) = self.by_id.get(&id)
+        {
             if self.open.insert(id.clone()) {
-                self.rebuild(cx);
+                self.patch_file(ix);
+                cx.notify();
             }
-            if let Some(&ix) = self.by_id.get(&id) {
-                self.pending = Some(ix);
-                self.apply_pending(cx);
-            }
+            self.pending = Some(ix);
+            self.apply_pending(cx);
         }
     }
 
@@ -433,18 +464,9 @@ impl DiffView {
         let (mut columns, mut digits) = (40, 3);
         let keep: HashSet<_> = self.files.iter().map(|f| f.id.clone()).collect();
         self.bodies.retain(|id, _| keep.contains(id));
-        for (index, file) in self.files.iter().enumerate() {
-            let message = file.message();
-            let stageable = file.can_stage_hunk;
-            let stale = self.bodies.get(&file.id).is_none_or(|b| {
-                !Arc::ptr_eq(&b.blocks, &file.blocks)
-                    || b.message != message
-                    || b.stageable != stageable
-            });
-            if stale {
-                self.bodies
-                    .insert(file.id.clone(), build_body(file, message, stageable));
-            }
+        for index in 0..self.files.len() {
+            self.prepare_body(index);
+            let file = &self.files[index];
             let body = &self.bodies[&file.id];
             let expanded = self.open.contains(&file.id);
             file_rows.push(rows.len());
@@ -504,7 +526,100 @@ impl DiffView {
         self.clamp_scroll_x();
         cx.notify();
     }
-    /// A jump holds until its file has loaded, then lets go.
+    /// Builds a file's rows if its diff changed since the last build.
+    fn prepare_body(&mut self, file: usize) {
+        let Some(file) = self.files.get(file) else {
+            return;
+        };
+        let message = file.message();
+        let stageable = file.can_stage_hunk;
+        let stale = self.bodies.get(&file.id).is_none_or(|body| {
+            !Arc::ptr_eq(&body.blocks, &file.blocks)
+                || body.message != message
+                || body.stageable != stageable
+        });
+        if !stale {
+            return;
+        }
+        let id = file.id.clone();
+        let body = build_body(file, message, stageable);
+        self.bodies.insert(id, body);
+    }
+    /// Replaces one file's rows in place, so a review that streams its files in
+    /// patches each arrival instead of copying every other file's rows and
+    /// losing the reader's place once per file.
+    fn patch_file(&mut self, file: usize) {
+        let Some(&start) = self.file_rows.get(file) else {
+            return;
+        };
+        let Some(model) = self.files.get(file) else {
+            return;
+        };
+        let expanded = self.open.contains(&model.id);
+        let Some(body) = self.bodies.get(&model.id) else {
+            return;
+        };
+        let end = self
+            .file_rows
+            .get(file + 1)
+            .copied()
+            .unwrap_or(self.rows.len());
+        let mut rows = Vec::with_capacity(1 + body.rows.len());
+        rows.push(Row {
+            file,
+            kind: RowKind::File,
+            height: FILE_HEADER,
+        });
+        if expanded {
+            rows.extend(body.rows.iter().map(|row| Row {
+                file,
+                ..row.clone()
+            }));
+        }
+        let (columns, digits) = (body.columns, body.digits);
+        let new_len = rows.len();
+        self.rows.splice(start..end, rows);
+        self.list.splice(start..end, new_len);
+        let delta = new_len as isize - (end - start) as isize;
+        for later in &mut self.file_rows[file + 1..] {
+            *later = later.saturating_add_signed(delta);
+        }
+        if expanded {
+            self.max_columns = self.max_columns.max(columns);
+            self.number_width = self.number_width.max((digits as f32 * 8. + 12.).max(36.));
+        }
+        self.rebuild_offsets(start);
+        self.rebuild_hunks();
+    }
+    /// Recomputes the row offsets from `from` down, after rows changed there.
+    fn rebuild_offsets(&mut self, from: usize) {
+        let from = from.min(self.rows.len());
+        let mut at = self.offsets.get(from).copied().unwrap_or(0.);
+        self.offsets.truncate(from);
+        for row in &self.rows[from..] {
+            self.offsets.push(at);
+            at += row.height;
+        }
+        self.offsets.push(at);
+        self.total = at;
+    }
+    /// Hunk rows in order, indexed by their row in the list.
+    fn rebuild_hunks(&mut self) {
+        let mut hunks = Vec::new();
+        for (index, file) in self.files.iter().enumerate() {
+            let Some(body) = self.bodies.get(&file.id) else {
+                continue;
+            };
+            let start = self.file_rows.get(index).copied().unwrap_or(0) + 1;
+            let expanded = self.open.contains(&file.id);
+            for (row, entry) in body.rows.iter().enumerate() {
+                if matches!(entry.kind, RowKind::Hunk(_)) {
+                    hunks.push((index, expanded.then_some(start + row)));
+                }
+            }
+        }
+        self.hunks = hunks;
+    }
     fn apply_pending(&mut self, cx: &mut Context<Self>) {
         let Some(file) = self.pending else {
             return;
@@ -653,7 +768,8 @@ impl DiffView {
         let (file, _) = self.hunks[index];
         let id = self.files[file].id.clone();
         if self.open.insert(id) {
-            self.rebuild(cx);
+            self.patch_file(file);
+            cx.notify();
         }
         if let Some((_, Some(row))) = self.hunks.get(index) {
             self.pending = None;
@@ -666,7 +782,9 @@ impl DiffView {
         if !self.open.remove(&id) {
             self.open.insert(id);
         }
-        self.rebuild(cx);
+        self.patch_file(file);
+        self.clamp_scroll_x();
+        cx.notify();
     }
 
     fn gutter_width(&self) -> f32 {
@@ -1785,6 +1903,94 @@ mod tests {
             })
             .unwrap();
     }
+    /// Row offsets, file starts and hunk rows must agree after any streaming
+    /// update, whether it patched one file or rebuilt the whole list.
+    fn assert_rows_agree(view: &DiffView) {
+        assert_eq!(view.offsets.len(), view.rows.len() + 1);
+        assert_eq!(view.total, *view.offsets.last().unwrap());
+        assert_eq!(view.list.item_count(), view.rows.len());
+        let mut at = 0.;
+        for (ix, row) in view.rows.iter().enumerate() {
+            assert_eq!(view.offsets[ix], at, "offset of row {ix}");
+            at += row.height;
+            match row.kind {
+                RowKind::File => assert_eq!(view.file_rows[row.file], ix),
+                RowKind::Hunk(_) => assert!(
+                    view.hunks
+                        .iter()
+                        .any(|(file, hunk)| *file == row.file && *hunk == Some(ix)),
+                    "hunk row {ix} is navigable"
+                ),
+                _ => {}
+            }
+        }
+    }
+
+    #[gpui_kit::test]
+    fn streamed_files_patch_their_rows_without_rebuilding_the_list(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        let original: String = (0..120).map(|n| format!("line {n}\n")).collect();
+        let current = original.replace("line 60\n", "changed 60\n");
+        let loaded = |id: &str| file(id, &original, &current);
+        let loading = |id: &str| DiffFile {
+            blocks: Arc::new(Vec::new()),
+            empty_message: Some("Loading…".into()),
+            additions: 0,
+            deletions: 0,
+            ..file(id, &original, &current)
+        };
+        let window = cx.update(|cx| {
+            cx.open_window(Default::default(), |_, cx| cx.new(DiffView::new))
+                .unwrap()
+        });
+        for files in [
+            vec![loading("a"), loading("b")],
+            vec![loading("a"), loaded("b")],
+            vec![loaded("a"), loaded("b")],
+        ] {
+            let arrived = files[0].empty_message.is_some() && files[1].empty_message.is_none();
+            window
+                .update(cx, |view, _, cx| {
+                    view.set_files(files, cx);
+                    assert_rows_agree(view);
+                })
+                .unwrap();
+            if arrived {
+                // One streamed file arrives: only its rows change, the first
+                // file keeps its rows and the list keeps its identity.
+                assert_eq!(
+                    window
+                        .update(cx, |view, _, _| view.file_rows.clone())
+                        .unwrap(),
+                    vec![0, 2]
+                );
+            }
+        }
+        let (rows, starts) = window
+            .update(cx, |view, _, _| (view.rows.len(), view.file_rows.clone()))
+            .unwrap();
+        assert_eq!(starts[0], 0);
+        assert!(starts[1] > 2, "the first file's lines push the second down");
+        assert!(rows > starts[1], "both files keep their rows");
+        // Folding a file drops exactly its body and reopens it again.
+        window.update(cx, |view, _, cx| view.toggle(0, cx)).unwrap();
+        window
+            .update(cx, |view, _, _| {
+                assert_rows_agree(view);
+                assert!(!view.open.contains(&SharedString::from("a")));
+                assert_eq!(view.file_rows, vec![0, 1]);
+            })
+            .unwrap();
+        window.update(cx, |view, _, cx| view.toggle(0, cx)).unwrap();
+        window
+            .update(cx, |view, _, _| {
+                assert_rows_agree(view);
+                assert!(view.open.contains(&SharedString::from("a")));
+            })
+            .unwrap();
+    }
+
     fn file(id: &str, original: &str, current: &str) -> DiffFile {
         let unified = diff::build_unified_file(original, current, 3);
         DiffFile {

@@ -31,8 +31,8 @@ use std::{
 };
 
 const CONCURRENCY: usize = 4;
-const MAX_CACHED_SOURCES: usize = 8;
-const MAX_CACHED_TEXT_BYTES: usize = 32 * 1024 * 1024;
+const MAX_CACHED_SOURCES: usize = 4;
+const MAX_CACHED_TEXT_BYTES: usize = 8 * 1024 * 1024;
 
 /// A review tab as the workspace saves it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -294,6 +294,127 @@ struct FileTabDrag {
     active: bool,
 }
 impl EventEmitter<ReviewEvent> for ReviewPane {}
+/// One file's unified diff model. `keep_sides` holds both versions' full text
+/// for staging and reverting; commit files can do neither, so their sides are
+/// dropped once the unified blocks exist.
+fn loaded_from(diff: FileDiff, keep_sides: bool) -> Arc<Loaded> {
+    let (unified, additions, deletions) = if diff.binary || diff.too_large {
+        (None, 0, 0)
+    } else {
+        let file = diff::build_unified_file(&diff.original, &diff.current, diff::CONTEXT_DEFAULT);
+        let (additions, deletions) = (file.additions, file.deletions);
+        (Some(Arc::new(file.blocks)), additions, deletions)
+    };
+    let mut diff = diff;
+    if !keep_sides {
+        diff.original = String::new();
+        diff.current = String::new();
+    }
+    Arc::new(Loaded {
+        version: None,
+        additions,
+        deletions,
+        unified,
+        diff: Arc::new(diff),
+        error: None,
+    })
+}
+
+/// Loads a commit's file diffs. One `git` process streams every file's blobs
+/// (instead of three processes per file), and each file publishes as it
+/// arrives, so the diff view patches its rows progressively.
+async fn load_commit_files(
+    this: gpui_kit::WeakEntity<ReviewPane>,
+    cx: &mut gpui_kit::AsyncApp,
+    tab: ReviewTab,
+    counter: Arc<AtomicU64>,
+    generation: u64,
+    order: Vec<(String, Option<bool>, ChangedFile)>,
+) {
+    let ReviewTab::Commit { cwd, sha, .. } = tab else {
+        return;
+    };
+    let already: std::collections::HashSet<String> = this
+        .update(cx, |this, _| {
+            this.sources
+                .iter()
+                .find(|s| Arc::ptr_eq(&s.generation, &counter))
+                .map(|s| s.loaded.keys().cloned().collect())
+                .unwrap_or_default()
+        })
+        .unwrap_or_default();
+    if counter.load(Ordering::SeqCst) != generation {
+        return;
+    }
+    let files: Vec<ChangedFile> = order
+        .into_iter()
+        .map(|(_, _, file)| file)
+        .filter(|file| !already.contains(&file.relative))
+        .collect();
+    let (tx, rx) = async_channel::unbounded();
+    cx.background_executor()
+        .spawn(async move {
+            match monocode_core::scm::commit_file_diffs(&PathBuf::from(&cwd), &sha, files) {
+                Ok(stream) => {
+                    for (relative, diff) in stream {
+                        if tx.send_blocking((relative, diff)).is_err() {
+                            return;
+                        }
+                    }
+                }
+                Err(error) => {
+                    let _ = tx.send_blocking((String::new(), Err(error)));
+                }
+            }
+        })
+        .detach();
+    let mut fatal = None;
+    while let Ok((relative, outcome)) = rx.recv().await {
+        if counter.load(Ordering::SeqCst) != generation {
+            return;
+        }
+        if relative.is_empty() {
+            fatal = outcome.err();
+            break;
+        }
+        let loaded = match outcome {
+            Ok(diff) => loaded_from(diff, false),
+            Err(error) => Arc::new(Loaded {
+                version: None,
+                diff: Arc::new(FileDiff::default()),
+                unified: None,
+                additions: 0,
+                deletions: 0,
+                error: Some(error),
+            }),
+        };
+        let _ = this.update(&mut cx.clone(), |this, cx| {
+            if let Some(source) = this
+                .sources
+                .iter_mut()
+                .find(|s| Arc::ptr_eq(&s.generation, &counter))
+            {
+                source.loaded.insert(relative, loaded);
+            }
+            this.publish(cx);
+        });
+    }
+    let _ = this.update(cx, |this, cx| {
+        if let Some(source) = this
+            .sources
+            .iter_mut()
+            .find(|s| Arc::ptr_eq(&s.generation, &counter))
+            && counter.load(Ordering::SeqCst) == generation
+        {
+            if let Some(error) = fatal {
+                source.error = Some(error);
+            }
+            source.complete = source.loaded.values().all(|l| l.error.is_none());
+            source.loading = false;
+        }
+        cx.notify();
+    });
+}
 impl Drop for ReviewPane {
     fn drop(&mut self) {
         for source in &mut self.sources {
@@ -1060,6 +1181,10 @@ impl ReviewPane {
             let Ok(Some((order, versions))) = order else {
                 return;
             };
+            if matches!(tab, ReviewTab::Commit { .. }) {
+                load_commit_files(this, cx, tab, counter, generation, order).await;
+                return;
+            }
             let queue = Arc::new(std::sync::Mutex::new(order.into_iter()));
             let versions = Arc::new(versions);
             let mut workers = Vec::new();
@@ -2024,6 +2149,55 @@ mod tests {
                 assert!(editor.read(cx).input.focus_handle(cx).is_focused(w));
             })
             .unwrap();
+    }
+
+    #[gpui_kit::test]
+    fn a_commit_tab_loads_every_file_through_the_batch_and_drops_sides(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        let repo = Repo::new();
+        let cwd = repo.cwd();
+        let sha = String::from_utf8_lossy(
+            &std::process::Command::new("git")
+                .args(["rev-parse", "HEAD"])
+                .current_dir(&repo.0)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .trim()
+        .to_string();
+        let git = cx.new(|cx| ProjectGit::new(cwd.clone(), cx));
+        let pane = cx.new(|cx| ReviewPane::new(git, Default::default(), cx));
+        pane.update(cx, |pane, cx| {
+            pane.open(
+                ReviewTab::Commit {
+                    cwd: cwd.clone(),
+                    short_sha: sha[..7.min(sha.len())].to_string(),
+                    sha: sha.clone(),
+                    subject: "base".into(),
+                },
+                cx,
+            );
+            pane.set_visible(true, cx);
+        });
+        cx.run_until_parked();
+        pane.read_with(cx, |pane, _| {
+            let source = pane.sources.iter().find(|s| !s.loaded.is_empty()).unwrap();
+            assert!(source.complete, "both files streamed in");
+            let loaded: Vec<_> = source
+                .loaded
+                .values()
+                .map(|l| (l.unified.clone(), l.diff.original.is_empty()))
+                .collect();
+            assert_eq!(loaded.len(), 2, "a.txt and b.txt");
+            for (unified, sides_dropped) in loaded {
+                assert!(unified.is_some());
+                assert!(sides_dropped, "commit files keep no full copies");
+            }
+            // The published models drive the diff view; two files loaded.
+            assert_eq!(source.files.as_ref().map(|f| f.len()), Some(2));
+        });
     }
 
     #[gpui_kit::test]

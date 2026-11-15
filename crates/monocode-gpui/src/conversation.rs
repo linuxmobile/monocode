@@ -3663,7 +3663,8 @@ mod composer_motion_tests {
                                 .into_iter()
                                 .find(|quad| {
                                     (quad.corner_radii.top_left.0 / scale - 11.).abs() < 0.1
-                                        && quad.background.as_solid() == Some(content(0.03))
+                                        && quad.background.as_solid()
+                                            == Some(crate::theme::composer_fill())
                                         && (quad.bounds.size.width.0 / scale
                                             - f32::from(composer.size.width))
                                         .abs()

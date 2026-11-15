@@ -4,10 +4,10 @@
 use super::*;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{HashMap, HashSet},
-    io::Write,
-    path::Path,
-    process::Stdio,
+    collections::{HashMap, HashSet, VecDeque},
+    io::{BufRead, BufReader, Read, Write},
+    path::{Path, PathBuf},
+    process::{Child, ChildStdout, Stdio},
 };
 
 /// fs.rs `MAX_TEXT_FILE_BYTES`: larger sides show as too large to diff.
@@ -399,6 +399,145 @@ fn text_diff(
 fn git_blob(root: &Path, spec: &str) -> Option<Vec<u8>> {
     git_output(root, &["cat-file", "-p", spec])
 }
+
+/// A commit's per-file diffs, streamed from one `git cat-file --batch`
+/// child: one process for the whole commit instead of three per file.
+/// Yielded in the order the files were given, so a review publishes each
+/// file as it arrives.
+pub struct CommitFileDiffs {
+    child: Child,
+    stdout: BufReader<ChildStdout>,
+    root: PathBuf,
+    sha: String,
+    parent: Option<String>,
+    pending: VecDeque<(String, String, Result<(), String>)>,
+}
+
+impl Drop for CommitFileDiffs {
+    fn drop(&mut self) {
+        // Closing stdin ends `cat-file`; the child must not outlive the pipe.
+        let _ = self.child.stdin.take();
+        let _ = self.child.wait();
+    }
+}
+
+impl Iterator for CommitFileDiffs {
+    type Item = (String, Result<FileDiff, String>);
+    fn next(&mut self) -> Option<Self::Item> {
+        let (relative, repo_relative, allowed) = self.pending.pop_front()?;
+        let outcome = if let Err(error) = allowed {
+            Err(error.clone())
+        } else {
+            // A root commit has no parent: everything is added.
+            let original = match &self.parent {
+                None => Vec::new(),
+                Some(parent) => self
+                    .blob(&format!("{parent}:{repo_relative}"))
+                    .unwrap_or_default(),
+            };
+            let current = self
+                .blob(&format!("{}:{repo_relative}", self.sha))
+                .unwrap_or_default();
+            let status = if original.is_empty() && !current.is_empty() {
+                "added"
+            } else if !original.is_empty() && current.is_empty() {
+                "deleted"
+            } else {
+                "modified"
+            };
+            Ok(text_diff(
+                path_to_js(&self.root.join(&repo_relative)),
+                relative.clone(),
+                status,
+                original,
+                current,
+            ))
+        };
+        Some((relative, outcome))
+    }
+}
+
+impl CommitFileDiffs {
+    /// One object through `cat-file --batch`, or `None` when missing or not a
+    /// blob. The payload is always consumed, so the stream stays in sync.
+    fn blob(&mut self, spec: &str) -> Option<Vec<u8>> {
+        let stdin = self.child.stdin.as_mut()?;
+        writeln!(stdin, "{spec}").ok()?;
+        let mut header = String::new();
+        self.stdout.read_line(&mut header).ok()?;
+        let mut parts = header.trim_end().split(' ');
+        // "<oid> <type> <size>", or "<spec> missing".
+        let (kind, size) = match (parts.next(), parts.next(), parts.next()) {
+            (Some(_), Some(kind), Some(size)) => (kind, size),
+            _ => return None,
+        };
+        let mut size: u64 = size.parse().ok()?;
+        let mut out = (kind == "blob").then(|| Vec::with_capacity(size.min(32 << 20) as usize));
+        let mut buffer = [0u8; 64 * 1024];
+        while size > 0 {
+            let want = size.min(buffer.len() as u64) as usize;
+            let read = self.stdout.read(&mut buffer[..want]).ok()?;
+            if read == 0 {
+                return None;
+            }
+            if let Some(out) = out.as_mut() {
+                out.extend_from_slice(&buffer[..read]);
+            }
+            size -= read as u64;
+        }
+        let mut lf = [0u8; 1];
+        self.stdout.read_exact(&mut lf).ok()?;
+        out
+    }
+}
+
+/// Streams a commit's per-file diffs against its first parent.
+pub fn commit_file_diffs(
+    cwd: &Path,
+    sha: &str,
+    files: Vec<ChangedFile>,
+) -> Result<CommitFileDiffs, String> {
+    let root = expand_home(cwd);
+    if !git_is_work_tree(&root) {
+        return Err("Not a git repository".into());
+    }
+    let sha = peel_commit(&root, sha)?;
+    let parent = git_stdout(&root, &["rev-parse", "--verify", &format!("{sha}^")]);
+    let mut command = git_cmd_for_args(&["cat-file", "--batch"]);
+    command
+        .arg("--no-pager")
+        .arg("-C")
+        .arg(&root)
+        .args(["cat-file", "--batch"])
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    crate::process::configure_child(&mut command);
+    let mut child = command.spawn().map_err(|e| e.to_string())?;
+    let stdout = child.stdout.take().ok_or("no stdout")?;
+    let pending = files
+        .into_iter()
+        .map(|file| {
+            let relative = file.relative.clone();
+            let repo_relative = resolve_repo_path(&root, &relative);
+            (
+                relative.clone(),
+                repo_relative.as_ref().unwrap_or(&relative).clone(),
+                repo_relative.map(|_| ()),
+            )
+        })
+        .collect::<VecDeque<_>>();
+    Ok(CommitFileDiffs {
+        child,
+        stdout: BufReader::new(stdout),
+        root,
+        sha,
+        parent,
+        pending,
+    })
+}
+
 fn peel_commit(root: &Path, spec: &str) -> Result<String, String> {
     let spec = spec.trim();
     if spec.len() < 4 || spec.len() > 40 || !spec.bytes().all(|b| b.is_ascii_hexdigit()) {

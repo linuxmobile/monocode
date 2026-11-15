@@ -155,6 +155,12 @@ impl ProjectGit {
             let watch = cx
                 .background_executor()
                 .spawn(async move {
+                    // Tests run many shells in one process. A real watcher would
+                    // wake their frame stepping from its own thread, so they use
+                    // the polling fallback instead.
+                    if cfg!(test) {
+                        return None;
+                    }
                     let mut roots = vec![project.clone()];
                     roots.extend(
                         scm::git_dirs(&project)

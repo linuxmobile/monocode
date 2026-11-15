@@ -124,6 +124,9 @@ struct Message {
     role: String,
     parser: MarkdownParser,
     markdown_blocks: Vec<RenderedBlock>,
+    /// The folded thinking header's line, read once per rebuild instead of
+    /// walking the whole reasoning tree on every frame it is on screen.
+    reasoning_summary: SharedString,
     under_line: bool,
     /// The turn this message belongs to, as `Body::Actions` numbers it.
     turn: usize,
@@ -3281,6 +3284,7 @@ impl TranscriptView {
                 });
             let message = self.messages.len();
             let first = self.rows.len();
+            let mut reasoning_summary = SharedString::default();
             if at >= turn_end {
                 turn = if is_prompt {
                     (at..self.source.len())
@@ -3598,6 +3602,9 @@ impl TranscriptView {
                 };
                 let mut word_cursor = 0;
                 let mut cached = Vec::new();
+                if role == "reasoning" {
+                    reasoning_summary = reasoning_summary_of(&tree);
+                }
                 for (block_ix, block) in tree
                     .blocks
                     .iter()
@@ -3741,6 +3748,7 @@ impl TranscriptView {
                 role,
                 parser,
                 markdown_blocks,
+                reasoning_summary,
                 user_link,
                 // Only a settled turn folds its work under the receipt line.
                 // While it streams, the newest reply is the answer so far but
@@ -4326,26 +4334,32 @@ impl TranscriptView {
             self.rebuild_rows(start, cx);
         }
         let mut removed = Vec::new();
-        let offset = self.list.logical_scroll_top();
-        let anchor = (!self.list.is_following_tail())
-            .then(|| self.rows.get(offset.item_ix).map(|r| r.key))
-            .flatten();
-        for (ix, row) in self.rows.iter().enumerate() {
-            if let Some(motion) = self.motions.get(&row.key) {
-                changed_phases.extend(row.phase_group());
-                if motion.finished(now) && !motion.opening {
-                    removed.push(ix);
-                } else {
+        let rows_changed = changed.is_some();
+        if !self.motions.is_empty() {
+            for (ix, row) in self.rows.iter().enumerate() {
+                if let Some(motion) = self.motions.get(&row.key) {
+                    changed_phases.extend(row.phase_group());
+                    if motion.finished(now) && !motion.opening {
+                        removed.push(ix);
+                    } else {
+                        self.list.remeasure_items(ix..ix + 1);
+                    }
+                }
+            }
+        }
+        if !changed_phases.is_empty() {
+            for (ix, row) in self.rows.iter().enumerate() {
+                if matches!(row.body, Body::Phase { group, .. } if changed_phases.contains(&group) && self.windowed_phase(group))
+                {
                     self.list.remeasure_items(ix..ix + 1);
                 }
             }
         }
-        for (ix, row) in self.rows.iter().enumerate() {
-            if matches!(row.body, Body::Phase { group, .. } if changed_phases.contains(&group) && self.windowed_phase(group))
-            {
-                self.list.remeasure_items(ix..ix + 1);
-            }
-        }
+        let rows_removed = !removed.is_empty();
+        let offset = self.list.logical_scroll_top();
+        let anchor = ((rows_changed || rows_removed) && !self.list.is_following_tail())
+            .then(|| self.rows.get(offset.item_ix).map(|r| r.key))
+            .flatten();
         for ix in removed.into_iter().rev() {
             self.rows.remove(ix);
             self.list.splice(ix..ix + 1, 0);
@@ -4373,7 +4387,10 @@ impl TranscriptView {
         }
         self.list
             .remeasure_items(self.footer_ix()..self.footer_ix() + 1);
-        self.index_messages();
+        if rows_removed {
+            // A rebuild already reindexed; only rows this frame removed did not.
+            self.index_messages();
+        }
         resized |= self.agent_panels.animating() || !self.motions.is_empty();
         if resized {
             cx.notify();
@@ -5143,18 +5160,7 @@ impl TranscriptView {
                     .into_any_element()
             }
             Body::Reasoning => {
-                let summary = self.messages[row.message]
-                    .parser
-                    .tree()
-                    .blocks
-                    .iter()
-                    .flat_map(|block| markdown::rows(&block.block))
-                    .map(|row| markdown::row_text(&row))
-                    .find(|text| !text.trim().is_empty())
-                    .unwrap_or_else(|| "Thinking…".into())
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ");
+                let summary = self.messages[row.message].reasoning_summary.clone();
                 let open = self.expanded.contains(&message_start);
                 div()
                     .id(("thinking", message_start))
@@ -5822,6 +5828,17 @@ impl TranscriptView {
         self.list.pause_following_tail();
         self.rebuild(group, cx);
     }
+}
+/// The folded thinking header's line: the first non-empty row of the block,
+/// read once when the message is rebuilt instead of on every frame.
+fn reasoning_summary_of(tree: &crate::markdown_model::BlockTree) -> SharedString {
+    tree.blocks
+        .iter()
+        .flat_map(|block| markdown::rows(&block.block))
+        .map(|row| markdown::row_text(&row))
+        .find(|text| !text.trim().is_empty())
+        .map(|text| SharedString::from(text.split_whitespace().collect::<Vec<_>>().join(" ")))
+        .unwrap_or_else(|| SharedString::from("Thinking…"))
 }
 impl gpui_kit::EventEmitter<ResponseRequest> for TranscriptView {}
 impl Render for TranscriptView {
