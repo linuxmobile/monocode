@@ -313,3 +313,39 @@ fn stopping_before_the_worker_runs_keeps_the_optimistic_message(cx: &mut TestApp
             .unwrap();
     }
 }
+
+/// A model the provider does not advertise must be refused before a launch,
+/// and the prompt must survive so choosing another model does not lose it.
+/// This is the bug that made a stale placeholder id look like a broken
+/// integration: the provider spent a launch and then said "Model
+/// unavailable" a few seconds later.
+#[gpui_kit::test]
+fn a_model_the_provider_does_not_list_is_refused_and_the_prompt_is_kept(cx: &mut TestAppContext) {
+    let window = conversation(cx);
+    window
+        .update(cx, |view, _, cx| {
+            // The refusal reads the catalog cache, so give this provider a
+            // populated catalog that deliberately lacks the chosen model.
+            view.summary.provider = "codex".into();
+            monocode_core::catalog::seed_for_test(
+                Kind::Codex,
+                &view.settings.account,
+                &["codex:gpt-a-real-model"],
+            );
+            view.settings.model = Some("opencode/openrouter/free".into());
+            view.input.update(cx, |input, cx| {
+                input.set_text("say hi".into(), cx);
+            });
+            view.send(cx);
+            // No turn started, and the reason names the model and provider.
+            assert!(!view.busy, "a refused model must not start a turn");
+            let status = view.status.to_string();
+            assert!(
+                status.contains("opencode/openrouter/free"),
+                "status should name the refused model, got {status:?}"
+            );
+            // The prompt is back in the composer, ready to send again.
+            assert_eq!(view.input.read(cx).content.to_string(), "say hi");
+        })
+        .unwrap();
+}

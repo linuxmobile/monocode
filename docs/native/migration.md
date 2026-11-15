@@ -188,14 +188,14 @@ statement is short, so a thread would add a hop without a measured benefit.
 Snapshot parsing is already avoided on the list path by the stored `summary`
 column. Revisit if a profile shows the lock held across a slow statement.
 
-## Known limitation: model ids reach the CLI unvalidated
+## Model ids are checked before a turn starts
 
-A session's model id is passed to the provider CLI as stored. A model the CLI
-does not advertise therefore fails when the turn starts rather than being
-rejected when it is chosen. A stored placeholder such as `openrouter/free` (the
-real ids have no `opencode/` prefix and name a vendor and model) surfaces as
-"Model unavailable" a few seconds after launch.
+A session can retain a model id from an older catalog, or one that was never
+real. Passing it to the provider spent a launch and only then answered "Model
+unavailable", which reads like a broken integration rather than a stale model.
 
-Validating ids against the CLI catalog when one is selected would close this. It
-is the same class as the access-mode validation added earlier: an unknown value
-should be refused where it is chosen, not where it is used.
+A turn is now refused, with the composer text restored, when the provider's
+catalog is populated and does not list the chosen id. A catalog that has not
+been fetched yet refuses nothing, because nothing is known at that point; this
+keeps the check from rejecting every model while the list is still loading. The
+catalog is read from the in-memory cache, so sending never blocks on the CLI.

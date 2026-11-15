@@ -214,6 +214,21 @@ fn fresh_for(kind: Kind) -> Duration {
         Duration::from_secs(300)
     }
 }
+/// Store a catalog without fetching one, for tests that need a known list.
+///
+/// Only tests use this: the real cache is filled by `models_for`, which talks to
+/// the CLI. Hidden from docs because it is not part of the supported API.
+#[doc(hidden)]
+pub fn seed_for_test(kind: Kind, account: &crate::accounts::Profile, ids: &[&str]) {
+    let rows = ids.iter().map(|id| model(id, id)).collect::<Vec<_>>();
+    let mut cache = cache().lock().unwrap_or_else(|e| e.into_inner());
+    cache
+        .entries
+        .retain(|(k, p, ..)| !(*k == kind && p == account));
+    cache
+        .entries
+        .push((kind, account.clone(), rows, Instant::now()));
+}
 /// A CLI update changes every account's catalog for that provider.
 pub fn invalidate_all(kind: Kind) {
     let mut cache = cache().lock().unwrap_or_else(|e| e.into_inner());
@@ -259,6 +274,30 @@ pub fn cached_models_for(kind: Kind, account: &crate::accounts::Profile) -> Opti
 }
 pub fn models(kind: Kind) -> Result<Vec<Model>, String> {
     models_for(kind, &crate::accounts::Profile::default())
+}
+/// Whether a catalog for `kind` has been fetched at all.
+///
+/// A guard that refuses unknown ids must stay quiet until the catalog arrives,
+/// or it would reject every model while the list is still loading.
+pub fn has_catalog(kind: Kind) -> bool {
+    let cache = cache().lock().unwrap_or_else(|e| e.into_inner());
+    cache
+        .entries
+        .iter()
+        .any(|(k, _, rows, _)| *k == kind && !rows.is_empty())
+}
+/// Whether a catalog both exists and lists `id`.
+///
+/// A stale or invented id used to reach the provider, which spent a launch and
+/// only then answered "Model unavailable". Callers about to start a turn use
+/// this to refuse an unknown id where it is used instead of leaving the failure
+/// to the provider.
+pub fn knows_model(kind: Kind, id: &str) -> bool {
+    let cache = cache().lock().unwrap_or_else(|e| e.into_inner());
+    cache
+        .entries
+        .iter()
+        .any(|(k, _, rows, _)| *k == kind && rows.iter().any(|m| m.id == id))
 }
 pub fn models_for(kind: Kind, account: &crate::accounts::Profile) -> Result<Vec<Model>, String> {
     let cache = cache();
@@ -907,6 +946,41 @@ mod tests {
         assert!(cached_models_for(Kind::Codex, &account).is_none());
         invalidate(Kind::Claude, &account);
         assert!(cached_models_for(Kind::Claude, &account).is_none());
+    }
+
+    /// The bug that made a stale model look like a broken provider: the id was
+    /// sent to the CLI, which spent a launch and then answered "Model
+    /// unavailable". A populated catalog must be asked before that happens.
+    #[test]
+    fn an_unknown_model_is_not_known_and_a_missing_catalog_refuses_nothing() {
+        let account = crate::accounts::Profile {
+            id: "knows-model-test".into(),
+            root: None,
+        };
+        // Nothing fetched yet: the guard must stay quiet rather than reject.
+        assert!(!has_catalog(Kind::OpenCode));
+        cache().lock().unwrap().entries.push((
+            Kind::OpenCode,
+            account.clone(),
+            vec![model("opencode/deepseek-v4.1-flash-free", "Free")],
+            Instant::now(),
+        ));
+        assert!(has_catalog(Kind::OpenCode));
+        assert!(knows_model(
+            Kind::OpenCode,
+            "opencode/deepseek-v4.1-flash-free"
+        ));
+        // A placeholder that was never real, and the prefix mistake that the
+        // stale sessions actually stored.
+        assert!(!knows_model(Kind::OpenCode, "openrouter/free"));
+        assert!(!knows_model(Kind::OpenCode, "opencode/openrouter/free"));
+        // Another provider's catalog says nothing about this one.
+        assert!(!knows_model(
+            Kind::Claude,
+            "opencode/deepseek-v4.1-flash-free"
+        ));
+        invalidate(Kind::OpenCode, &account);
+        assert!(!has_catalog(Kind::OpenCode));
     }
 
     #[test]

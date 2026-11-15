@@ -1031,7 +1031,47 @@ impl Conversation {
             },
         )
     }
+    /// Put a refused prompt back so choosing another model does not lose it.
+    ///
+    /// The composer is empty at this point, so inserting cannot overwrite what
+    /// the user has typed since; anything already there wins.
+    fn restore_prompt_after_refusal(&mut self, prompt: String, cx: &mut Context<Self>) {
+        self.input.update(cx, |input, cx| {
+            if input.content.trim().is_empty() {
+                input.set_text(prompt, cx);
+            }
+        });
+    }
     fn launch_prompt(&mut self, prompt: String, cx: &mut Context<Self>) {
+        // Refuse a model the provider does not advertise before spending a
+        // launch on it. A session can retain an id from an older catalog, or a
+        // placeholder that was never real, and the provider only answers
+        // "Model unavailable" after the process has started, which reads like
+        // a broken integration rather than a stale model. Nothing is known
+        // while a catalog is still loading, so only a populated catalog
+        // without this id is a refusal.
+        if let Some(model) = self
+            .settings
+            .model
+            .as_deref()
+            .or(self.resolved_model.as_deref())
+        {
+            let kind = Kind::from_id(&self.summary.provider);
+            let known = monocode_core::catalog::cached_models_for(kind, &self.settings.account)
+                .is_some_and(|models| models.iter().any(|m| m.id == model));
+            if !known && monocode_core::catalog::has_catalog(kind) {
+                self.status = format!(
+                    "{} is not one of {}\u{2019}s models. Pick another model to continue.",
+                    model,
+                    kind.label()
+                );
+                // The prompt is not lost: put it back where the user can send
+                // it after choosing a different model.
+                self.restore_prompt_after_refusal(prompt, cx);
+                cx.notify();
+                return;
+            }
+        }
         if self.stopping {
             let mode = if self.settings.orchestrator {
                 Some("orchestrator")
