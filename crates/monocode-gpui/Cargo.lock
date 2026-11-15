@@ -4437,6 +4437,7 @@ dependencies = [
  "image",
  "keyring",
  "libc",
+ "log",
  "minisign-verify",
  "natpmp",
  "rand 0.9.5",

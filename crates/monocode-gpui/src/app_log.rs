@@ -1,8 +1,9 @@
 //! Keeps GPUI's own warnings. GPUI reports failed draws, stalled frames and
 //! display link restarts through the `log` crate, and without a logger those
 //! reports were dropped, so a window that stopped repainting left no trace.
-//! Warnings from every crate, plus the macOS window's info lines, go to
-//! `~/Library/Logs/Monocode Native/gpui.log`.
+//! Warnings from every crate go to `$XDG_STATE_HOME/monocode/gpui.log`.
+//! `monocode-core` and the app also log through the same `log` facade, so one
+//! sink captures everything.
 use std::{
     collections::HashMap,
     fs::{File, OpenOptions},
@@ -27,10 +28,9 @@ struct State {
 }
 
 pub(crate) fn init() {
-    let Some(home) = std::env::var_os("HOME") else {
+    let Some(directory) = state_directory() else {
         return;
     };
-    let directory = PathBuf::from(home).join("Library/Logs/Monocode Native");
     if std::fs::create_dir_all(&directory).is_err() {
         return;
     }
@@ -50,6 +50,16 @@ pub(crate) fn init() {
 
 fn open(path: &PathBuf) -> Option<File> {
     OpenOptions::new().create(true).append(true).open(path).ok()
+}
+
+/// Logs are state, not data: they survive a reboot nowhere and belong under
+/// `XDG_STATE_HOME` so they land beside the user's other session state.
+fn state_directory() -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os("XDG_STATE_HOME") {
+        return Some(PathBuf::from(path).join("monocode"));
+    }
+    let home = std::env::var_os("HOME")?;
+    Some(PathBuf::from(home).join(".local/state/monocode"))
 }
 
 fn rotate(path: &PathBuf) {

@@ -1,5 +1,9 @@
 //! UI-independent services shared by the native app.
 pub mod accounts;
+
+#[cfg(test)]
+mod architecture;
+
 pub mod agent;
 pub mod app_access;
 pub mod app_update;

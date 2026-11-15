@@ -332,6 +332,13 @@ Run the complete native check from the repository root:
 npm run native:check
 ```
 
+> **Known baseline (November 13, 2026, `linux` @ `2dd99794`).** The GPUI suite
+> reports `786 passed; 25 failed` before the native migration branch begins. The
+> failures are in `shell::tests` and `terminal::tests` and panic with
+> `no entry found for key` (for example `shell.rs:13104`). They are not caused by
+> migration work; treat 25 as the floor and require the count not to grow. Fixing
+> them is separate work.
+
 Core tests run in parallel. GPUI tests run serially to isolate rendering state
 and avoid CPU contention with the interpreter's wall-clock limits.
 
