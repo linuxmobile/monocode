@@ -1,7 +1,7 @@
 //! AddRemoteProjectDialog.tsx: browse host directories and remember their remote identity.
 use super::*;
 use crate::settings::widgets::secondary_button;
-use gpui::EventEmitter;
+use gpui_kit::EventEmitter;
 use monocode_core::remote::{Connections, Machine};
 use serde::Deserialize;
 use serde_json::json;
@@ -275,7 +275,7 @@ impl Render for RemoteProjectPicker {
         let mut view = div().id("remote-project-picker").debug_selector(|| "remote-project-picker".into()).role(Role::Dialog).aria_label("Open folder on a machine")
             .track_focus(&self.focus)
             .p_4().flex().flex_col().gap_3().min_h_0().text_color(content(1.))
-            .on_key_down(cx.listener(|_, event: &gpui::KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|_, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" { cx.stop_propagation(); cx.emit(Picked::Cancel); }
             }))
             .child(div().text_size(px(13.)).font_weight(FontWeight::MEDIUM).child("Open folder on a machine"))
@@ -512,7 +512,7 @@ impl Shell {
         let open = self.remote_project_picker.as_ref()?;
         let viewport = window.viewport_size();
         let width = 480f32.min(viewport.width.as_f32() - 24.);
-        let anchor = Anchor::Point(gpui::point(
+        let anchor = Anchor::Point(gpui_kit::point(
             px((viewport.width.as_f32() - width) / 2.),
             px((viewport.height.as_f32() * 0.16).max(16.)),
         ));
@@ -574,9 +574,9 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn escape_closes_remote_folder_browser_without_switching_projects(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let (window, _, _) = crate::shell::tests::window(cx);
         let previous = window
@@ -587,7 +587,7 @@ mod tests {
                 previous
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("remote-project-picker").is_some());
         visual.simulate_keystrokes("escape");

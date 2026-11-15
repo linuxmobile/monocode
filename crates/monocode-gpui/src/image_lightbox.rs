@@ -1,6 +1,6 @@
 //! Native port of `src/shared/ui/ImageLightbox.tsx`.
 use crate::theme::{black, icon, white};
-use gpui::{
+use gpui_kit::{
     App, Bounds, BoxShadow, Context, CursorStyle, Entity, EventEmitter, FocusHandle, Image,
     ImageFormat, ImgResourceLoader, KeyBinding, MouseButton, Pixels, Point, RenderImage, Role,
     SharedString, Size, Window, actions, canvas, div, img, point, prelude::*, px, size,
@@ -13,7 +13,7 @@ pub(crate) enum Source {
     Embedded { data: Arc<str>, mime: SharedString },
 }
 
-#[derive(Clone, Debug, PartialEq, gpui::Action)]
+#[derive(Clone, Debug, PartialEq, gpui_kit::Action)]
 #[action(namespace = image_lightbox, no_json)]
 pub(crate) struct Open {
     pub source: Source,
@@ -25,10 +25,26 @@ actions!(image_lightbox, [Close, ZoomIn, ZoomOut, ResetZoom]);
 pub(crate) fn bind(cx: &mut App) {
     for modifier in ["cmd", "ctrl"] {
         cx.bind_keys([
-            KeyBinding::new(&format!("{modifier}-+"), ZoomIn, Some("ImageLightbox")),
-            KeyBinding::new(&format!("{modifier}-="), ZoomIn, Some("ImageLightbox")),
-            KeyBinding::new(&format!("{modifier}--"), ZoomOut, Some("ImageLightbox")),
-            KeyBinding::new(&format!("{modifier}-0"), ResetZoom, Some("ImageLightbox")),
+            KeyBinding::new(
+                Box::leak(format!("{modifier}-+").into_boxed_str()),
+                ZoomIn,
+                Some("ImageLightbox"),
+            ),
+            KeyBinding::new(
+                Box::leak(format!("{modifier}-=").into_boxed_str()),
+                ZoomIn,
+                Some("ImageLightbox"),
+            ),
+            KeyBinding::new(
+                Box::leak(format!("{modifier}--").into_boxed_str()),
+                ZoomOut,
+                Some("ImageLightbox"),
+            ),
+            KeyBinding::new(
+                Box::leak(format!("{modifier}-0").into_boxed_str()),
+                ResetZoom,
+                Some("ImageLightbox"),
+            ),
         ]);
     }
     cx.bind_keys([KeyBinding::new("escape", Close, Some("ImageLightbox"))]);
@@ -284,7 +300,7 @@ impl Render for ImageLightbox {
             }))
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(move |this, event: &gpui::MouseDownEvent, window, cx| {
+                cx.listener(move |this, event: &gpui_kit::MouseDownEvent, window, cx| {
                     cx.stop_propagation();
                     if !this
                         .image_bounds(this.displayed_view())
@@ -307,24 +323,26 @@ impl Render for ImageLightbox {
                 }),
             )
             .on_click(|_, _, cx| cx.stop_propagation())
-            .on_mouse_move(cx.listener(|this, event: &gpui::MouseMoveEvent, _, cx| {
-                if let Some((origin, pointer)) = this.drag {
-                    if event.pressed_button == Some(MouseButton::Left) {
-                        this.set_view(
-                            View {
-                                x: origin.x + (event.position.x - pointer.x).as_f32(),
-                                y: origin.y + (event.position.y - pointer.y).as_f32(),
-                                ..origin
-                            },
-                            cx,
-                        );
-                    } else {
-                        this.drag = None;
-                        cx.notify();
+            .on_mouse_move(
+                cx.listener(|this, event: &gpui_kit::MouseMoveEvent, _, cx| {
+                    if let Some((origin, pointer)) = this.drag {
+                        if event.pressed_button == Some(MouseButton::Left) {
+                            this.set_view(
+                                View {
+                                    x: origin.x + (event.position.x - pointer.x).as_f32(),
+                                    y: origin.y + (event.position.y - pointer.y).as_f32(),
+                                    ..origin
+                                },
+                                cx,
+                            );
+                        } else {
+                            this.drag = None;
+                            cx.notify();
+                        }
                     }
-                }
-                cx.stop_propagation();
-            }))
+                    cx.stop_propagation();
+                }),
+            )
             .on_mouse_up(
                 MouseButton::Left,
                 cx.listener(|this, _, _, cx| {
@@ -340,7 +358,7 @@ impl Render for ImageLightbox {
                     cx.notify();
                 }),
             )
-            .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
+            .on_scroll(cx.listener(|this, event: &gpui_kit::ScrollEvent, _, cx| {
                 let delta = event.delta.pixel_delta(px(16.));
                 if event.modifiers.control || event.modifiers.platform {
                     // GPUI's wheel deltas have the opposite sign to DOM wheel deltas.
@@ -361,7 +379,7 @@ impl Render for ImageLightbox {
                 }
                 cx.stop_propagation();
             }))
-            .on_pinch(cx.listener(|this, event: &gpui::PinchEvent, _, cx| {
+            .on_pinch(cx.listener(|this, event: &gpui_kit::PinchEvent, _, cx| {
                 this.zoom_at(this.view.scale * (1. + event.delta), event.position, cx);
                 cx.stop_propagation();
             }))
@@ -369,7 +387,7 @@ impl Render for ImageLightbox {
                 canvas(
                     |_, _, _| {},
                     |bounds, _, window, _| {
-                        let quad = gpui::fill(bounds, black(0.85));
+                        let quad = gpui_kit::fill(bounds, black(0.85));
                         window.paint_quad(quad);
                     },
                 )
@@ -457,7 +475,7 @@ impl Render for ImageLightbox {
 }
 
 pub(crate) fn overlay(view: &Entity<ImageLightbox>) -> impl IntoElement {
-    gpui::deferred(
+    gpui_kit::deferred(
         div()
             .absolute()
             .top_0()
@@ -471,8 +489,8 @@ pub(crate) fn overlay(view: &Entity<ImageLightbox>) -> impl IntoElement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{
-        Modifiers, ScrollDelta, ScrollWheelEvent, TestAppContext, TouchPhase, VisualTestContext,
+    use gpui_kit::{
+        Modifiers, ScrollDelta, ScrollEvent, TestAppContext, TouchPhase, VisualTestContext,
         WindowBounds, WindowOptions,
     };
 
@@ -535,7 +553,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn lightbox_handles_keyboard_pinch_wheel_drag_double_click_and_resize(cx: &mut TestAppContext) {
         cx.update(bind);
         let window = cx.update(|cx| cx.open_window(WindowOptions {
@@ -561,7 +579,7 @@ mod tests {
             .unwrap();
         let pointer = point(px(500.), px(350.));
         visual.simulate_mouse_move(pointer, None, Default::default());
-        visual.simulate_event(gpui::PinchEvent {
+        visual.simulate_event(gpui_kit::PinchEvent {
             position: pointer,
             delta: 1.,
             modifiers: Default::default(),
@@ -579,11 +597,12 @@ mod tests {
                 )
             })
             .unwrap();
-        visual.simulate_event(ScrollWheelEvent {
+        visual.simulate_event(ScrollEvent {
             position: pointer,
             delta: ScrollDelta::Pixels(point(px(20.), px(-30.))),
             modifiers: Default::default(),
             touch_phase: TouchPhase::Moved,
+            source: gpui_kit::ScrollSource::Pointer,
         });
         window
             .update(visual, |view, _, _| {
@@ -597,7 +616,7 @@ mod tests {
                 )
             })
             .unwrap();
-        visual.simulate_event(ScrollWheelEvent {
+        visual.simulate_event(ScrollEvent {
             position: pointer,
             delta: ScrollDelta::Lines(point(0., 1.)),
             modifiers: Modifiers {
@@ -605,6 +624,7 @@ mod tests {
                 ..Default::default()
             },
             touch_phase: TouchPhase::Moved,
+            source: gpui_kit::ScrollSource::Pointer,
         });
         window
             .update(visual, |view, _, _| {
@@ -613,7 +633,7 @@ mod tests {
             .unwrap();
         visual.simulate_keystrokes(&format!("{modifier}-0"));
         // Double-click a real image hitbox, then drag without a CSS transition.
-        visual.simulate_event(gpui::MouseDownEvent {
+        visual.simulate_event(gpui_kit::MouseDownEvent {
             button: MouseButton::Left,
             position: pointer,
             click_count: 2,

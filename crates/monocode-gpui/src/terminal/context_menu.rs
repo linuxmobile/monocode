@@ -3,8 +3,8 @@ use crate::popover::{Anchor, Menu, MenuAction, MenuEvent, menu_popover};
 
 pub(super) struct EditingMenu {
     menu: Entity<Menu>,
-    position: gpui::Point<gpui::Pixels>,
-    _events: gpui::Subscription,
+    position: gpui_kit::Point<gpui_kit::Pixels>,
+    _events: gpui_kit::Subscription,
 }
 
 impl Terminal {
@@ -75,8 +75,10 @@ impl Terminal {
 mod tests {
     use super::*;
 
-    #[gpui::test]
-    fn terminal_context_menu_copies_selection_and_restores_focus(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn terminal_context_menu_copies_selection_and_restores_focus(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         let window = cx.update(|cx| {
             super::super::bind(cx);
             crate::popover::bind(cx);
@@ -95,7 +97,7 @@ mod tests {
         let position = point(px(20.), px(20.));
         cx.update_window(window.into(), |_, w, cx| {
             w.dispatch_event(
-                gpui::PlatformInput::MouseDown(MouseDownEvent {
+                gpui_kit::PlatformInput::MouseDown(MouseDownEvent {
                     position,
                     button: MouseButton::Right,
                     ..Default::default()

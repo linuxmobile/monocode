@@ -1,6 +1,6 @@
-use gpui::{
+use gpui_kit::{
     Context, FollowMode, IntoElement, ListAlignment, ListOffset, ListState, Render, ScrollDelta,
-    ScrollWheelEvent, TestAppContext, Window, div, list, point, prelude::*, px, size,
+    ScrollEvent, TestAppContext, Window, div, list, point, prelude::*, px, size,
 };
 
 struct Rows(ListState);
@@ -14,13 +14,13 @@ impl Render for Rows {
     }
 }
 
-fn draw(cx: &mut gpui::VisualTestContext, state: &ListState) {
+fn draw(cx: &mut gpui_kit::VisualTestContext, state: &ListState) {
     cx.draw(point(px(0.), px(0.)), size(px(100.), px(100.)), |_, cx| {
         cx.new(|_| Rows(state.clone())).into_any_element()
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn pending_wheel_must_not_cancel_jump_to_bottom(cx: &mut TestAppContext) {
     let cx = cx.add_empty_window();
     let state = ListState::new(50, ListAlignment::Bottom, px(10.)).measure_all();
@@ -29,7 +29,7 @@ fn pending_wheel_must_not_cancel_jump_to_bottom(cx: &mut TestAppContext) {
         offset_in_item: px(0.),
     });
     draw(cx, &state);
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: point(px(1.), px(1.)),
         delta: ScrollDelta::Lines(point(0., 3.)),
         ..Default::default()
@@ -47,7 +47,7 @@ fn pending_wheel_must_not_cancel_jump_to_bottom(cx: &mut TestAppContext) {
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn pending_wheel_must_not_survive_reset(cx: &mut TestAppContext) {
     let cx = cx.add_empty_window();
     let state = ListState::new(50, ListAlignment::Top, px(10.)).measure_all();
@@ -56,7 +56,7 @@ fn pending_wheel_must_not_survive_reset(cx: &mut TestAppContext) {
         offset_in_item: px(0.),
     });
     draw(cx, &state);
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: point(px(1.), px(1.)),
         delta: ScrollDelta::Lines(point(0., -3.)),
         ..Default::default()
@@ -71,12 +71,12 @@ fn pending_wheel_must_not_survive_reset(cx: &mut TestAppContext) {
     assert_eq!(state.logical_scroll_top().item_ix, 0);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn wheel_glide_must_preserve_input_distance(cx: &mut TestAppContext) {
     let cx = cx.add_empty_window();
     let state = ListState::new(50, ListAlignment::Top, px(10.)).measure_all();
     draw(cx, &state);
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: point(px(1.), px(1.)),
         delta: ScrollDelta::Lines(point(0., -10.)),
         ..Default::default()

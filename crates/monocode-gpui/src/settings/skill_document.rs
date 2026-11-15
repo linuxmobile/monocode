@@ -4,7 +4,7 @@ use crate::{
     markdown_model,
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, ListAlignment, ListState, Render, Role, SharedString, Window, div, list,
     prelude::*, px,
 };
@@ -72,7 +72,7 @@ impl SkillDocument {
                     .then(|| {
                         (
                             start..offset,
-                            gpui::HighlightStyle {
+                            gpui_kit::HighlightStyle {
                                 color: Some(syntax_color("var(--color-markdown-heading)")),
                                 ..Default::default()
                             },
@@ -86,7 +86,7 @@ impl SkillDocument {
                 .text_size(px(13.))
                 .line_height(px(20.))
                 .text_color(content(0.85))
-                .child(gpui::StyledText::new(text).with_highlights(headings))
+                .child(gpui_kit::StyledText::new(text).with_highlights(headings))
                 .into_any_element();
         }
         if ix == 0

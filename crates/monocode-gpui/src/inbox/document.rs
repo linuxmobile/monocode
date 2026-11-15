@@ -4,7 +4,7 @@ use crate::{
     markdown_model,
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, AvailableSpace, Bounds, Context, Element, ElementId, Entity, GlobalElementId,
     Image, ImageCacheError, ImageFormat, InspectorElementId, LayoutId, Pixels, RenderImage, Role,
     SharedString, Style, TextStyle, Window, div, img, point, prelude::*, px, size,
@@ -118,7 +118,7 @@ fn attachment(
 ) -> Option<Result<Arc<RenderImage>, ImageCacheError>> {
     let url = url.to_owned();
     let view = window.current_view();
-    let key = gpui::hash(&("inbox", &url));
+    let key = gpui_kit::hash(&("inbox", &url));
     crate::image_memory::images(cx).update(cx, |cache, cx| {
         cache.request(
             key,
@@ -172,7 +172,7 @@ impl InboxDocument {
                         .rounded(px(10.))
                         .border_1()
                         .border_color(content(0.1))
-                        .object_fit(gpui::ObjectFit::Contain)
+                        .object_fit(gpui_kit::ObjectFit::Contain)
                         .into_any_element(),
                     Some(Err(_)) => div()
                         .text_size(px(14.))
@@ -557,7 +557,9 @@ impl Element for CodeLines {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{Render, ScrollHandle, TestAppContext, WindowBounds, WindowHandle, WindowOptions};
+    use gpui_kit::{
+        Render, ScrollHandle, TestAppContext, WindowBounds, WindowHandle, WindowOptions,
+    };
 
     struct Fixture {
         document: Entity<InboxDocument>,
@@ -626,7 +628,7 @@ mod tests {
     fn prose() -> String {
         (0..300).map(|ix| format!("### Finding {ix}\n\nCheck **retries** in `src/main.rs` before returning from this operation. Preserve the reader's place.\n\n")).collect()
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mermaid_completion_updates_retained_document_heights(cx: &mut TestAppContext) {
         let window = fixture(
             "```mermaid\ngraph LR; A-->B-->C-->D\n```\n".into(),
@@ -690,7 +692,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn scroll_keeps_exact_heights_and_only_materializes_visible_markdown(cx: &mut TestAppContext) {
         let window = fixture(prose(), None, cx);
         let (before, height) = window
@@ -732,7 +734,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn collapsed_body_skips_hidden_layout_and_expands_at_the_same_width(cx: &mut TestAppContext) {
         let window = fixture(prose(), Some(px(180.)), cx);
         window
@@ -766,7 +768,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tall_code_fence_keeps_full_scroll_range_but_builds_only_visible_lines(
         cx: &mut TestAppContext,
     ) {

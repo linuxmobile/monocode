@@ -1,7 +1,7 @@
 //! LinkedWorkItemUpdateNotice: shell-local card on the active session surface.
 use super::github_activity::Card;
 use crate::theme::*;
-use gpui::{Context, EventEmitter, Render, Role, Window, div, prelude::*, px};
+use gpui_kit::{Context, EventEmitter, Render, Role, Window, div, prelude::*, px};
 #[derive(Clone)]
 pub(crate) enum LinkedActivityEvent {
     Acknowledge(i64),
@@ -117,7 +117,7 @@ impl Render for LinkedActivity {
                 div()
                     .flex_1()
                     .text_size(px(12.))
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                     .child("GitHub activity"),
             )
             .child(
@@ -159,7 +159,7 @@ impl Render for LinkedActivity {
                             div()
                                 .mt(px(2.))
                                 .text_size(px(13.))
-                                .font_weight(gpui::FontWeight::MEDIUM)
+                                .font_weight(gpui_kit::FontWeight::MEDIUM)
                                 .child(card.title.clone()),
                         ),
                 )
@@ -291,7 +291,7 @@ impl Render for LinkedActivity {
                                     .px(px(8.))
                                     .py(px(4.))
                                     .text_size(px(11.))
-                                    .text_color(gpui::rgb(0xfca5a5))
+                                    .text_color(gpui_kit::rgb(0xfca5a5))
                                     .opacity(if busy || !self.can_delete { 0.4 } else { 1. })
                                     .when(!busy && self.can_delete, |d| {
                                         d.cursor_pointer().on_click(cx.listener(
@@ -323,7 +323,7 @@ impl Render for LinkedActivity {
                 .flex()
                 .gap(px(6.))
                 .text_size(px(11.))
-                .font_weight(gpui::FontWeight::MEDIUM)
+                .font_weight(gpui_kit::FontWeight::MEDIUM)
                 .child(
                     div()
                         .id("linked-activity-agent")

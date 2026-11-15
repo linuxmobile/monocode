@@ -8,7 +8,7 @@ use crate::{
     runtime::{Database, locked},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, ClipboardItem, Context, CursorStyle, Entity, EventEmitter, ExternalPaths,
     FocusHandle, Focusable, FontWeight, MouseButton, Role, Subscription, Task, Window, div,
     prelude::*, px,
@@ -744,7 +744,7 @@ impl Notes {
         // mode, light text on a dark one in light mode.
         let mut ink = shell_fill();
         ink.a = 1.;
-        let danger: gpui::Hsla = gpui::rgb(0xf87171).into();
+        let danger: gpui_kit::Hsla = gpui_kit::rgb(0xf87171).into();
         let actions = div()
             .flex()
             .items_center()
@@ -896,13 +896,13 @@ impl Notes {
                 content(0.)
             })
             .on_drag_move::<ExternalPaths>(cx.listener(
-                |this, event: &gpui::DragMoveEvent<ExternalPaths>, _, cx| {
+                |this, event: &gpui_kit::DragMoveEvent<ExternalPaths>, _, cx| {
                     this.image_drag = event.bounds.contains(&event.event.position);
                     cx.notify();
                 },
             ))
             .on_drag_move::<DraggedFile>(cx.listener(
-                |this, event: &gpui::DragMoveEvent<DraggedFile>, _, cx| {
+                |this, event: &gpui_kit::DragMoveEvent<DraggedFile>, _, cx| {
                     this.image_drag = event.bounds.contains(&event.event.position);
                     cx.notify();
                 },
@@ -999,7 +999,7 @@ impl Notes {
     }
 }
 
-impl gpui::Render for Notes {
+impl gpui_kit::Render for Notes {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.blurs_bound {
             self.blurs_bound = true;
@@ -1046,7 +1046,7 @@ impl gpui::Render for Notes {
                         .on_click(cx.listener(move |this, _, _, cx| this.select(id.clone(), cx)))
                 })))
             .child(div().id("resize-notes-list").role(Role::Splitter).aria_label("Resize notes list").absolute().top_0().bottom_0().right(px(-3.)).w(px(6.)).cursor(CursorStyle::ResizeLeftRight).hover(|style| style.bg(content(0.1)))
-                .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| { if event.click_count == 2 { this.list_width = 280.; } else { this.resize = Some((event.position.x.as_f32(), this.list_width)); } cx.notify(); })));
+                .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &gpui_kit::MouseDownEvent, _, cx| { if event.click_count == 2 { this.list_width = 280.; } else { this.resize = Some((event.position.x.as_f32(), this.list_width)); } cx.notify(); })));
         let detail = if let Some(note) = self.draft(cx) {
             self.detail(note, cx)
         } else {
@@ -1071,46 +1071,50 @@ impl gpui::Render for Notes {
             .flex()
             .flex_col()
             .text_color(content(1.))
-            .capture_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
-                let key = event.keystroke.key.as_str();
-                if key == "enter"
-                    && this.title.focus_handle(cx).is_focused(window)
-                    && !this.title.read(cx).is_composing()
-                {
-                    this.flush(cx);
-                    window.focus(&this.query.focus_handle(cx), cx);
-                    cx.stop_propagation();
-                } else if key == "escape" {
-                    if this.project_open {
-                        this.project_open = false;
-                    } else {
+            .capture_key_down(
+                cx.listener(|this, event: &gpui_kit::KeyDownEvent, window, cx| {
+                    let key = event.keystroke.key.as_str();
+                    if key == "enter"
+                        && this.title.focus_handle(cx).is_focused(window)
+                        && !this.title.read(cx).is_composing()
+                    {
                         this.flush(cx);
-                        if !this.dirty {
-                            cx.emit(Event::Close);
+                        window.focus(&this.query.focus_handle(cx), cx);
+                        cx.stop_propagation();
+                    } else if key == "escape" {
+                        if this.project_open {
+                            this.project_open = false;
+                        } else {
+                            this.flush(cx);
+                            if !this.dirty {
+                                cx.emit(Event::Close);
+                            }
                         }
+                        cx.stop_propagation();
+                        cx.notify();
+                    } else if (event.keystroke.modifiers.platform
+                        || event.keystroke.modifiers.control)
+                        && key == "s"
+                    {
+                        this.flush(cx);
+                        cx.stop_propagation();
+                    } else if (event.keystroke.modifiers.platform
+                        || event.keystroke.modifiers.control)
+                        && key == "n"
+                    {
+                        this.create(window, cx);
+                        cx.stop_propagation();
+                    } else if key == "backspace"
+                        && this.tag.focus_handle(cx).is_focused(window)
+                        && this.tag.read(cx).content.is_empty()
+                        && let Some(tag) = this.draft(cx).and_then(|note| note.tags.last().cloned())
+                    {
+                        this.remove_tag(&tag, cx);
                     }
-                    cx.stop_propagation();
-                    cx.notify();
-                } else if (event.keystroke.modifiers.platform || event.keystroke.modifiers.control)
-                    && key == "s"
-                {
-                    this.flush(cx);
-                    cx.stop_propagation();
-                } else if (event.keystroke.modifiers.platform || event.keystroke.modifiers.control)
-                    && key == "n"
-                {
-                    this.create(window, cx);
-                    cx.stop_propagation();
-                } else if key == "backspace"
-                    && this.tag.focus_handle(cx).is_focused(window)
-                    && this.tag.read(cx).content.is_empty()
-                    && let Some(tag) = this.draft(cx).and_then(|note| note.tags.last().cloned())
-                {
-                    this.remove_tag(&tag, cx);
-                }
-            }))
+                }),
+            )
             .on_mouse_move(
-                cx.listener(|this, event: &gpui::MouseMoveEvent, window, cx| {
+                cx.listener(|this, event: &gpui_kit::MouseMoveEvent, window, cx| {
                     if let Some((start, width)) = this.resize {
                         this.list_width = (width + event.position.x.as_f32() - start).clamp(
                             240.,
@@ -1143,7 +1147,7 @@ impl gpui::Render for Notes {
                         .items_center()
                         .gap_2()
                         .text_size(px(12.))
-                        .text_color(gpui::rgb(0xf87171))
+                        .text_color(gpui_kit::rgb(0xf87171))
                         .child(div().flex_1().child(error))
                         .child(
                             div()

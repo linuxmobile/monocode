@@ -1,7 +1,7 @@
 //! Provider-neutral question card: one question per page, sliding between
 //! pages, laid over the composer it temporarily replaces.
 use crate::{input, theme::*};
-use gpui::{
+use gpui_kit::{
     Animation, AnimationExt, AnyElement, App, Context, Entity, EntityId, EventEmitter, FocusHandle,
     Focusable, Hsla, MouseButton, Role, Subscription, Window, canvas, div, prelude::*, px,
 };
@@ -39,7 +39,7 @@ pub(crate) struct QuestionCard {
     turns: u64,
     turn: Option<Turn>,
     _events: Vec<Subscription>,
-    _clock: Option<gpui::Task<()>>,
+    _clock: Option<gpui_kit::Task<()>>,
 }
 impl EventEmitter<Answered> for QuestionCard {}
 impl EventEmitter<KeptOpen> for QuestionCard {}
@@ -227,7 +227,7 @@ impl QuestionCard {
         self.advance(cx);
         cx.notify();
     }
-    fn key(&mut self, event: &gpui::KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+    fn key(&mut self, event: &gpui_kit::KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         let ix = self.step;
         if self.fields[ix].focus_handle(cx).is_focused(window) {
             return;
@@ -537,7 +537,7 @@ fn footer_button(
     id: &'static str,
     label: &'static str,
     primary: bool,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -631,9 +631,9 @@ impl Render for QuestionCard {
             .rounded(px(RADIUS))
             .border_1()
             .border_color(composer_border(true))
-            .shadow(vec![gpui::BoxShadow {
-                color: gpui::hsla(0., 0., 0., 0.18),
-                offset: gpui::point(px(0.), px(8.)),
+            .shadow(vec![gpui_kit::BoxShadow {
+                color: gpui_kit::hsla(0., 0., 0., 0.18),
+                offset: gpui_kit::point(px(0.), px(8.)),
                 blur_radius: px(24.),
                 spread_radius: px(-6.),
                 inset: false,
@@ -647,7 +647,7 @@ impl Render for QuestionCard {
                 canvas(
                     |_, _, _| {},
                     move |bounds, _, window, _| {
-                        let surface = gpui::fill(bounds, fill).corner_radii(px(RADIUS - 1.));
+                        let surface = gpui_kit::fill(bounds, fill).corner_radii(px(RADIUS - 1.));
 
                         let _ = blur;
                         window.paint_quad(surface);
@@ -779,7 +779,7 @@ impl Overlay {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, VisualTestContext};
+    use gpui_kit::{TestAppContext, VisualTestContext};
     use monocode_core::agent::{QuestionItem, QuestionOption};
     use std::{cell::RefCell, rc::Rc};
 
@@ -792,7 +792,9 @@ mod tests {
             description: String::new(),
         }
     }
-    fn card(cx: &mut TestAppContext) -> (gpui::WindowHandle<QuestionCard>, Replies, Subscription) {
+    fn card(
+        cx: &mut TestAppContext,
+    ) -> (gpui_kit::WindowHandle<QuestionCard>, Replies, Subscription) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let request = Question {
             id: "r".into(),
@@ -838,7 +840,7 @@ mod tests {
         visual.simulate_click(bounds.center(), Default::default());
         visual.refresh().unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn single_choices_advance_and_multiple_choices_submit_together(cx: &mut TestAppContext) {
         let (window, replies, _events) = card(cx);
         let visual = &mut VisualTestContext::from_window(window.into(), cx);
@@ -867,7 +869,7 @@ mod tests {
             ])]
         );
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn typed_answers_replace_single_choices_and_skipping_everything_declines(
         cx: &mut TestAppContext,
     ) {

@@ -1,6 +1,6 @@
 //! File-action failures appear alongside the shell's other error cards.
 use crate::theme::*;
-use gpui::{Context, EventEmitter, Render, Window, div, prelude::*};
+use gpui_kit::{Context, EventEmitter, Render, Window, div, prelude::*};
 
 pub(crate) enum FileActionErrorEvent {
     Dismiss,

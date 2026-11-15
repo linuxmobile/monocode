@@ -1,4 +1,6 @@
-use gpui::{AnyElement, Div, Hsla, Role, Stateful, Svg, div, img, prelude::*, px, rgb, rgba, svg};
+use gpui_kit::{
+    AnyElement, Div, Hsla, Role, Stateful, Svg, div, img, prelude::*, px, rgb, rgba, svg,
+};
 // Shared appearance tokens. Interaction fills use translucent content ink
 // rather than opaque replacement greys.
 pub(crate) const CHAT: u32 = 0x141414;
@@ -18,7 +20,9 @@ pub(crate) const PANE_HEADER_HEIGHT: f32 = 36.;
 pub(crate) const TAB_PLATE_HEIGHT: f32 = 27.;
 
 /// Attachment previews keep a fixed crop, independent of image dimensions.
-pub(crate) fn attachment_thumbnail(source: impl Into<gpui::ImageSource>) -> gpui::AnyElement {
+pub(crate) fn attachment_thumbnail(
+    source: impl Into<gpui_kit::ImageSource>,
+) -> gpui_kit::AnyElement {
     div()
         .size(px(36.))
         .min_w(px(36.))
@@ -34,7 +38,7 @@ pub(crate) fn attachment_thumbnail(source: impl Into<gpui::ImageSource>) -> gpui
                 .aspect_square()
                 .flex_shrink_0()
                 .rounded_lg()
-                .object_fit(gpui::ObjectFit::Cover),
+                .object_fit(gpui_kit::ObjectFit::Cover),
         )
         .into_any_element()
 }
@@ -95,7 +99,7 @@ pub(crate) fn configure_project(
     let palette = crate::settings::palette(workspace_theme, light);
     let glass = window_glass(p, system_light);
     // Both layouts derive their surface roles from the same saved settings.
-    let shell = gpui::hsla(
+    let shell = gpui_kit::hsla(
         hue.min(360) as f32 / 360.,
         saturation.min(100) as f32 / 100.,
         if light {
@@ -165,7 +169,7 @@ impl Tokens {
     fn mix(&self, to: &Self, t: f32) -> Self {
         let color = |a: Hsla, b: Hsla| -> Hsla {
             let (a, b) = (a.to_rgb(), b.to_rgb());
-            gpui::Rgba {
+            gpui_kit::Rgba {
                 r: a.r + (b.r - a.r) * t,
                 g: a.g + (b.g - a.g) * t,
                 b: a.b + (b.b - a.b) * t,
@@ -208,11 +212,11 @@ pub(crate) fn window_glass(p: &crate::settings::Preferences, system_light: bool)
     GLASS_PLATFORM && p.theme != "light" && !(p.theme == "system" && system_light)
 }
 /// What the compositor puts behind a window that does or doesn't paint glass.
-pub(crate) fn window_backdrop(glass: bool) -> gpui::WindowBackgroundAppearance {
+pub(crate) fn window_backdrop(glass: bool) -> gpui_kit::WindowBackgroundAppearance {
     if glass && GLASS_PLATFORM {
-        gpui::WindowBackgroundAppearance::Blurred
+        gpui_kit::WindowBackgroundAppearance::Blurred
     } else {
-        gpui::WindowBackgroundAppearance::Opaque
+        gpui_kit::WindowBackgroundAppearance::Opaque
     }
 }
 pub(crate) fn accent_color() -> Hsla {
@@ -306,13 +310,13 @@ pub(crate) fn text_selection() -> Hsla {
 
 /// Light mode lifts the solid composer off the matching page with a soft
 /// two-layer drop; dark mode's frosted box needs no shadow.
-pub(crate) fn composer_shadow() -> Vec<gpui::BoxShadow> {
+pub(crate) fn composer_shadow() -> Vec<gpui_kit::BoxShadow> {
     if !is_light() {
         return Vec::new();
     }
     vec![
-        gpui::BoxShadow::new(px(0.), px(1.), black(0.04)).blur_radius(px(2.)),
-        gpui::BoxShadow::new(px(0.), px(6.), black(0.07))
+        gpui_kit::BoxShadow::new(px(0.), px(1.), black(0.04)).blur_radius(px(2.)),
+        gpui_kit::BoxShadow::new(px(0.), px(6.), black(0.07))
             .blur_radius(px(20.))
             .spread_radius(px(-4.)),
     ]
@@ -398,7 +402,7 @@ pub(crate) fn background_base() -> Hsla {
 pub(crate) fn rail_color() -> Hsla {
     let (base, ink) = (background_base().to_rgb(), content(1.).to_rgb());
     let mix = |b: f32, i: f32| b + (i - b) * 0.14;
-    gpui::Rgba {
+    gpui_kit::Rgba {
         r: mix(base.r, ink.r),
         g: mix(base.g, ink.g),
         b: mix(base.b, ink.b),
@@ -424,7 +428,7 @@ pub(crate) fn section_label(label: &'static str) -> Div {
         .items_center()
         .gap_1()
         .text_size(px(12.))
-        .font_weight(gpui::FontWeight::MEDIUM)
+        .font_weight(gpui_kit::FontWeight::MEDIUM)
         .text_color(content(0.5))
         .child(div().flex_1().child(label))
 }
@@ -482,7 +486,7 @@ pub(crate) fn provider_glyph(provider: &str, side: f32) -> AnyElement {
     svg()
         .path(path)
         .size(px(side * scale))
-        .text_color(gpui::white())
+        .text_color(gpui_kit::white())
         .flex_shrink_0()
         .into_any_element()
 }
@@ -577,10 +581,10 @@ fn chrome_button(
 }
 // `.primary-action` paints with literal white and black, not theme ink.
 pub(crate) fn white(alpha: f32) -> Hsla {
-    gpui::hsla(0., 0., 1., alpha)
+    gpui_kit::hsla(0., 0., 1., alpha)
 }
 pub(crate) fn black(alpha: f32) -> Hsla {
-    gpui::hsla(0., 0., 0., alpha)
+    gpui_kit::hsla(0., 0., 0., alpha)
 }
 
 const SYNTAX_KEYS: [&str; 11] = [
@@ -682,7 +686,7 @@ mod composer_tests {
         preferences.theme_hue = 180;
         preferences.theme_saturation = 20;
         configure(&preferences, false);
-        assert_eq!(composer_fill(), gpui::hsla(0.5, 0.2, 0.97, 1.));
+        assert_eq!(composer_fill(), gpui_kit::hsla(0.5, 0.2, 0.97, 1.));
         assert_eq!(composer_blur(), 0.);
         assert_eq!(composer_border(false), content(0.1));
         assert_eq!(composer_border(true), content(0.2));

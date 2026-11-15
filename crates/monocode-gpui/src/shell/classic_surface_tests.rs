@@ -1,7 +1,7 @@
 //! Original-layout destinations cover the project sessions without changing
 //! the remembered sidebar or destroying the conversation workspace.
 use super::*;
-use gpui::{TestAppContext, VisualTestContext, WindowHandle};
+use gpui_kit::{TestAppContext, VisualTestContext, WindowHandle};
 
 #[derive(Clone, Copy, Debug)]
 enum Surface {
@@ -72,7 +72,7 @@ impl Surface {
 fn setup(cx: &mut TestAppContext, classic: bool, boxy: bool) -> (WindowHandle<Shell>, i64) {
     cx.update(|cx| cx.set_reduce_motion(true));
     let (window, _, session) = super::tests::window(cx);
-    cx.simulate_window_resize(window.into(), gpui::size(px(1500.), px(900.)));
+    cx.simulate_window_resize(window.into(), gpui_kit::size(px(1500.), px(900.)));
     window
         .update(cx, |shell, window, cx| {
             shell.workspace.classic_layout = classic;
@@ -90,7 +90,7 @@ fn setup(cx: &mut TestAppContext, classic: bool, boxy: bool) -> (WindowHandle<Sh
     (window, session)
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_project_plus_offers_local_and_remote_folders(cx: &mut TestAppContext) {
     let (window, _) = setup(cx, true, false);
     let visual = &mut VisualTestContext::from_window(window.into(), cx);
@@ -135,7 +135,7 @@ fn original_project_plus_offers_local_and_remote_folders(cx: &mut TestAppContext
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_collapsed_picker_selects_monos_and_projects_with_search_and_keyboard(
     cx: &mut TestAppContext,
 ) {
@@ -294,36 +294,36 @@ fn assert_original_surface(surface: Surface, cx: &mut TestAppContext) {
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_app_surfaces_inbox_uses_own_header_and_restores_sessions(cx: &mut TestAppContext) {
     assert_original_surface(Surface::Inbox, cx);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_app_surfaces_notes_uses_own_header_and_restores_sessions(cx: &mut TestAppContext) {
     assert_original_surface(Surface::Notes, cx);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_app_surfaces_automations_uses_own_header_and_restores_sessions(
     cx: &mut TestAppContext,
 ) {
     assert_original_surface(Surface::Automations, cx);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_app_surfaces_search_uses_search_field_header_and_restores_sessions(
     cx: &mut TestAppContext,
 ) {
     assert_original_surface(Surface::Search, cx);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_app_surfaces_mono_uses_identity_header_and_restores_sessions(cx: &mut TestAppContext) {
     assert_original_surface(Surface::Mono, cx);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_app_surfaces_mono_overview_and_rail_back_use_original_controls(
     cx: &mut TestAppContext,
 ) {
@@ -394,7 +394,7 @@ fn original_app_surfaces_mono_overview_and_rail_back_use_original_controls(
     assert!(visual.debug_bounds("sidebar-content").is_some());
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn project_clicks_leave_monos_in_original_layout(cx: &mut TestAppContext) {
     for boxy in [false, true] {
         let (window, _) = setup(cx, true, boxy);
@@ -459,7 +459,7 @@ fn project_clicks_leave_monos_in_original_layout(cx: &mut TestAppContext) {
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn new_layout_projects_restore_the_last_session_or_mono_tab(cx: &mut TestAppContext) {
     for boxy in [false, true] {
         let (window, _) = setup(cx, false, boxy);
@@ -537,7 +537,7 @@ fn new_layout_projects_restore_the_last_session_or_mono_tab(cx: &mut TestAppCont
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_monos_leave_project_tabs_unchanged_and_close_as_surfaces(cx: &mut TestAppContext) {
     cx.update(super::bind_keys);
     for boxy in [false, true] {
@@ -620,7 +620,7 @@ fn original_monos_leave_project_tabs_unchanged_and_close_as_surfaces(cx: &mut Te
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_layout_hides_saved_mono_tabs_until_returning_to_new_layout(cx: &mut TestAppContext) {
     for boxy in [false, true] {
         let (window, session) = setup(cx, false, boxy);
@@ -664,7 +664,7 @@ fn original_layout_hides_saved_mono_tabs_until_returning_to_new_layout(cx: &mut 
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_app_surfaces_keep_icon_rail_and_remember_closed_sessions(cx: &mut TestAppContext) {
     let (window, session) = setup(cx, true, false);
     let visual = &mut VisualTestContext::from_window(window.into(), cx);
@@ -769,7 +769,7 @@ fn original_app_surfaces_keep_icon_rail_and_remember_closed_sessions(cx: &mut Te
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn original_app_surfaces_leave_both_new_layout_styles_tabbed(cx: &mut TestAppContext) {
     for boxy in [false, true] {
         let (window, session) = setup(cx, false, boxy);
@@ -833,7 +833,7 @@ fn original_app_surfaces_leave_both_new_layout_styles_tabbed(cx: &mut TestAppCon
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn new_layout_app_tabs_survive_frame_changes_and_close_like_session_tabs(cx: &mut TestAppContext) {
     cx.update(super::bind_keys);
     for boxy in [false, true] {
@@ -951,12 +951,12 @@ fn assert_settings_navigation(classic: bool, cx: &mut TestAppContext) {
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn settings_back_and_sidebar_toggle_in_new_layout(cx: &mut TestAppContext) {
     assert_settings_navigation(false, cx);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn settings_back_and_sidebar_toggle_in_original_layout(cx: &mut TestAppContext) {
     assert_settings_navigation(true, cx);
 }

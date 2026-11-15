@@ -24,9 +24,9 @@ impl Monos {
                 .max(loaded.len() as f32 / memory::MAX_BYTES as f32)
                 .min(1.);
             let tone = if dropped > 0 {
-                gpui::Hsla::from(rgb(0xfb2c36)).opacity(0.7)
+                gpui_kit::Hsla::from(rgb(0xfb2c36)).opacity(0.7)
             } else if share >= 0.8 {
-                gpui::Hsla::from(rgb(0xffb900)).opacity(0.7)
+                gpui_kit::Hsla::from(rgb(0xffb900)).opacity(0.7)
             } else {
                 content(0.3)
             };
@@ -56,7 +56,7 @@ impl Monos {
                                 .child(
                                     div()
                                         .h_full()
-                                        .w(gpui::relative(share))
+                                        .w(gpui_kit::relative(share))
                                         .rounded_full()
                                         .bg(tone),
                                 ),
@@ -146,7 +146,7 @@ impl Monos {
             .children(gauge)
             .into_any_element()
     }
-    fn memory_icon(dim: bool) -> gpui::Div {
+    fn memory_icon(dim: bool) -> gpui_kit::Div {
         div()
             .size(px(28.))
             .flex_shrink_0()
@@ -226,7 +226,7 @@ impl Monos {
                     .text_color(content(0.9))
                     .child(editor),
             )
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
                     this.memory_adding = false;
                     this.memory_edit = None;

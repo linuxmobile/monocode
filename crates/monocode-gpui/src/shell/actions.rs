@@ -393,9 +393,9 @@ impl Shell {
                     .role(Role::RadioButton)
                     .aria_label(SharedString::from(*name))
                     .aria_toggled(if selected {
-                        gpui::Toggled::True
+                        gpui_kit::Toggled::True
                     } else {
-                        gpui::Toggled::False
+                        gpui_kit::Toggled::False
                     })
                     .size(px(34.))
                     .flex()
@@ -534,7 +534,7 @@ impl Shell {
                                                 )
                                                 .debug_selector(|| "action-delete".into())
                                                 .w_full()
-                                                .bg(gpui::hsla(0., 0.66, 0.47, 0.08))
+                                                .bg(gpui_kit::hsla(0., 0.66, 0.47, 0.08))
                                                 .cursor_pointer()
                                                 .on_click(cx.listener(|this, _, window, cx| {
                                                     this.delete_action(window, cx)
@@ -559,8 +559,8 @@ impl Shell {
 
 #[cfg(test)]
 mod tests {
-    #[gpui::test]
-    fn saved_actions_run_in_one_reused_terminal(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn saved_actions_run_in_one_reused_terminal(cx: &mut gpui_kit::TestAppContext) {
         let (window, _, _) = crate::shell::tests::window(cx);
         window
             .update(cx, |shell, window, cx| {
@@ -596,7 +596,7 @@ mod tests {
             })
             .unwrap();
         // The edit dialog, with its Delete button, renders.
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("action-delete").is_some());
     }

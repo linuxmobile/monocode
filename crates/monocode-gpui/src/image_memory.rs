@@ -1,7 +1,7 @@
 //! Bounded image memory. GPUI keeps every `img(path)` decode and its atlas
 //! sprite for the life of the app; these caches cap both. Least recently drawn
 //! images are evicted past a byte budget, giving their GPU sprites back too.
-use gpui::{
+use gpui_kit::{
     App, AppContext, Asset, Context, Entity, EntityId, ImageAssetLoader, ImageCache,
     ImageCacheError, ImageSource, Img, RenderImage, Resource, Task, WeakEntity, Window, img,
 };
@@ -216,7 +216,7 @@ impl ImageCache for BoundedImages {
     fn load(&mut self, resource: &Resource, window: &mut Window, cx: &mut App) -> Option<Loaded> {
         let source = resource.clone();
         self.request(
-            gpui::hash(resource),
+            gpui_kit::hash(resource),
             window.current_view(),
             // Boxed: the loader's future borrows `cx` in its type, though not in fact.
             move |cx| -> Pin<Box<dyn Future<Output = Loaded> + Send>> {
@@ -287,12 +287,12 @@ mod tests {
         assert_eq!(decoded_bytes(&large), 128 * 64 * 4);
     }
 
-    #[gpui::test]
-    fn eviction_past_the_budget_frees_the_least_recently_drawn(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn eviction_past_the_budget_frees_the_least_recently_drawn(cx: &mut gpui_kit::TestAppContext) {
         let image = 64 * 64 * 4;
         let cache = cx.update(|cx| BoundedImages::new(4096, 2 * image, cx));
         let view = cx.update(|cx| cx.new(|_| ()).entity_id());
-        let request = |key: u64, cx: &mut gpui::TestAppContext| {
+        let request = |key: u64, cx: &mut gpui_kit::TestAppContext| {
             cx.update(|cx| {
                 cache.update(cx, |cache, cx| {
                     cache.request(key, view, |_| async { Ok(solid(64, 64)) }, cx)

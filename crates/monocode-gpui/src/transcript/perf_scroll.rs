@@ -8,7 +8,7 @@ use std::cell::Cell;
 
 thread_local! {
     /// The transcript that scrolls, so other chats keep still.
-    static OWNER: Cell<Option<gpui::EntityId>> = const { Cell::new(None) };
+    static OWNER: Cell<Option<gpui_kit::EntityId>> = const { Cell::new(None) };
 }
 
 #[derive(Default)]

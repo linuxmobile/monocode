@@ -223,7 +223,7 @@ impl Shell {
 mod tests {
     use super::*;
     use crate::shell::tests::window;
-    use gpui::{Modifiers, TestAppContext, VisualTestContext, point};
+    use gpui_kit::{Modifiers, TestAppContext, VisualTestContext, point};
 
     fn pull(visual: &mut VisualTestContext, from: Point<Pixels>, to: Point<Pixels>) {
         visual.simulate_mouse_down(from, MouseButton::Left, Modifiers::default());
@@ -240,7 +240,7 @@ mod tests {
         visual.run_until_parked();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_mono_tab_pulled_onto_a_pane_splits_and_returns_to_its_tab(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, first) = window(cx);
@@ -326,7 +326,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_tab_pulled_onto_the_visible_mono_splits_beside_it(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, first) = window(cx);

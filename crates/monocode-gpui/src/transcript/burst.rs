@@ -3,7 +3,7 @@
 //! Timings, colors and keyframes follow index.css; CSS's radial gradient and
 //! rounded `overflow: hidden` are approximated with masked linear gradients and
 //! a coverage fade at the bubble's corners.
-use gpui::{
+use gpui_kit::{
     App, Bounds, BoxShadow, ContentMask, Corners, FontWeight, Hsla, PathBuilder, Pixels, Point,
     TextAlign, TextRun, Window, fill, linear_color_stop, linear_gradient, point, px, size,
 };
@@ -270,7 +270,7 @@ impl Palette {
 }
 
 fn hex(rgb: u32, a: f32) -> Hsla {
-    let mut color: Hsla = gpui::rgb(rgb).into();
+    let mut color: Hsla = gpui_kit::rgb(rgb).into();
     color.a = a;
     color
 }
@@ -747,7 +747,7 @@ fn paint_plan_steps(
         let number = frames(p, &[(0., 1.), (0.34, 1.), (0.42, 0.), (1., 0.)], EASE_OUT);
         if number > 0.01 {
             let font_size = 8.5 * scale * frames(p, &[(0.34, 1.), (0.42, 0.5)], EASE_OUT);
-            let text = gpui::SharedString::from((i + 1).to_string());
+            let text = gpui_kit::SharedString::from((i + 1).to_string());
             let line = window.text_system().shape_line(
                 text.clone(),
                 px(font_size),
@@ -912,7 +912,7 @@ fn paint_node(
         window.paint_quad(
             fill(
                 Bounds::new(center - point(px(d * 0.5), px(d * 0.5)), size(px(d), px(d))),
-                gpui::transparent_black(),
+                gpui_kit::transparent_black(),
             )
             .corner_radii(px(d * 0.5))
             .border_widths(px(1.5 * ring_scale))

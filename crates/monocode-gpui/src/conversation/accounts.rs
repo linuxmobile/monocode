@@ -1,5 +1,5 @@
 use super::*;
-use gpui::App;
+use gpui_kit::App;
 use monocode_core::{
     accounts::Profile,
     usage::{self, Limit},
@@ -374,7 +374,7 @@ impl Conversation {
                     .h(px(26.))
                     .gap(px(4.))
                     .text_size(px(11.))
-                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                     .text_color(content(1.))
                     .bg(content(0.1))
                     .child("Choose another model")
@@ -454,7 +454,7 @@ impl Conversation {
                 .child(
                     icon(if waiting { "clock" } else { "play" }, 14.)
                         .text_color(if waiting && armed {
-                            gpui::rgb(AMBER_400).into()
+                            gpui_kit::rgb(AMBER_400).into()
                         } else {
                             content(if mono { 0.6 } else { 0.55 })
                         })
@@ -503,7 +503,7 @@ impl Conversation {
             .items_center()
             .gap(px(8.))
             .whitespace_nowrap()
-            .child(icon("gauge", 14.).text_color(gpui::rgb(AMBER_400)))
+            .child(icon("gauge", 14.).text_color(gpui_kit::rgb(AMBER_400)))
             .child(
                 div()
                     .text_size(px(12.))
@@ -569,7 +569,7 @@ fn usage_button(
     primary: bool,
     disabled: bool,
     raised: bool,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .debug_selector(move || id.into())
@@ -588,7 +588,7 @@ fn usage_button(
         .line_height(px(16.))
         .whitespace_nowrap()
         .text_color(if primary {
-            gpui::rgb(AMBER_400).into()
+            gpui_kit::rgb(AMBER_400).into()
         } else {
             content(0.55)
         })
@@ -636,9 +636,9 @@ pub(super) fn usage_reset_label(limit: &Limit, now: i64) -> Option<String> {
 mod tests {
     use super::*;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn account_recovery_uses_the_terminal_limit_without_reviving_an_older_failure(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         use monocode_core::transcript::Row;
         let store = Arc::new(std::sync::Mutex::new(
@@ -681,9 +681,9 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn claude_limit_code_opens_recovery_and_preserves_the_reported_reset(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),
@@ -708,9 +708,9 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn usage_banner_matches_the_composer_and_can_arm_cancel_and_dismiss(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),
@@ -741,7 +741,7 @@ mod tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
         let banner = visual.debug_bounds("usage-limit-banner").unwrap();
         let composer = visual.debug_bounds("composer-box").unwrap();
@@ -750,7 +750,7 @@ mod tests {
         let dismiss = visual.debug_bounds("dismiss-usage-limit").unwrap();
         assert_eq!(banner.size.height, px(32.));
         assert_eq!(resume.size.height, px(24.));
-        assert_eq!(dismiss.size, gpui::size(px(24.), px(24.)));
+        assert_eq!(dismiss.size, gpui_kit::size(px(24.), px(24.)));
         assert_eq!(banner.bottom(), composer.top());
         assert_eq!(banner.left(), composer.left() + px(8.));
         assert_eq!(banner.right(), composer.right() - px(8.));
@@ -819,9 +819,9 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn subscription_limits_persist_and_release_a_mono_only_once_when_armed(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),

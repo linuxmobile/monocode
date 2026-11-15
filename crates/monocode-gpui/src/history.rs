@@ -7,7 +7,7 @@ use crate::{
     right_panel::*,
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     App, Bounds, Context, Entity, FocusHandle, Focusable, FontWeight, Hsla, KeyBinding, Role,
     ScrollStrategy, SharedString, Subscription, UniformListScrollHandle, Window, actions, canvas,
     div, fill, point, prelude::*, px, rgb, size, uniform_list,
@@ -34,7 +34,7 @@ pub(crate) enum HistoryEvent {
         subject: String,
     },
 }
-impl gpui::EventEmitter<HistoryEvent> for History {}
+impl gpui_kit::EventEmitter<HistoryEvent> for History {}
 
 struct Item {
     commit: HistoryCommit,
@@ -497,7 +497,7 @@ fn header_action(
     side: f32,
     enabled: bool,
     spinning: bool,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -617,7 +617,7 @@ fn over_base(alpha: f32) -> Hsla {
 /// background colour, cleared or tinted on hover and selection.
 fn paint_graph(
     graph: &RowGraph,
-    bounds: Bounds<gpui::Pixels>,
+    bounds: Bounds<gpui_kit::Pixels>,
     filtered: bool,
     head: bool,
     active: bool,
@@ -667,16 +667,16 @@ fn paint_graph(
         }
         if let Some(stroke) = stroke {
             let outer = circle.r + circle.stroke_width / 2.;
-            window.paint_quad(gpui::quad(
+            window.paint_quad(gpui_kit::quad(
                 Bounds::new(
                     centre - point(px(outer), px(outer)),
                     size(px(outer * 2.), px(outer * 2.)),
                 ),
                 px(outer),
-                gpui::transparent_black(),
+                gpui_kit::transparent_black(),
                 px(circle.stroke_width),
                 stroke,
-                gpui::BorderStyle::Solid,
+                gpui_kit::BorderStyle::Solid,
             ));
         }
     }

@@ -3,7 +3,7 @@
 //! paint the card opaque. `window.prompt` renders through [`prompt_builder`],
 //! so confirmations use the same card as every other modal.
 use crate::theme::*;
-use gpui::{
+use gpui_kit::{
     Animation, AnimationElement, AnimationExt, App, Context, Div, ElementId, EventEmitter,
     FocusHandle, Focusable, FontWeight, Hsla, KeyDownEvent, MouseButton, PromptButton,
     PromptHandle, PromptLevel, PromptResponse, RenderablePromptHandle, Role, SharedString,
@@ -52,9 +52,9 @@ pub(crate) fn scrim(id: impl Into<ElementId>) -> AnimationElement<Div> {
 /// the pane. Popovers opened inside it (priority 40 and up) still draw above.
 pub(crate) fn window_overlay(window: &Window, overlay: impl IntoElement) -> impl IntoElement {
     let size = window.viewport_size();
-    gpui::deferred(
-        gpui::anchored()
-            .position(gpui::point(px(0.), px(0.)))
+    gpui_kit::deferred(
+        gpui_kit::anchored()
+            .position(gpui_kit::point(px(0.), px(0.)))
             .child(div().relative().w(size.width).h(size.height).child(overlay)),
     )
     .with_priority(30)
@@ -82,7 +82,7 @@ pub(crate) fn surface(radius: f32) -> impl IntoElement {
         move |bounds, _, window, _| {
             let quad = {
                 let _ = (light, tint);
-                gpui::fill(bounds, opaque)
+                gpui_kit::fill(bounds, opaque)
             };
             window.paint_quad(quad.corner_radii(px(radius)));
         },
@@ -102,7 +102,7 @@ pub(crate) fn card() -> Div {
         .border_1()
         .border_color(content(BORDER))
         .shadow(vec![
-            gpui::BoxShadow::new(px(0.), px(24.), black(if is_light() { 0.12 } else { 0.3 }))
+            gpui_kit::BoxShadow::new(px(0.), px(24.), black(if is_light() { 0.12 } else { 0.3 }))
                 .blur_radius(px(48.))
                 .spread_radius(px(-12.)),
         ])
@@ -193,7 +193,7 @@ pub(crate) fn danger_button(
 ) -> Stateful<Div> {
     button(id, label)
         .bg(danger(1.))
-        .text_color(gpui::white())
+        .text_color(gpui_kit::white())
         .font_weight(FontWeight::MEDIUM)
         .hover(|s| s.bg(danger(0.85)))
 }
@@ -206,7 +206,7 @@ pub(crate) fn disabled(button: Stateful<Div>, disabled: bool) -> Stateful<Div> {
     }
 }
 fn danger(alpha: f32) -> Hsla {
-    gpui::hsla(0., 0.66, if is_light() { 0.5 } else { 0.47 }, alpha)
+    gpui_kit::hsla(0., 0.66, if is_light() { 0.5 } else { 0.47 }, alpha)
 }
 
 /// Lays `card` over the window behind a fading scrim. A press on the scrim
@@ -351,12 +351,12 @@ impl Render for Prompt {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn prompts_answer_with_keys_and_buttons_in_sheet_order(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_prompt_builder(prompt_builder));
-        let window = cx.add_window(|_, _| gpui::Empty);
+        let window = cx.add_window(|_, _| gpui_kit::Empty);
         let mut answer = window
             .update(cx, |_, window, cx| {
                 window.prompt(
@@ -369,7 +369,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.simulate_keystrokes("escape");
         visual.run_until_parked();
         assert_eq!(answer.try_recv(), Ok(Some(1)));

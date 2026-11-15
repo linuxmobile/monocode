@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 #[derive(Default)]
 pub(super) struct State {
     pub(super) client: Option<Arc<monocode_core::remote::Connections>>,
-    clock: Option<gpui::Task<()>>,
+    clock: Option<gpui_kit::Task<()>>,
     pub(super) refreshing: bool,
     pub(super) pending: bool,
     pub(super) online: bool,

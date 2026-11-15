@@ -1,7 +1,7 @@
 use super::*;
-use gpui::{EntityInputHandler, TestAppContext};
+use gpui_kit::{EntityInputHandler, TestAppContext};
 
-#[gpui::test]
+#[gpui_kit::test]
 fn replace_is_one_undo_and_autosave_formats_with_original_encoding(cx: &mut TestAppContext) {
     let path = std::env::temp_dir().join(format!(
         "monocode-editor-parity-{}.json",
@@ -77,7 +77,7 @@ fn replace_is_one_undo_and_autosave_formats_with_original_encoding(cx: &mut Test
     std::fs::remove_file(path).unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn autosave_refuses_external_edits_even_before_the_file_poll(cx: &mut TestAppContext) {
     let path = std::env::temp_dir().join(format!(
         "monocode-autosave-conflict-{}.txt",
@@ -119,7 +119,7 @@ fn autosave_refuses_external_edits_even_before_the_file_poll(cx: &mut TestAppCon
     std::fs::remove_file(path).unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn saving_a_clean_file_still_applies_the_format_on_save_preference(cx: &mut TestAppContext) {
     let path =
         std::env::temp_dir().join(format!("monocode-clean-format-{}.json", std::process::id()));

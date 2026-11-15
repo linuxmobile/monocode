@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{PathBuilder, point};
+use gpui_kit::{PathBuilder, point};
 use monocode_core::follow_up::Message as Draft;
 
 impl TranscriptView {
@@ -71,7 +71,7 @@ impl TranscriptView {
             );
         }
     }
-    pub(super) fn saved_draft_row(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+    pub(super) fn saved_draft_row(&self, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         let Some(draft) = &self.saved_draft else {
             return div().into_any_element();
         };
@@ -203,7 +203,7 @@ impl TranscriptView {
 /// Browser dashed 1px borders use approximately 3px dashes with 3px gaps.
 /// GPUI's built-in 2px/1px pattern is visibly tighter. Keep the browser pattern
 /// local to draft bubbles and their divider, including the rounded corners.
-fn draft_dashes(radius: Option<f32>, color: gpui::Hsla) -> impl IntoElement {
+fn draft_dashes(radius: Option<f32>, color: gpui_kit::Hsla) -> impl IntoElement {
     canvas(
         |_, _, _| (),
         move |bounds, _, window, _| {
@@ -241,7 +241,7 @@ fn draft_dashes(radius: Option<f32>, color: gpui::Hsla) -> impl IntoElement {
     .left_0()
     .size_full()
 }
-fn draft_button(id: &'static str, label: &'static str) -> gpui::Stateful<gpui::Div> {
+fn draft_button(id: &'static str, label: &'static str) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -253,23 +253,25 @@ fn draft_button(id: &'static str, label: &'static str) -> gpui::Stateful<gpui::D
         .gap(px(6.))
         .text_size(px(12.))
         .hover(|s| s.bg(content(0.1)))
-        .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
+            cx.stop_propagation()
+        })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn new_drafts_anchor_like_sent_prompts_and_keep_the_anchor_through_updates_and_resize(
         cx: &mut TestAppContext,
     ) {
         for history in [false, true] {
             let window = cx.update(|cx| {
                 cx.open_window(
-                    gpui::WindowOptions {
-                        window_bounds: Some(gpui::WindowBounds::Windowed(Bounds::new(
+                    gpui_kit::WindowOptions {
+                        window_bounds: Some(gpui_kit::WindowBounds::Windowed(Bounds::new(
                             point(px(0.), px(0.)),
                             size(px(900.), px(600.)),
                         ))),
@@ -293,7 +295,7 @@ mod tests {
                 )
                 .unwrap()
             });
-            let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             cx.refresh().unwrap();
             window
                 .update(cx, |view, _, cx| {
@@ -357,7 +359,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn restored_drafts_do_not_replay_submission_or_override_the_anchor_preference(
         cx: &mut TestAppContext,
     ) {
@@ -394,7 +396,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn saved_draft_keeps_its_position_as_history_grows_and_removal_leaves_history_intact(
         cx: &mut TestAppContext,
     ) {

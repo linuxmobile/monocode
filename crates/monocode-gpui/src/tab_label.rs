@@ -1,5 +1,5 @@
 //! TabLabel.tsx: leave short labels clear and fade the last 40px only on overflow.
-use gpui::{ContentMask, SharedString, TextAlign, TextRun, canvas, prelude::*, px};
+use gpui_kit::{ContentMask, SharedString, TextAlign, TextRun, canvas, prelude::*, px};
 
 pub(crate) fn tab_label(text: impl Into<SharedString>) -> impl IntoElement {
     let text = text.into();

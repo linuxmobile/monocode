@@ -1,6 +1,6 @@
 //! Stationary notification glass, matching GlassBackdrop and the native popover.
 use crate::theme::*;
-use gpui::{Div, canvas, div, prelude::*, px};
+use gpui_kit::{Div, canvas, div, prelude::*, px};
 
 pub(crate) fn backdrop(radius: f32) -> impl IntoElement {
     let (light, opaque) = (is_light(), floating_fill());
@@ -9,7 +9,7 @@ pub(crate) fn backdrop(radius: f32) -> impl IntoElement {
         move |bounds, _, window, _| {
             let _ = (light, opaque);
 
-            let quad = gpui::fill(bounds, pane_fill());
+            let quad = gpui_kit::fill(bounds, pane_fill());
             window.paint_quad(quad.corner_radii(px(radius)));
         },
     )

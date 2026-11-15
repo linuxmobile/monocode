@@ -1,6 +1,6 @@
 //! Measure the media at its actual width. Combining an aspect ratio and a
 //! maximum height in a flex child leaves excess space in min-content layouts.
-use gpui::{prelude::*, *};
+use gpui_kit::{prelude::*, *};
 
 pub(super) struct FittedMedia {
     child: AnyElement,

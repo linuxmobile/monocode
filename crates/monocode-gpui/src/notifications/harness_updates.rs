@@ -1,7 +1,7 @@
 //! Native counterpart of HarnessUpdateNotice.tsx. The parent positions this
 //! entity in the shared top-right notification stack.
 use crate::theme::*;
-use gpui::{Context, EventEmitter, Render, Role, Window, div, prelude::*, px};
+use gpui_kit::{Context, EventEmitter, Render, Role, Window, div, prelude::*, px};
 use monocode_core::{
     harness_updates::{self, Update},
     provider::Kind,
@@ -147,7 +147,7 @@ impl Render for HarnessUpdates {
                 div()
                     .flex_1()
                     .text_size(px(12.))
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                     .child(if self.updates.len() == 1 {
                         "Harness update available"
                     } else {
@@ -201,14 +201,14 @@ impl Render for HarnessUpdates {
                     div()
                         .flex_1()
                         .text_size(px(13.))
-                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .font_weight(gpui_kit::FontWeight::MEDIUM)
                         .child(update.harness.label()),
                 );
             if let Some(RowState::Updated(version)) = state {
                 line = line.child(
                     div()
                         .text_size(px(11.))
-                        .text_color(gpui::rgb(0x34d399))
+                        .text_color(gpui_kit::rgb(0x34d399))
                         .child(format!("✓ Updated to {version}")),
                 );
             } else {
@@ -224,7 +224,7 @@ impl Render for HarnessUpdates {
                     )
                     .child(
                         div()
-                            .id(gpui::SharedString::from(format!(
+                            .id(gpui_kit::SharedString::from(format!(
                                 "update-harness-{}",
                                 update.harness.id()
                             )))
@@ -251,7 +251,9 @@ impl Render for HarnessUpdates {
                                     crate::pulse::Rate::Smooth,
                                     move |delta| {
                                         icon("loader", 12.).with_transformation(
-                                            gpui::Transformation::rotate(gpui::percentage(delta)),
+                                            gpui_kit::Transformation::rotate(gpui_kit::percentage(
+                                                delta,
+                                            )),
                                         )
                                     },
                                 ))
@@ -276,7 +278,7 @@ impl Render for HarnessUpdates {
                     div()
                         .mt(px(6.))
                         .text_size(px(11.))
-                        .text_color(gpui::rgb(0xfca5a5))
+                        .text_color(gpui_kit::rgb(0xfca5a5))
                         .child(error.clone()),
                 );
             }

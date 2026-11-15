@@ -7,12 +7,12 @@ use crate::{
     input,
     shell::*,
 };
-use gpui::{App, Menu, MenuItem, actions};
+use gpui_kit::{App, Menu, MenuItem, actions};
 
 actions!(application, [Hide, HideOthers, ShowAll]);
 
 /// Opens a Help menu link in the browser.
-#[derive(Clone, Debug, PartialEq, gpui::Action)]
+#[derive(Clone, Debug, PartialEq, gpui_kit::Action)]
 #[action(namespace = application, no_json)]
 pub(crate) struct OpenUrl(pub &'static str);
 
@@ -27,7 +27,7 @@ pub(crate) fn bind(cx: &mut App) {
 
 /// Set once the first window has presented a frame.
 struct MenuReady;
-impl gpui::Global for MenuReady {}
+impl gpui_kit::Global for MenuReady {}
 
 /// Installs the menu bar, called after the first frame is on screen. Setting
 /// the main menu makes AppKit check for Writing Tools, which loads a framework

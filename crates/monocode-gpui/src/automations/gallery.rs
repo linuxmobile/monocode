@@ -48,7 +48,7 @@ impl Automations {
                                 .child(
                                     div()
                                         .text_size(px(13.))
-                                        .font_weight(gpui::FontWeight::MEDIUM)
+                                        .font_weight(gpui_kit::FontWeight::MEDIUM)
                                         .child("Start from scratch"),
                                 )
                                 .child(
@@ -121,7 +121,7 @@ impl Automations {
                                     .child(
                                         div()
                                             .text_size(px(13.))
-                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                                             .child(template.name.clone()),
                                     )
                                     .child(
@@ -181,7 +181,7 @@ impl Automations {
                     .child(
                         div()
                             .text_size(px(20.))
-                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                             .child("New automation"),
                     )
                     .child(

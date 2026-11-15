@@ -4,7 +4,7 @@ use crate::{
     popover::{MenuAction, MenuItem, MenuStyle, Side},
     project_settings::{BackgroundDialog, Event as BackgroundEvent},
 };
-use gpui::{AnyView, Div, FontWeight, Stateful};
+use gpui_kit::{AnyView, Div, FontWeight, Stateful};
 use monocode_core::mono::heartbeat;
 use monocode_core::project_appearance::{MASCOTS, ProjectAppearance};
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -139,7 +139,7 @@ pub(super) struct OpenPicker {
     pub(super) _events: Vec<Subscription>,
 }
 pub(super) fn button(
-    id: impl Into<gpui::ElementId>,
+    id: impl Into<gpui_kit::ElementId>,
     label: impl Into<SharedString>,
 ) -> Stateful<Div> {
     let label = label.into();
@@ -287,8 +287,8 @@ fn sub_agent_card(agent: SubAgent) -> Stateful<Div> {
     let model: SharedString = model
         .strip_prefix("Claude ")
         .map_or(model.clone(), |short| short.to_owned().into());
-    let amber: gpui::Hsla = rgb(0xfbbf24).into();
-    let (label, color, live): (String, gpui::Hsla, bool) = match agent.state {
+    let amber: gpui_kit::Hsla = rgb(0xfbbf24).into();
+    let (label, color, live): (String, gpui_kit::Hsla, bool) = match agent.state {
         AgentState::Working => ("Working".into(), accent_color(), true),
         AgentState::NeedsInput => ("Needs approval".into(), amber, true),
         AgentState::Idle(at) => (
@@ -481,7 +481,7 @@ struct LookEditor {
     settings: bool,
     custom_open: bool,
     custom: Entity<super::color_picker::ColorPicker>,
-    focus: gpui::FocusHandle,
+    focus: gpui_kit::FocusHandle,
     _events: Vec<Subscription>,
 }
 impl EventEmitter<LookChanged> for LookEditor {}
@@ -549,7 +549,7 @@ impl LookEditor {
         }
     }
 }
-impl gpui::Render for LookEditor {
+impl gpui_kit::Render for LookEditor {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if self.settings {
             return self.settings_controls(cx);
@@ -560,7 +560,7 @@ impl gpui::Render for LookEditor {
             "Blue", "Coral", "Yellow", "Green", "Pink", "Purple", "Teal", "Orange", "Indigo",
         ];
         let preset = mono::COLORS_MONO.contains(&self.mono.color);
-        let swatch = |id: gpui::ElementId, label: SharedString, ring: bool, dot: AnyElement| {
+        let swatch = |id: gpui_kit::ElementId, label: SharedString, ring: bool, dot: AnyElement| {
             div()
                 .id(id)
                 .role(Role::Button)
@@ -706,7 +706,7 @@ impl gpui::Render for LookEditor {
                                                         .child(
                                                             icon("pipette", 8.)
                                                                 .relative()
-                                                                .text_color(gpui::white()),
+                                                                .text_color(gpui_kit::white()),
                                                         )
                                                     } else {
                                                         d.bg(rgb(self.mono.color))
@@ -888,7 +888,7 @@ impl LookEditor {
                                             .child(
                                                 icon("pipette", 14.)
                                                     .relative()
-                                                    .text_color(gpui::white()),
+                                                    .text_color(gpui_kit::white()),
                                             ),
                                     )
                                     .on_click(cx.listener(|this, _, _, cx| {
@@ -1072,7 +1072,7 @@ impl Monos {
                     .debug_selector(|| "original-hide-mono-overview".into())
                     .role(Role::Button)
                     .aria_label("Hide overview")
-                    .aria_toggled(gpui::Toggled::True)
+                    .aria_toggled(gpui_kit::Toggled::True)
                     .size(px(24.))
                     .flex_shrink_0()
                     .rounded_md()
@@ -1604,7 +1604,7 @@ impl Monos {
                             header.child(
                                 icon_button("mono-document-copy", "Copy document", "response-copy")
                                     .on_click(move |_, _, cx| {
-                                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(
+                                        cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(
                                             document.body.clone(),
                                         ))
                                     }),
@@ -1682,14 +1682,14 @@ impl Monos {
                 .absolute()
                 .size_full()
                 .child(
-                    gpui::deferred(
-                        gpui::anchored()
-                            .position(gpui::point(px(0.), px(0.)))
+                    gpui_kit::deferred(
+                        gpui_kit::anchored()
+                            .position(gpui_kit::point(px(0.), px(0.)))
                             .child(
                                 div()
                                     .w(size.width)
                                     .h(size.height)
-                                    .bg(gpui::black().opacity(0.4))
+                                    .bg(gpui_kit::black().opacity(0.4))
                                     .occlude(),
                             ),
                     )
@@ -1698,7 +1698,7 @@ impl Monos {
                 .child(
                     popover(
                         "mono-settings-modal",
-                        Anchor::Point(gpui::point(
+                        Anchor::Point(gpui_kit::point(
                             px((size.width.as_f32() - width) / 2.),
                             px((size.height.as_f32() - height) / 2.),
                         )),
@@ -1775,7 +1775,7 @@ impl Monos {
                                                     .flex_row()
                                                     .items_center()
                                                     .justify_start()
-                                                    .text_align(gpui::TextAlign::Left)
+                                                    .text_align(gpui_kit::TextAlign::Left)
                                                     .gap(px(10.))
                                                     .px(px(10.))
                                                     .py(px(6.))
@@ -2091,7 +2091,7 @@ impl Monos {
                     .mt(px(2.))
                     .ml(px(if on { 18. } else { 2. }))
                     .rounded_full()
-                    .bg(gpui::white()),
+                    .bg(gpui_kit::white()),
             )
             .on_click(cx.listener(move |this, _, _, cx| {
                 if disabled {
@@ -2111,7 +2111,7 @@ impl Monos {
     pub(super) fn open_options(
         &mut self,
         id: &str,
-        at: Option<gpui::Point<gpui::Pixels>>,
+        at: Option<gpui_kit::Point<gpui_kit::Pixels>>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -2549,7 +2549,7 @@ impl Monos {
         self.save(cx);
     }
     fn browse_project(&mut self, id: &str, cx: &mut Context<Self>) {
-        let picked = cx.prompt_for_paths(gpui::PathPromptOptions {
+        let picked = cx.prompt_for_paths(gpui_kit::PathPromptOptions {
             files: false,
             directories: true,
             multiple: false,
@@ -2601,7 +2601,7 @@ impl Monos {
             },
         );
         let width = window.viewport_size().width.as_f32();
-        let at = gpui::point(px((width - 640.) / 2.), px(50.));
+        let at = gpui_kit::point(px((width - 640.) / 2.), px(50.));
         self.background = Some((view, events, at));
         cx.notify();
     }

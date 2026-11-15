@@ -6,7 +6,7 @@ use crate::{
     popover::{Anchor, AnchorSlot, Side, popover},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     App, Context, Entity, EventEmitter, Focusable, KeyBinding, MouseButton, Role, SharedString,
     Subscription, Window, actions, div, prelude::*, px,
 };
@@ -42,7 +42,7 @@ struct Choice {
     server: Option<monocode_core::mcp::McpConnection>,
 }
 impl Choice {
-    fn icon(&self) -> (&'static str, gpui::Hsla) {
+    fn icon(&self) -> (&'static str, gpui_kit::Hsla) {
         if let Some(command) = self.builtin.and_then(input::Command::from_name) {
             return (command.icon(), command.color());
         }
@@ -64,7 +64,7 @@ impl Choice {
             }
         };
         let dark_theme = content(1.).l > 0.5;
-        let mut color: gpui::Hsla = gpui::rgb(if dark_theme { dark } else { light }).into();
+        let mut color: gpui_kit::Hsla = gpui_kit::rgb(if dark_theme { dark } else { light }).into();
         if dark_theme {
             color.a = 0.9;
         }
@@ -94,7 +94,7 @@ pub(crate) struct Completion {
     short_mentions: std::collections::HashMap<String, String>,
     choices: Vec<Choice>,
     active: usize,
-    scroll: gpui::ScrollHandle,
+    scroll: gpui_kit::ScrollHandle,
     loading: bool,
     loaded: Option<Instant>,
     error: Option<String>,
@@ -172,7 +172,7 @@ impl Completion {
             short_mentions: Default::default(),
             choices: Vec::new(),
             active: 0,
-            scroll: gpui::ScrollHandle::new(),
+            scroll: gpui_kit::ScrollHandle::new(),
             loading: false,
             loaded: None,
             error: None,
@@ -1061,7 +1061,7 @@ impl Render for Completion {
                     (caret.top(), Side::Top, above)
                 };
                 (
-                    Anchor::Point(gpui::point(caret.left(), y)),
+                    Anchor::Point(gpui_kit::point(caret.left(), y)),
                     side,
                     width.min(400.),
                     room.min(400.),
@@ -1146,7 +1146,7 @@ impl Render for Completion {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, WindowHandle};
+    use gpui_kit::{TestAppContext, WindowHandle};
     fn window(cx: &mut TestAppContext) -> WindowHandle<Completion> {
         let window = cx.update(|cx| {
             input::bind(cx);
@@ -1168,7 +1168,7 @@ mod tests {
         cx.run_until_parked();
         window
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn bare_slash_prioritizes_local_modes_and_typing_filters_skills(cx: &mut TestAppContext) {
         let window = window(cx);
         window
@@ -1234,7 +1234,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_users_skill_wins_over_the_git_command_of_its_name(cx: &mut TestAppContext) {
         let window = window(cx);
         window
@@ -1266,7 +1266,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn slash_accept_keeps_input_focus_and_does_not_submit(cx: &mut TestAppContext) {
         let window = window(cx);
         let submitted = std::rc::Rc::new(std::cell::Cell::new(0));
@@ -1295,7 +1295,7 @@ mod tests {
             .unwrap();
         assert_eq!(submitted.get(), 0);
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn visualize_completion_inserts_a_command_without_selecting_a_mode(cx: &mut TestAppContext) {
         let window = window(cx);
         window
@@ -1319,7 +1319,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn compact_completion_inserts_a_local_command_without_mode_selection(cx: &mut TestAppContext) {
         let window = window(cx);
         window
@@ -1337,7 +1337,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mcp_selection_replaces_the_command_and_only_present_tags_add_context(
         cx: &mut TestAppContext,
     ) {
@@ -1375,9 +1375,9 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn ime_composition_does_not_open_a_picker_or_send(cx: &mut TestAppContext) {
-        use gpui::EntityInputHandler;
+        use gpui_kit::EntityInputHandler;
         let window = window(cx);
         window
             .update(cx, |v, w, cx| {
@@ -1397,7 +1397,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mention_accept_replaces_only_the_caret_token_and_escape_dismisses(cx: &mut TestAppContext) {
         let window = window(cx);
         window
@@ -1432,7 +1432,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn unique_file_names_insert_short_and_expand_on_send(cx: &mut TestAppContext) {
         let window = window(cx);
         let file = |relative: &str| ProjectFile {

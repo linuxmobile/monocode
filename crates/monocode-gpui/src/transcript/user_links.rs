@@ -2,7 +2,7 @@
 //! ported from src/features/sessions/ui/UserLinkPreview.tsx.
 use super::*;
 use crate::popover::Align;
-use gpui::{AnyElement, HighlightStyle, Hsla, StyledText, Task};
+use gpui_kit::{AnyElement, HighlightStyle, Hsla, StyledText, Task};
 use monocode_core::inbox::{Details, Item};
 use monocode_core::user_links::{GithubWorkItemLink, plain_text_summary};
 use std::{
@@ -162,7 +162,7 @@ impl TranscriptView {
                     .rounded(px(6.))
                     .bg(alpha(ink, 0.1))
                     .text_color(alpha(ink, 0.9))
-                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                     .child(
                         icon(if pr { "git-pull-request" } else { "circle-dot" }, 12.)
                             .text_color(alpha(ink, 0.9)),
@@ -180,7 +180,9 @@ impl TranscriptView {
                     this.hide_work_item_card_after_delay(cx);
                 }
             }))
-            .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation()
+            })
             .on_click(cx.listener(move |this, _, _, cx| {
                 this.hide_work_item_card(cx);
                 cx.open_url(&open_url);
@@ -336,7 +338,7 @@ impl TranscriptView {
             div()
                 .text_size(px(13.))
                 .line_height(px(13. * 1.35))
-                .font_weight(gpui::FontWeight::SEMIBOLD)
+                .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                 .text_color(content(1.))
                 .child(text)
         };
@@ -392,7 +394,7 @@ impl TranscriptView {
                         div()
                             .min_w_0()
                             .truncate()
-                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                             .text_color(content(0.65))
                             .child(work.repo.clone()),
                     )
@@ -412,7 +414,7 @@ impl TranscriptView {
                             .bg(content(0.07))
                             .px_2()
                             .py(px(2.))
-                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                             .text_color(status_ink)
                             .child(status_label),
                     ),
@@ -442,7 +444,7 @@ impl TranscriptView {
                                         div()
                                             .min_w_0()
                                             .truncate()
-                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                                             .text_color(content(0.55))
                                             .child(name),
                                     ),
@@ -610,7 +612,7 @@ impl Pieces {
 }
 
 /// One space at the bubble's 14px text.
-fn space() -> gpui::Div {
+fn space() -> gpui_kit::Div {
     div().w(px(14. * 0.25)).h(px(1.))
 }
 
@@ -627,7 +629,7 @@ fn words(text: &str, range: Range<usize>) -> impl Iterator<Item = Range<usize>> 
         .filter(|r| !text[r.clone()].trim().is_empty())
 }
 
-fn alpha(color: gpui::Rgba, a: f32) -> Hsla {
+fn alpha(color: gpui_kit::Rgba, a: f32) -> Hsla {
     let mut color: Hsla = color.into();
     color.a = a;
     color
@@ -657,7 +659,7 @@ fn status(pr: bool, item: Option<&Item>) -> (&'static str, &'static str, Hsla) {
     }
 }
 
-fn label_chip(label: &monocode_core::inbox::Label) -> gpui::Div {
+fn label_chip(label: &monocode_core::inbox::Label) -> gpui_kit::Div {
     let hex = label.color.trim();
     let dot = (hex.len() == 6)
         .then(|| u32::from_str_radix(hex, 16).ok())
@@ -681,7 +683,7 @@ fn label_chip(label: &monocode_core::inbox::Label) -> gpui::Div {
 }
 
 fn skeleton() -> AnyElement {
-    let bar = |width: gpui::DefiniteLength, height: f32, alpha: f32| {
+    let bar = |width: gpui_kit::DefiniteLength, height: f32, alpha: f32| {
         div()
             .h(px(height))
             .w(width)
@@ -695,18 +697,18 @@ fn skeleton() -> AnyElement {
         .flex()
         .flex_col()
         .gap_2()
-        .child(bar(gpui::relative(0.8), 12., 0.1))
-        .child(bar(gpui::relative(1.), 8., 0.07))
-        .child(bar(gpui::relative(2. / 3.), 8., 0.07))
+        .child(bar(gpui_kit::relative(0.8), 12., 0.1))
+        .child(bar(gpui_kit::relative(1.), 8., 0.07))
+        .child(bar(gpui_kit::relative(2. / 3.), 8., 0.07))
         .into_any_element()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{Bounds, TestAppContext, WindowBounds, WindowOptions, point, size};
+    use gpui_kit::{Bounds, TestAppContext, WindowBounds, WindowOptions, point, size};
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_prompt_with_a_plain_link_wraps_inside_its_bubble(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(
@@ -750,7 +752,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_pasted_pull_request_becomes_an_unclamped_chip_with_a_hover_card(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(

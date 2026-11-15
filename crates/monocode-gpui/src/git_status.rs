@@ -3,7 +3,7 @@
 //! useProjectDiffStats over one off-thread reader. Reads never overlap; a
 //! read requested meanwhile runs once the current one returns, and only a
 //! changed snapshot notifies.
-use gpui::{Context, EventEmitter, Task};
+use gpui_kit::{Context, EventEmitter, Task};
 use monocode_core::scm::{self, DiffIndex, DiffStats};
 use std::{
     collections::HashMap,

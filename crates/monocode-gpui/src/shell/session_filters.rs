@@ -118,9 +118,9 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn filters_persist_and_update_without_closing_the_menu_or_active_chat(cx: &mut TestAppContext) {
         cx.update(|cx| {
             super::super::bind_keys(cx);
@@ -145,13 +145,13 @@ mod tests {
                 shell.selected_sessions.insert(b);
                 shell.open_menu(
                     MenuTarget::SessionFilter,
-                    Anchor::Point(gpui::point(px(220.), px(180.))),
+                    Anchor::Point(gpui_kit::point(px(220.), px(180.))),
                     w,
                     cx,
                 );
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let row = visual.debug_bounds("menu-action-working").unwrap();
         visual.simulate_click(row.center(), Default::default());

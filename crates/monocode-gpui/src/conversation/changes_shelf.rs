@@ -5,7 +5,7 @@
 use super::*;
 use crate::pane_motion::PaneSlide;
 use crate::right_panel::{DIFF_ADD, DIFF_DEL, format_integer, tabular};
-use gpui::rgb;
+use gpui_kit::rgb;
 use std::{cell::RefCell, time::Instant};
 
 const SQUARES: usize = 5;
@@ -52,7 +52,7 @@ impl ChangesShelf {
 
 impl Conversation {
     /// The turn's totals while the pill has something to show.
-    fn change_totals(&self, cx: &gpui::App) -> Option<(usize, i64, i64)> {
+    fn change_totals(&self, cx: &gpui_kit::App) -> Option<(usize, i64, i64)> {
         if self.busy || self.is_remote() || self.settings.worktree_removed {
             return None;
         }

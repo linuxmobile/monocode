@@ -2,7 +2,7 @@
 pub(crate) const WIDTH: f32 = 18.;
 pub(crate) const MIN_THUMB: f32 = 32.;
 
-pub(crate) fn diff_colors(cx: &gpui::App) -> (u32, u32) {
+pub(crate) fn diff_colors(cx: &gpui_kit::App) -> (u32, u32) {
     let palette = cx
         .try_global::<crate::settings::Preferences>()
         .map(|p| p.diff_palette.as_str())

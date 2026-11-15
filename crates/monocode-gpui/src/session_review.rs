@@ -5,7 +5,7 @@ use crate::{
     right_panel::{DIFF_ADD, DIFF_DEL, format_integer, tabular},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     Context, EventEmitter, FontWeight, Role, SharedString, Task, Window, div, prelude::*, px, rgb,
 };
 use monocode_core::checkpoint::{CheckpointFile, CheckpointStatus};
@@ -170,7 +170,11 @@ impl SessionReview {
 }
 
 /// The header's text buttons: h-7 px-2.5 at 11px, ink 50%.
-fn text_button(id: &'static str, label: &'static str, enabled: bool) -> gpui::Stateful<gpui::Div> {
+fn text_button(
+    id: &'static str,
+    label: &'static str,
+    enabled: bool,
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -191,7 +195,7 @@ fn text_button(id: &'static str, label: &'static str, enabled: bool) -> gpui::St
 }
 
 /// DiffCounts: `+a -d` at 11px semibold, both shown even when zero.
-fn counts(additions: i64, deletions: i64, gap: f32) -> gpui::Div {
+fn counts(additions: i64, deletions: i64, gap: f32) -> gpui_kit::Div {
     div()
         .flex_shrink_0()
         .flex()
@@ -212,7 +216,7 @@ fn counts(additions: i64, deletions: i64, gap: f32) -> gpui::Div {
         )
 }
 
-fn card() -> gpui::Div {
+fn card() -> gpui_kit::Div {
     div()
         .w_full()
         .rounded(px(12.))
@@ -240,9 +244,9 @@ impl SessionReview {
     /// the composer ledge's changes shelf.
     pub(crate) fn contents(
         &mut self,
-        frame: gpui::Div,
+        frame: gpui_kit::Div,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         if self.busy {
             return div().into_any_element();
         }

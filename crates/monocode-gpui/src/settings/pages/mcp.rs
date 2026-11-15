@@ -6,7 +6,7 @@ use crate::{
     },
     theme::*,
 };
-use gpui::{AnyElement, Context, SharedString, div, prelude::*, px};
+use gpui_kit::{AnyElement, Context, SharedString, div, prelude::*, px};
 impl SettingsView {
     pub(super) fn mcp_page(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let project = self.project_picker(cx);
@@ -31,7 +31,7 @@ impl SettingsView {
                                 .child(
                                     div()
                                         .text_size(px(14.))
-                                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                                        .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                                         .child("MCP connections"),
                                 )
                                 .child(project),
@@ -129,10 +129,10 @@ impl SettingsView {
             page.push(
                 div()
                     .id("settings-page-error")
-                    .role(gpui::Role::Alert)
+                    .role(gpui_kit::Role::Alert)
                     .mt_3()
                     .text_size(px(12.))
-                    .text_color(gpui::rgb(0xf87171))
+                    .text_color(gpui_kit::rgb(0xf87171))
                     .child(error.clone())
                     .into_any_element(),
             );
@@ -185,7 +185,7 @@ impl SettingsView {
                                     .child(
                                         div()
                                             .text_size(px(13.))
-                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                                             .child(server.name.clone()),
                                     )
                                     .child(
@@ -267,7 +267,7 @@ impl SettingsView {
                                 .on_click(cx.listener(
                                     move |_, _, window, cx| {
                                         let prompt = window.prompt(
-                                            gpui::PromptLevel::Warning,
+                                            gpui_kit::PromptLevel::Warning,
                                             "Remove MCP server",
                                             Some(&format!(
                                                 "Remove {} from {} scope?",

@@ -7,7 +7,7 @@ impl Conversation {
     pub(crate) fn notification_was_cancelled(&self) -> bool {
         self.notification_cancelled
     }
-    pub(crate) fn pending_notification_inputs(&self, cx: &gpui::App) -> Vec<PendingInput> {
+    pub(crate) fn pending_notification_inputs(&self, cx: &gpui_kit::App) -> Vec<PendingInput> {
         self.approvals
             .iter()
             .map(|approval| PendingInput {
@@ -27,11 +27,11 @@ impl Conversation {
     }
 
     /// The host also checks the active tab and pane before suppressing a notice.
-    pub(crate) fn composer_focused(&self, window: &Window, cx: &gpui::App) -> bool {
+    pub(crate) fn composer_focused(&self, window: &Window, cx: &gpui_kit::App) -> bool {
         self.input.focus_handle(cx).is_focused(window)
     }
 
-    pub(crate) fn notification_reply_body(&self, cx: &gpui::App) -> String {
+    pub(crate) fn notification_reply_body(&self, cx: &gpui_kit::App) -> String {
         self.transcript.read(cx).notification_reply_body()
     }
 

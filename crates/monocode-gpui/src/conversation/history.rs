@@ -27,7 +27,7 @@ impl Conversation {
         }
     }
 
-    pub(super) fn preserve_new_composer(&self, cx: &gpui::App) -> bool {
+    pub(super) fn preserve_new_composer(&self, cx: &gpui_kit::App) -> bool {
         self.settings.mono.is_none()
             && (!self.input.read(cx).content.is_empty() || !self.attachments.is_empty())
     }
@@ -51,7 +51,7 @@ impl Conversation {
     pub(crate) fn history_loaded(&self) -> bool {
         self.loaded && !self.history_unloaded
     }
-    pub(crate) fn history_weight(&self, cx: &gpui::App) -> usize {
+    pub(crate) fn history_weight(&self, cx: &gpui_kit::App) -> usize {
         self.transcript.read(cx).history_weight()
     }
     /// Only a settled, saved conversation can lose its reconstructible payload.
@@ -169,11 +169,11 @@ impl Conversation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use monocode_core::{store::Store, transcript::Row};
     use std::sync::Mutex;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn history_eviction_keeps_live_state_and_pins_drafts_running_and_failed_saves(
         cx: &mut TestAppContext,
     ) {
@@ -227,7 +227,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn hidden_mutations_wait_for_history_without_changing_settings_or_receipts(
         cx: &mut TestAppContext,
     ) {
@@ -322,7 +322,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn restored_external_prompt_keeps_its_files_separate_from_new_composer_files(
         cx: &mut TestAppContext,
     ) {

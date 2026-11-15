@@ -16,12 +16,12 @@ enum Phase {
 #[derive(Default)]
 pub(super) struct State {
     phase: Phase,
-    task: Option<gpui::Task<()>>,
+    task: Option<gpui_kit::Task<()>>,
 }
 
 /// Tailwind's orange-400, the colour of the desktop prompt.
-fn orange(alpha: f32) -> gpui::Hsla {
-    gpui::Hsla::from(gpui::rgb(0xfb923c)).opacity(alpha)
+fn orange(alpha: f32) -> gpui_kit::Hsla {
+    gpui_kit::Hsla::from(gpui_kit::rgb(0xfb923c)).opacity(alpha)
 }
 
 impl Shell {
@@ -134,8 +134,8 @@ impl Shell {
                             |turn| {
                                 icon("loader", 13.)
                                     .text_color(orange(1.))
-                                    .with_transformation(gpui::Transformation::rotate(
-                                        gpui::percentage(turn),
+                                    .with_transformation(gpui_kit::Transformation::rotate(
+                                        gpui_kit::percentage(turn),
                                     ))
                             },
                         )

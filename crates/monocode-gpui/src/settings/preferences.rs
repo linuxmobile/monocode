@@ -206,7 +206,7 @@ impl Preferences {
     }
 
     pub(crate) fn apply_workspace_theme(&mut self, id: String) {
-        let color: gpui::Hsla = gpui::rgb(super::palette(&id, false).surface).into();
+        let color: gpui_kit::Hsla = gpui_kit::rgb(super::palette(&id, false).surface).into();
         self.theme_hue = (color.h * 360.).round() as u32;
         self.theme_saturation = (color.s * 100.).round() as u32;
         self.theme_dark_lightness = ((color.l * 100.).round() as u32).min(30);
@@ -224,11 +224,14 @@ impl Preferences {
         }
     }
 
-    pub(crate) fn wayland_decorations(&self, compositor: &str) -> Option<gpui::WindowDecorations> {
+    pub(crate) fn wayland_decorations(
+        &self,
+        compositor: &str,
+    ) -> Option<gpui_kit::WindowDecorations> {
         (compositor == "Wayland").then_some(if self.wayland_window_decorations {
-            gpui::WindowDecorations::Server
+            gpui_kit::WindowDecorations::Server
         } else {
-            gpui::WindowDecorations::Client
+            gpui_kit::WindowDecorations::Client
         })
     }
 
@@ -272,7 +275,7 @@ pub(crate) struct ModelChoice {
     pub model: Option<String>,
 }
 
-impl gpui::Global for Preferences {}
+impl gpui_kit::Global for Preferences {}
 impl Preferences {
     /// The background model picked in Settings, if any.
     pub(crate) fn background_text_model(&self) -> Option<(Kind, Option<String>)> {
@@ -307,9 +310,9 @@ mod decoration_tests {
             assert_eq!(
                 prefs.wayland_decorations("Wayland"),
                 Some(if enabled {
-                    gpui::WindowDecorations::Server
+                    gpui_kit::WindowDecorations::Server
                 } else {
-                    gpui::WindowDecorations::Client
+                    gpui_kit::WindowDecorations::Client
                 })
             );
         }

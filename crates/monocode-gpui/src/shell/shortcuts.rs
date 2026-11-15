@@ -3,7 +3,7 @@
 //! live keymap, including user overrides, rather than maintaining another list
 //! of physical shortcuts.
 use super::*;
-use gpui::{Action, KeyContext, Keystroke, WeakEntity};
+use gpui_kit::{Action, KeyContext, Keystroke, WeakEntity};
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
@@ -119,9 +119,9 @@ pub(super) fn install(owner: WeakEntity<Shell>, window: &Window, cx: &mut App) -
 
 #[cfg(test)]
 mod tests {
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn lost_focus_shortcuts_follow_live_remaps_and_disabled_bindings(cx: &mut TestAppContext) {
         cx.update(|cx| {
             crate::input::bind(cx);

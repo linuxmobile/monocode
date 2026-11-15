@@ -6,7 +6,7 @@ use crate::{
     },
     theme::*,
 };
-use gpui::{AnyElement, Context, SharedString, div, prelude::*, px};
+use gpui_kit::{AnyElement, Context, SharedString, div, prelude::*, px};
 impl SettingsView {
     pub(super) fn worktrees_page(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let project = self.project_picker(cx);
@@ -23,9 +23,9 @@ impl SettingsView {
                 div()
                     .id("settings-page-error")
                     .mt_4()
-                    .role(gpui::Role::Alert)
+                    .role(gpui_kit::Role::Alert)
                     .text_size(px(12.))
-                    .text_color(gpui::rgb(0xf87171))
+                    .text_color(gpui_kit::rgb(0xf87171))
                     .child(error.clone())
                     .into_any_element(),
             );
@@ -46,7 +46,7 @@ impl SettingsView {
                     .child(
                         div()
                             .text_size(px(13.))
-                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                             .child("No additional worktrees"),
                     )
                     .child(
@@ -101,7 +101,7 @@ impl SettingsView {
                                     .child(
                                         div()
                                             .text_size(px(13.))
-                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                                             .child(
                                                 path.file_name()
                                                     .unwrap_or_default()

@@ -11,10 +11,10 @@ use crate::{
     syntax::{HighlightRequest, HighlightSpan},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, Context, EventEmitter, FocusHandle, Focusable, FontWeight,
     HighlightStyle, Hsla, KeyBinding, ListAlignment, ListOffset, ListState, MouseButton,
-    MouseDownEvent, MouseMoveEvent, Pixels, Role, ScrollWheelEvent, SharedString, StyledText,
+    MouseDownEvent, MouseMoveEvent, Pixels, Role, ScrollEvent, SharedString, StyledText,
     Subscription, Task, Window, actions, canvas, div, list, prelude::*, px, rgb,
 };
 use monocode_core::diff::{self, Block, Line, LineKind};
@@ -272,7 +272,7 @@ struct Comment {
     path: String,
     line: Line,
     anchor: AnchorSlot,
-    input: gpui::Entity<Input>,
+    input: gpui_kit::Entity<Input>,
     _events: Vec<Subscription>,
 }
 
@@ -562,7 +562,7 @@ impl DiffView {
             .top_0()
             .bottom_0()
             .w(px(WIDTH))
-            .cursor(gpui::CursorStyle::Arrow)
+            .cursor(gpui_kit::CursorStyle::Arrow)
             .child(self.overview_bounds.probe())
             .child(
                 canvas(
@@ -574,16 +574,16 @@ impl DiffView {
                             bounds.size.height.as_f32(),
                             bounds.size.height.as_f32(),
                         );
-                        window.paint_quad(gpui::fill(
-                            Bounds::new(bounds.origin, gpui::size(px(1.), bounds.size.height)),
+                        window.paint_quad(gpui_kit::fill(
+                            Bounds::new(bounds.origin, gpui_kit::size(px(1.), bounds.size.height)),
                             content(0.07),
                         ));
                         if m.scrollable {
                             window.paint_quad(
-                                gpui::fill(
+                                gpui_kit::fill(
                                     Bounds::new(
-                                        bounds.origin + gpui::point(px(3.), px(m.thumb_top)),
-                                        gpui::size(px(WIDTH - 6.), px(m.thumb_height)),
+                                        bounds.origin + gpui_kit::point(px(3.), px(m.thumb_top)),
+                                        gpui_kit::size(px(WIDTH - 6.), px(m.thumb_height)),
                                     ),
                                     content(if active { 0.38 * 0.88 } else { 0.3 * 0.72 }),
                                 )
@@ -678,7 +678,7 @@ impl DiffView {
         }
         let mut font = window.text_style().font();
         font.family = crate::fonts::mono().into();
-        let run = gpui::TextRun {
+        let run = gpui_kit::TextRun {
             len: 10,
             font,
             color: Hsla::default(),
@@ -714,8 +714,8 @@ impl DiffView {
     /// as React's `stopJump`. Each gesture keeps to the axis it started on:
     /// a sideways one scrolls the code lanes and never the list, a vertical
     /// one never drifts the lanes. Returns whether it took the event.
-    fn wheel(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) -> bool {
-        use gpui::TouchPhase;
+    fn wheel(&mut self, event: &ScrollEvent, cx: &mut Context<Self>) -> bool {
+        use gpui_kit::TouchPhase;
         self.pending = None;
         let delta = event.delta.pixel_delta(px(LINE));
         let (dx, dy) = if event.modifiers.shift && delta.x.abs() < px(0.5) {
@@ -1378,7 +1378,7 @@ fn blur() -> impl IntoElement {
     canvas(
         |_, _, _| {},
         move |bounds, _, window, _| {
-            let quad = gpui::fill(bounds, rgb(CHAT));
+            let quad = gpui_kit::fill(bounds, rgb(CHAT));
             window.paint_quad(quad);
         },
     )
@@ -1418,11 +1418,11 @@ pub(crate) fn diff_counts(additions: u32, deletions: u32) -> AnyElement {
 
 /// UnifiedDiffView's IconButton: 24px, 45% ink, 30% when disabled.
 fn tool_button(
-    id: impl Into<gpui::ElementId>,
+    id: impl Into<gpui_kit::ElementId>,
     label: &'static str,
     path: &'static str,
     enabled: bool,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     let id = id.into();
     let group: SharedString = format!("diff-tool-{id:?}").into();
     div()
@@ -1671,21 +1671,19 @@ impl Render for DiffView {
                             },
                             move |bounds, _, window, _| {
                                 let weak = weak.clone();
-                                window.on_mouse_event(
-                                    move |event: &ScrollWheelEvent, phase, _, cx| {
-                                        if phase != gpui::DispatchPhase::Capture
-                                            || !bounds.contains(&event.position)
-                                        {
-                                            return;
-                                        }
-                                        let took = weak
-                                            .update(cx, |this, cx| this.wheel(event, cx))
-                                            .unwrap_or(false);
-                                        if took {
-                                            cx.stop_propagation();
-                                        }
-                                    },
-                                );
+                                window.on_mouse_event(move |event: &ScrollEvent, phase, _, cx| {
+                                    if phase != gpui_kit::DispatchPhase::Capture
+                                        || !bounds.contains(&event.position)
+                                    {
+                                        return;
+                                    }
+                                    let took = weak
+                                        .update(cx, |this, cx| this.wheel(event, cx))
+                                        .unwrap_or(false);
+                                    if took {
+                                        cx.stop_propagation();
+                                    }
+                                });
                             },
                         )
                         .absolute()
@@ -1709,9 +1707,9 @@ impl Render for DiffView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[gpui::test]
+    #[gpui_kit::test]
     fn review_overview_has_no_change_markers_and_supports_scrolling_and_dragging(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let original: String = (0..200).map(|n| format!("line {n}\n")).collect();
         let current = original
@@ -1722,10 +1720,10 @@ mod tests {
         model.blocks = Arc::new(unified.blocks);
         let window = cx.update(|cx| {
             cx.open_window(
-                gpui::WindowOptions {
-                    window_bounds: Some(gpui::WindowBounds::Windowed(Bounds::new(
-                        gpui::point(px(0.), px(0.)),
-                        gpui::size(px(500.), px(300.)),
+                gpui_kit::WindowOptions {
+                    window_bounds: Some(gpui_kit::WindowBounds::Windowed(Bounds::new(
+                        gpui_kit::point(px(0.), px(0.)),
+                        gpui_kit::size(px(500.), px(300.)),
                     ))),
                     ..Default::default()
                 },
@@ -1736,7 +1734,7 @@ mod tests {
         window
             .update(cx, |view, _, cx| view.set_files(vec![model], cx))
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let rail = visual.debug_bounds("diff-overview").unwrap();
         assert_eq!(rail.size.width, px(18.));
@@ -1754,12 +1752,12 @@ mod tests {
                     .collect();
                 assert!(!rail_quads.is_empty());
                 assert!(rail_quads.iter().all(|quad| {
-                    quad.background != gpui::Hsla::from(rgb(add)).into()
-                        && quad.background != gpui::Hsla::from(rgb(del)).into()
+                    quad.background != gpui_kit::Hsla::from(rgb(add)).into()
+                        && quad.background != gpui_kit::Hsla::from(rgb(del)).into()
                 }));
             })
             .unwrap();
-        let track = rail.origin + gpui::point(px(8.), rail.size.height * 0.75);
+        let track = rail.origin + gpui_kit::point(px(8.), rail.size.height * 0.75);
         visual.simulate_mouse_down(track, MouseButton::Left, Default::default());
         window
             .update(visual, |view, _, _| {
@@ -1772,11 +1770,11 @@ mod tests {
             .update(visual, |view, _, _| {
                 assert!(view.top_px() > 2500.);
                 let m = view.overview_metrics(rail.size.height.as_f32());
-                rail.origin + gpui::point(px(8.), px(m.thumb_top + 4.))
+                rail.origin + gpui_kit::point(px(8.), px(m.thumb_top + 4.))
             })
             .unwrap();
         visual.simulate_mouse_down(thumb, MouseButton::Left, Default::default());
-        let bottom = gpui::point(thumb.x, rail.bottom() - px(1.));
+        let bottom = gpui_kit::point(thumb.x, rail.bottom() - px(1.));
         visual.simulate_mouse_move(bottom, MouseButton::Left, Default::default());
         visual.simulate_mouse_up(bottom, MouseButton::Left, Default::default());
         visual.run_until_parked();
@@ -1804,9 +1802,9 @@ mod tests {
             can_stage_hunk: true,
         }
     }
-    #[gpui::test]
-    fn sideways_swipes_end_jumps_and_never_scroll_the_list(cx: &mut gpui::TestAppContext) {
-        use gpui::{ScrollDelta, ScrollWheelEvent, TouchPhase, point};
+    #[gpui_kit::test]
+    fn sideways_swipes_end_jumps_and_never_scroll_the_list(cx: &mut gpui_kit::TestAppContext) {
+        use gpui_kit::{ScrollDelta, ScrollEvent, TouchPhase, point};
         let wide: String = (0..80)
             .map(|i| format!("{i} {}\n", "x".repeat(300)))
             .collect();
@@ -1815,7 +1813,7 @@ mod tests {
             cx.open_window(Default::default(), |_, cx| cx.new(DiffView::new))
                 .unwrap()
         });
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         window
             .update(cx, |view, _, cx| {
                 let mut loading = file("b.rs", "", "");
@@ -1832,11 +1830,12 @@ mod tests {
             (TouchPhase::Moved, -40., 6.),
             (TouchPhase::Moved, -40., 8.),
         ] {
-            cx.simulate_event(ScrollWheelEvent {
+            cx.simulate_event(ScrollEvent {
                 position: point(px(300.), px(200.)),
                 delta: ScrollDelta::Pixels(point(px(dx), px(dy))),
                 modifiers: Default::default(),
                 touch_phase: phase,
+                source: gpui_kit::ScrollSource::Pointer,
             });
         }
         cx.run_until_parked();
@@ -1848,8 +1847,8 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
-    fn pinned_header_follows_open_files_only(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn pinned_header_follows_open_files_only(cx: &mut gpui_kit::TestAppContext) {
         let long: String = (0..60).map(|i| format!("line {i}\n")).collect();
         let edited = long.replace("line 30", "LINE 30");
         let window = cx.update(|cx| {

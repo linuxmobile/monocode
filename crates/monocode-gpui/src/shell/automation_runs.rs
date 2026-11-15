@@ -20,7 +20,7 @@ pub(super) struct State {
     pending: HashSet<String>,
     running: HashMap<i64, Running>,
     reserved: HashSet<i64>,
-    writes: Option<gpui::Task<()>>,
+    writes: Option<gpui_kit::Task<()>>,
     event_retries: HashMap<String, monocode_core::inbox::Item>,
     events_polling: bool,
     retry_revision: Arc<AtomicU64>,

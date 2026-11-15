@@ -3,7 +3,7 @@
 //! stacks one tile per pane, the focused one in front and the rest tucked
 //! behind it, each peeking out a little further right.
 use crate::theme::*;
-use gpui::{AnyElement, Corners, Div, Hsla, canvas, div, prelude::*, px};
+use gpui_kit::{AnyElement, Corners, Div, Hsla, canvas, div, prelude::*, px};
 
 /// What a tile is made of.
 #[derive(Clone, Copy)]
@@ -95,7 +95,7 @@ fn surface(radius: f32, depth: usize, face: Face, lifted: f32, tilt: f32) -> imp
                 window.paint_drop_shadows(
                     bounds,
                     corners,
-                    &[gpui::BoxShadow::new(
+                    &[gpui_kit::BoxShadow::new(
                         px(0.),
                         px(1. + 4. * lifted),
                         black((if light { 0.18 } else { 0.45 }) * lifted),
@@ -107,34 +107,35 @@ fn surface(radius: f32, depth: usize, face: Face, lifted: f32, tilt: f32) -> imp
                 let mut lift = bounds;
                 lift.origin.y += px(1.);
                 window.paint_quad(
-                    gpui::fill(lift, black(if light { 0.1 } else { 0.3 })).corner_radii(corners),
+                    gpui_kit::fill(lift, black(if light { 0.1 } else { 0.3 }))
+                        .corner_radii(corners),
                 );
             }
             window.paint_quad(
-                gpui::fill(
+                gpui_kit::fill(
                     bounds,
-                    gpui::linear_gradient(
+                    gpui_kit::linear_gradient(
                         180.,
-                        gpui::linear_color_stop(top, 0.),
-                        gpui::linear_color_stop(bottom, 1.),
+                        gpui_kit::linear_color_stop(top, 0.),
+                        gpui_kit::linear_color_stop(bottom, 1.),
                     ),
                 )
                 .corner_radii(corners),
             );
             // Brighter at the top, like light on a raised face.
             window.paint_quad(
-                gpui::fill(
+                gpui_kit::fill(
                     bounds,
-                    gpui::linear_gradient(
+                    gpui_kit::linear_gradient(
                         180.,
-                        gpui::linear_color_stop(sheen, 0.),
-                        gpui::linear_color_stop(white(0.), 1.),
+                        gpui_kit::linear_color_stop(sheen, 0.),
+                        gpui_kit::linear_color_stop(white(0.), 1.),
                     ),
                 )
                 .corner_radii(corners),
             );
             window.paint_quad(
-                gpui::fill(bounds, gpui::transparent_black())
+                gpui_kit::fill(bounds, gpui_kit::transparent_black())
                     .corner_radii(corners)
                     .border_widths(px(1.))
                     .border_color(rim),
@@ -150,11 +151,11 @@ fn surface(radius: f32, depth: usize, face: Face, lifted: f32, tilt: f32) -> imp
 /// The outline of a rounded rect turned `tilt` degrees about its centre,
 /// grown by `grow` on every side (negative to inset it).
 fn tilted_outline(
-    bounds: gpui::Bounds<gpui::Pixels>,
+    bounds: gpui_kit::Bounds<gpui_kit::Pixels>,
     radius: f32,
     tilt: f32,
     grow: f32,
-) -> Vec<gpui::Point<gpui::Pixels>> {
+) -> Vec<gpui_kit::Point<gpui_kit::Pixels>> {
     const STEPS: usize = 5;
     let (cx, cy) = (f32::from(bounds.center().x), f32::from(bounds.center().y));
     let (hw, hh) = (
@@ -175,7 +176,7 @@ fn tilted_outline(
         for step in 0..=STEPS {
             let a = (start + 90. * step as f32 / STEPS as f32).to_radians();
             let (x, y) = (ax + r * a.cos(), ay + r * a.sin());
-            points.push(gpui::point(
+            points.push(gpui_kit::point(
                 px(cx + x * cos - y * sin),
                 px(cy + x * sin + y * cos),
             ));
@@ -187,18 +188,18 @@ fn tilted_outline(
 /// [`surface`] for a tilted card: the same layers as paths.
 #[allow(clippy::too_many_arguments)]
 fn paint_tilted(
-    bounds: gpui::Bounds<gpui::Pixels>,
+    bounds: gpui_kit::Bounds<gpui_kit::Pixels>,
     radius: f32,
     tilt: f32,
     (top, bottom): (Hsla, Hsla),
     sheen: Hsla,
     rim: Hsla,
     lifted: f32,
-    window: &mut gpui::Window,
+    window: &mut gpui_kit::Window,
 ) {
     let light = is_light();
-    let fill = |points: &[gpui::Point<gpui::Pixels>]| {
-        let mut path = gpui::PathBuilder::fill();
+    let fill = |points: &[gpui_kit::Point<gpui_kit::Pixels>]| {
+        let mut path = gpui_kit::PathBuilder::fill();
         path.add_polygon(points, true);
         path.build().ok()
     };
@@ -218,24 +219,24 @@ fn paint_tilted(
     if let Some(path) = fill(&outline) {
         window.paint_path(
             path,
-            gpui::linear_gradient(
+            gpui_kit::linear_gradient(
                 angle,
-                gpui::linear_color_stop(top, 0.),
-                gpui::linear_color_stop(bottom, 1.),
+                gpui_kit::linear_color_stop(top, 0.),
+                gpui_kit::linear_color_stop(bottom, 1.),
             ),
         );
     }
     if let Some(path) = fill(&outline) {
         window.paint_path(
             path,
-            gpui::linear_gradient(
+            gpui_kit::linear_gradient(
                 angle,
-                gpui::linear_color_stop(sheen, 0.),
-                gpui::linear_color_stop(white(0.), 1.),
+                gpui_kit::linear_color_stop(sheen, 0.),
+                gpui_kit::linear_color_stop(white(0.), 1.),
             ),
         );
     }
-    let mut stroke = gpui::PathBuilder::stroke(px(1.));
+    let mut stroke = gpui_kit::PathBuilder::stroke(px(1.));
     stroke.add_polygon(&tilted_outline(bounds, radius, tilt, -0.5), true);
     if let Ok(path) = stroke.build() {
         window.paint_path(path, rim);
@@ -427,7 +428,7 @@ pub(crate) fn tile_ink() -> Hsla {
     if is_light() {
         black(0.85)
     } else {
-        gpui::white()
+        gpui_kit::white()
     }
 }
 
@@ -452,11 +453,14 @@ pub(crate) fn terminal_tile(agent: Option<&str>) -> Div {
         ),
         None => mark_tile(
             &TAB_TILE,
-            Face::Fill(gpui::rgb(0x3A3A3C).into(), gpui::rgb(0x1C1C1E).into()),
-            gpui::svg()
+            Face::Fill(
+                gpui_kit::rgb(0x3A3A3C).into(),
+                gpui_kit::rgb(0x1C1C1E).into(),
+            ),
+            gpui_kit::svg()
                 .path("prompt.svg")
                 .size(px(13.))
-                .text_color(gpui::white()),
+                .text_color(gpui_kit::white()),
         ),
     }
 }
@@ -474,15 +478,16 @@ pub(crate) const ACTIVITY_TILE: TileSize = TileSize {
 /// A work phase's tile face, its mark and the ink that suits other marks
 /// on it: white on a coloured tile, the theme's ink on a neutral one.
 pub(crate) fn activity_face(glyph: &'static str) -> (Face, AnyElement, Hsla) {
-    let fill = |top: u32, bottom: u32| Face::Fill(gpui::rgb(top).into(), gpui::rgb(bottom).into());
+    let fill =
+        |top: u32, bottom: u32| Face::Fill(gpui_kit::rgb(top).into(), gpui_kit::rgb(bottom).into());
     let white = |name: &'static str, side: f32| {
-        gpui::svg()
+        gpui_kit::svg()
             .path(name)
             .size(px(side))
-            .text_color(gpui::white())
+            .text_color(gpui_kit::white())
             .into_any_element()
     };
-    let ink: Hsla = gpui::white();
+    let ink: Hsla = gpui_kit::white();
     match glyph {
         "terminal" => (fill(0x3A3A3C, 0x1C1C1E), white("prompt.svg", 12.), ink),
         "pencil-line" => (fill(0xF6B44B, 0xE08A12), white("pencil-line", 12.), ink),

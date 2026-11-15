@@ -5,7 +5,7 @@ use crate::settings::{
     widgets::secondary_button,
 };
 use crate::theme::*;
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, Focusable, Role, SharedString, Window, div, linear_color_stop,
     linear_gradient, prelude::*, px, rgb,
 };
@@ -92,7 +92,7 @@ impl SettingsView {
             || (p.theme == "system"
                 && matches!(
                     cx.window_appearance(),
-                    gpui::WindowAppearance::Light | gpui::WindowAppearance::VibrantLight
+                    gpui_kit::WindowAppearance::Light | gpui_kit::WindowAppearance::VibrantLight
                 ));
         let mut theme = vec![self.row(
             Some("theme"),
@@ -364,14 +364,14 @@ impl SettingsView {
             .then(|| value.as_deref().and_then(parse_hex))
             .flatten();
         let weak = cx.weak_entity();
-        let dot = |selected: bool, color: gpui::Hsla| {
+        let dot = |selected: bool, color: gpui_kit::Hsla| {
             div()
                 .size(px(14.))
                 .rounded_full()
                 .bg(color)
                 .when(selected, |d| d.border_2().border_color(content(0.8)))
         };
-        let colors: Vec<(gpui::Hsla, &'static str, Option<String>)> =
+        let colors: Vec<(gpui_kit::Hsla, &'static str, Option<String>)> =
             std::iter::once((content(1.), "Default", None))
                 .chain(
                     ACCENTS
@@ -527,7 +527,7 @@ impl SettingsView {
                                 .child(
                                     crate::image_memory::preview(std::path::PathBuf::from(path))
                                         .size_full()
-                                        .object_fit(gpui::ObjectFit::Cover)
+                                        .object_fit(gpui_kit::ObjectFit::Cover)
                                         .opacity(empty as f32 / 100.),
                                 )
                                 .child(

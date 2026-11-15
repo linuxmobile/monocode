@@ -83,9 +83,9 @@ mod tests {
     use monocode_core::store::Store;
     use std::sync::Mutex;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn new_worktrees_receive_names_and_deleted_sessions_reject_late_names(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let root = std::env::temp_dir().join(format!(
             "monocode-worktree-naming-{}-{}",

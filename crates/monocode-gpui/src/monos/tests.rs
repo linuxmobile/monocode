@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{TestAppContext, WindowHandle};
+use gpui_kit::{TestAppContext, WindowHandle};
 use monocode_core::store::Store;
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex, mpsc};
@@ -13,10 +13,10 @@ struct Setup {
     store: Database,
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn missing_document_uses_error_cards_without_moving_content(cx: &mut TestAppContext) {
     let s = setup(cx);
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     visual.refresh().unwrap();
     let body = visual.debug_bounds("main-pane-frame").unwrap();
@@ -58,7 +58,7 @@ fn missing_document_uses_error_cards_without_moving_content(cx: &mut TestAppCont
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn saved_desktop_mono_opens_in_actual_manager_without_replacing_its_conversation(
     cx: &mut TestAppContext,
 ) {
@@ -121,7 +121,7 @@ fn saved_desktop_mono_opens_in_actual_manager_without_replacing_its_conversation
     assert_eq!(db.persisted_session_id(session.id).unwrap(), original);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn settings_reset_restores_only_mono_soul_and_name(cx: &mut TestAppContext) {
     let s = setup(cx);
     mono::files::save(&s.root, &s.id, None, "SOUL.md", "# Custom soul", None).unwrap();
@@ -147,7 +147,7 @@ fn settings_reset_restores_only_mono_soul_and_name(cx: &mut TestAppContext) {
     assert_eq!(files.memory, "Keep this memory");
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn detail_pages_slide_over_the_overview_and_back_without_recreating_content(
     cx: &mut TestAppContext,
 ) {
@@ -180,7 +180,7 @@ fn detail_pages_slide_over_the_overview_and_back_without_recreating_content(
                 });
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
         visual.run_until_parked();
         visual.update(|_, cx| cx.set_reduce_motion(false));
         let action = if kind == "session" {
@@ -206,7 +206,7 @@ fn detail_pages_slide_over_the_overview_and_back_without_recreating_content(
             )
             .into_boxed_str(),
         );
-        let advance = |visual: &mut gpui::VisualTestContext, ms| {
+        let advance = |visual: &mut gpui_kit::VisualTestContext, ms| {
             let details = s.manager.read_with(visual, |m, _| m.details.clone());
             details.update(visual, |d, cx| d.elapsed(Duration::from_millis(ms), cx));
             visual
@@ -310,7 +310,7 @@ fn detail_pages_slide_over_the_overview_and_back_without_recreating_content(
         assert_eq!(s.manager.read_with(visual, |m, _| m.overview_tab), tab);
     }
 }
-#[gpui::test]
+#[gpui_kit::test]
 fn each_mono_remembers_its_details_tab_and_open_session(cx: &mut TestAppContext) {
     let s = setup(cx);
     let session = s
@@ -382,7 +382,7 @@ fn each_mono_remembers_its_details_tab_and_open_session(cx: &mut TestAppContext)
     assert_eq!(view(cx), (s.id.clone(), OverviewTab::Sessions, None));
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_card_switching_monos_shows_the_target_monos_habits(cx: &mut TestAppContext) {
     let s = setup(cx);
     let mut h = Habit::new(
@@ -437,7 +437,7 @@ fn a_card_switching_monos_shows_the_target_monos_habits(cx: &mut TestAppContext)
     assert!(ids(cx).is_empty());
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_document_deleted_by_the_desktop_while_its_mono_is_inactive_returns_to_documents(
     cx: &mut TestAppContext,
 ) {
@@ -529,7 +529,7 @@ fn a_document_deleted_by_the_desktop_while_its_mono_is_inactive_returns_to_docum
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn an_unavailable_document_page_keeps_its_back_control(cx: &mut TestAppContext) {
     cx.update(|cx| cx.set_reduce_motion(true));
     let s = setup(cx);
@@ -539,7 +539,7 @@ fn an_unavailable_document_page_keeps_its_back_control(cx: &mut TestAppContext) 
         m.route = Some(Route::Document("never-loaded".into()));
         cx.notify();
     });
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     visual.refresh().unwrap();
     let back = visual
@@ -595,7 +595,7 @@ fn setup_with(cx: &mut TestAppContext, open: impl FnOnce(&std::path::Path) -> St
             shell.mono_manager()
         })
         .unwrap();
-    let handle: gpui::AnyWindowHandle = window.into();
+    let handle: gpui_kit::AnyWindowHandle = window.into();
     handle
         .update(cx, |_, w, cx| {
             manager.update(cx, |m, cx| m.create(vec![project.clone()], w, cx))
@@ -618,7 +618,7 @@ fn setup_with(cx: &mut TestAppContext, open: impl FnOnce(&std::path::Path) -> St
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn heartbeat_runs_keep_the_monos_selected_permissions(cx: &mut TestAppContext) {
     for mode in [
         AccessMode::ReadOnly,
@@ -665,7 +665,7 @@ fn call(
         input,
         reply,
     };
-    let handle: gpui::AnyWindowHandle = s.window.into();
+    let handle: gpui_kit::AnyWindowHandle = s.window.into();
     handle
         .update(cx, |_, w, cx| {
             s.manager.update(cx, |m, cx| m.app_call(call, w, cx))
@@ -674,11 +674,11 @@ fn call(
     cx.run_until_parked();
     rx
 }
-#[gpui::test]
+#[gpui_kit::test]
 fn settings_match_react_dialog_and_left_navigation_geometry(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(|cx| cx.set_reduce_motion(true));
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     let dialog = visual.debug_bounds("mono-settings-dialog").unwrap();
     let nav = visual.debug_bounds("mono-settings-navigation").unwrap();
@@ -714,29 +714,29 @@ fn settings_match_react_dialog_and_left_navigation_geometry(cx: &mut TestAppCont
     }
     assert_eq!(
         visual.debug_bounds("mono-look").unwrap().size,
-        gpui::size(px(80.), px(80.))
+        gpui_kit::size(px(80.), px(80.))
     );
     assert_eq!(
         visual.debug_bounds("mono-name-field").unwrap().size,
-        gpui::size(px(256.), px(32.))
+        gpui_kit::size(px(256.), px(32.))
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn settings_color_popover_follows_its_mascot_when_the_window_resizes(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(|cx| {
         crate::shell::bind_keys(cx);
         crate::popover::bind(cx);
     });
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     let face = visual.debug_bounds("mono-look").unwrap();
     visual.simulate_click(face.center(), Default::default());
     visual.run_until_parked();
     for size in [
-        gpui::size(px(1300.), px(900.)),
-        gpui::size(px(1050.), px(760.)),
+        gpui_kit::size(px(1300.), px(900.)),
+        gpui_kit::size(px(1050.), px(760.)),
     ] {
         visual.simulate_resize(size);
         visual.run_until_parked();
@@ -757,7 +757,7 @@ fn settings_color_popover_follows_its_mascot_when_the_window_resizes(cx: &mut Te
     visual.update(|_, cx| assert!(s.manager.read(cx).settings.is_none()));
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn memory_editor_saves_with_enter_and_stays_open_for_the_next_fact(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(input::bind);
@@ -770,7 +770,7 @@ fn memory_editor_saves_with_enter_and_stays_open_for_the_next_fact(cx: &mut Test
             })
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     s.window
         .update(visual, |_, w, cx| {
@@ -795,7 +795,7 @@ fn memory_editor_saves_with_enter_and_stays_open_for_the_next_fact(cx: &mut Test
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn overview_activity_returns_to_its_previous_tab_and_uses_the_shared_reveal(
     cx: &mut TestAppContext,
 ) {
@@ -822,7 +822,7 @@ fn overview_activity_returns_to_its_previous_tab_and_uses_the_shared_reveal(
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn note_actions_preserve_tags_when_updating_the_body(cx: &mut TestAppContext) {
     let s = setup(cx);
     let note = call(
@@ -848,7 +848,7 @@ fn note_actions_preserve_tags_when_updating_the_body(cx: &mut TestAppContext) {
     assert_eq!(updated["tags"], json!(["work", "mono"]));
     assert_eq!(updated["body"], "Second");
 }
-#[gpui::test]
+#[gpui_kit::test]
 fn identity_and_context_editors_survive_switches_and_save_to_their_own_files(
     cx: &mut TestAppContext,
 ) {
@@ -877,7 +877,7 @@ fn identity_and_context_editors_survive_switches_and_save_to_their_own_files(
     assert_eq!(saved.monos.len(), 1);
     assert_eq!(saved.monos[0].session_id, Some(s.session));
     assert!(saved.hidden_sessions.contains(&s.session));
-    let handle: gpui::AnyWindowHandle = s.window.into();
+    let handle: gpui_kit::AnyWindowHandle = s.window.into();
     handle
         .update(cx, |_, w, cx| {
             s.manager
@@ -902,7 +902,7 @@ fn identity_and_context_editors_survive_switches_and_save_to_their_own_files(
         })
     });
 }
-#[gpui::test]
+#[gpui_kit::test]
 fn app_receipt_lookup_does_not_wait_for_storage_on_the_ui_thread(cx: &mut TestAppContext) {
     let s = setup(cx);
     let store = s.store.clone();
@@ -939,7 +939,7 @@ fn app_receipt_lookup_does_not_wait_for_storage_on_the_ui_thread(cx: &mut TestAp
     assert!(response.try_recv().unwrap().is_ok());
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn durable_app_receipts_survive_cache_eviction_and_invalid_receipts_do_not_repeat_mutations(
     cx: &mut TestAppContext,
 ) {
@@ -982,7 +982,7 @@ fn durable_app_receipts_survive_cache_eviction_and_invalid_receipts_do_not_repea
     assert_eq!(habits::load(&s.root, &s.id).unwrap().len(), 1);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn app_actions_are_project_scoped_and_mutation_retries_are_idempotent(cx: &mut TestAppContext) {
     let s = setup(cx);
     assert!(
@@ -1036,7 +1036,7 @@ fn app_actions_are_project_scoped_and_mutation_retries_are_idempotent(cx: &mut T
         assert!(m.hidden_session(child));
     });
 }
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_launches_ignore_tab_reveal_and_keep_the_current_chat(cx: &mut TestAppContext) {
     let s = setup(cx);
     let before = s
@@ -1080,10 +1080,10 @@ fn mono_launches_ignore_tab_reveal_and_keep_the_current_chat(cx: &mut TestAppCon
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn internal_completion_queue_stays_hidden_until_delivery_fails(cx: &mut TestAppContext) {
     let s = setup(cx);
-    let handle: gpui::AnyWindowHandle = s.window.into();
+    let handle: gpui_kit::AnyWindowHandle = s.window.into();
     handle
         .update(cx, |_, window, cx| {
             s.manager.update(cx, |m, cx| {
@@ -1101,7 +1101,7 @@ fn internal_completion_queue_stays_hidden_until_delivery_fails(cx: &mut TestAppC
             });
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     visual.refresh().unwrap();
     assert!(
@@ -1124,10 +1124,10 @@ fn internal_completion_queue_stays_hidden_until_delivery_fails(cx: &mut TestAppC
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn long_completion_error_keeps_composer_in_view(cx: &mut TestAppContext) {
     let s = setup(cx);
-    let handle: gpui::AnyWindowHandle = s.window.into();
+    let handle: gpui_kit::AnyWindowHandle = s.window.into();
     handle
         .update(cx, |_, window, cx| {
             s.manager.update(cx, |m, cx| {
@@ -1144,7 +1144,7 @@ fn long_completion_error_keeps_composer_in_view(cx: &mut TestAppContext) {
             });
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     visual.refresh().unwrap();
     let composer = visual.debug_bounds("mono-composer").unwrap();
@@ -1158,7 +1158,7 @@ fn long_completion_error_keeps_composer_in_view(cx: &mut TestAppContext) {
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn failed_completion_keyboard_recovery_reveals_controls(cx: &mut TestAppContext) {
     let s = setup(cx);
     s.window
@@ -1179,7 +1179,7 @@ fn failed_completion_keyboard_recovery_reveals_controls(cx: &mut TestAppContext)
             });
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     visual.refresh().unwrap();
     s.window
@@ -1269,12 +1269,12 @@ fn failed_completion_keyboard_recovery_reveals_controls(cx: &mut TestAppContext)
     visual.run_until_parked();
     visual.refresh().unwrap();
     visual.simulate_keystrokes("enter");
-    let handle: gpui::AnyWindowHandle = s.window.into();
+    let handle: gpui_kit::AnyWindowHandle = s.window.into();
     handle
         .update(visual, |_, w, cx| {
             w.dispatch_event(
-                gpui::PlatformInput::KeyUp(gpui::KeyUpEvent {
-                    keystroke: gpui::Keystroke::parse("enter").unwrap(),
+                gpui_kit::PlatformInput::KeyUp(gpui_kit::KeyUpEvent {
+                    keystroke: gpui_kit::Keystroke::parse("enter").unwrap(),
                 }),
                 cx,
             );
@@ -1306,16 +1306,16 @@ fn failed_completion_keyboard_recovery_reveals_controls(cx: &mut TestAppContext)
     handle
         .update(visual, |_, w, cx| {
             w.dispatch_event(
-                gpui::PlatformInput::KeyDown(gpui::KeyDownEvent {
-                    keystroke: gpui::Keystroke::parse("space").unwrap(),
+                gpui_kit::PlatformInput::KeyDown(gpui_kit::KeyDownEvent {
+                    keystroke: gpui_kit::Keystroke::parse("space").unwrap(),
                     is_held: false,
                     prefer_character_input: false,
                 }),
                 cx,
             );
             w.dispatch_event(
-                gpui::PlatformInput::KeyUp(gpui::KeyUpEvent {
-                    keystroke: gpui::Keystroke::parse("space").unwrap(),
+                gpui_kit::PlatformInput::KeyUp(gpui_kit::KeyUpEvent {
+                    keystroke: gpui_kit::Keystroke::parse("space").unwrap(),
                 }),
                 cx,
             );
@@ -1385,7 +1385,7 @@ fn failed_completion_keyboard_recovery_reveals_controls(cx: &mut TestAppContext)
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn sidebar_hidden_launches_still_list_in_the_mono_panel_after_a_restart(cx: &mut TestAppContext) {
     let s = setup(cx);
     let started = call(
@@ -1428,7 +1428,7 @@ fn sidebar_hidden_launches_still_list_in_the_mono_panel_after_a_restart(cx: &mut
         assert!(s.manager.read(cx).hidden_session(child));
     });
 }
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_app_launch_visibility_can_be_toggled_and_survives_roster_reload(cx: &mut TestAppContext) {
     let s = setup(cx);
     let started = call(
@@ -1469,7 +1469,7 @@ fn mono_app_launch_visibility_can_be_toggled_and_survives_roster_reload(cx: &mut
             .show_started_sessions_in_sidebar
     );
 }
-#[gpui::test]
+#[gpui_kit::test]
 fn queued_messages_are_saved_before_dispatch_and_do_not_run_while_blocked(cx: &mut TestAppContext) {
     let s = setup(cx);
     let message = mono::new_id();
@@ -1501,17 +1501,17 @@ fn queued_messages_are_saved_before_dispatch_and_do_not_run_while_blocked(cx: &m
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn chat_composer_matches_the_session_box_and_opens_the_model_list(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(|cx| cx.set_reduce_motion(true));
-    let handle: gpui::AnyWindowHandle = s.window.into();
+    let handle: gpui_kit::AnyWindowHandle = s.window.into();
     handle
         .update(cx, |_, w, cx| {
             s.manager.update(cx, |m, cx| m.dismiss_settings(w, cx));
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     let field = visual.debug_bounds("mono-composer").unwrap();
     let send = visual.debug_bounds("mono-send").unwrap();
@@ -1520,8 +1520,8 @@ fn chat_composer_matches_the_session_box_and_opens_the_model_list(cx: &mut TestA
     // A click anywhere in the box, toolbar included, focuses the field.
     let toolbar = visual.debug_bounds("mono-composer-toolbar").unwrap();
     for point in [
-        gpui::point(toolbar.center().x, toolbar.top() + px(13.)),
-        gpui::point(send.left() - px(4.), toolbar.top() + px(13.)),
+        gpui_kit::point(toolbar.center().x, toolbar.top() + px(13.)),
+        gpui_kit::point(send.left() - px(4.), toolbar.top() + px(13.)),
     ] {
         handle.update(visual, |_, w, cx| w.blur(cx)).unwrap();
         visual.simulate_click(point, Default::default());
@@ -1547,7 +1547,7 @@ fn chat_composer_matches_the_session_box_and_opens_the_model_list(cx: &mut TestA
     assert!(field.contains(&model.center()));
     assert!(model.right() < send.left());
     assert!(attach.top() >= field.bottom());
-    assert_eq!(attach.size, gpui::size(px(26.), px(26.)));
+    assert_eq!(attach.size, gpui_kit::size(px(26.), px(26.)));
     let meter = visual.debug_bounds("mono-context-meter").unwrap();
     assert!(
         (f32::from(meter.center().x) - f32::from(send.center().x)).abs() < 0.5,
@@ -1584,7 +1584,7 @@ fn chat_composer_matches_the_session_box_and_opens_the_model_list(cx: &mut TestA
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn details_tabs_share_the_session_titlebar_in_both_layouts(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(|cx| {
@@ -1602,7 +1602,7 @@ fn details_tabs_share_the_session_titlebar_in_both_layouts(cx: &mut TestAppConte
             shell.workspace.active.unwrap()
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     for classic in [false, true] {
         s.window
             .update(visual, |shell, _, cx| {
@@ -1671,7 +1671,7 @@ fn details_tabs_share_the_session_titlebar_in_both_layouts(cx: &mut TestAppConte
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn titlebar_details_tabs_switch_pages_and_keep_activity_and_habit_actions(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(|cx| cx.set_reduce_motion(true));
@@ -1684,7 +1684,7 @@ fn titlebar_details_tabs_switch_pages_and_keep_activity_and_habit_actions(cx: &m
             })
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     for (selector, tab) in [
         ("mono-overview-Documents", OverviewTab::Documents),
@@ -1720,7 +1720,7 @@ fn titlebar_details_tabs_switch_pages_and_keep_activity_and_habit_actions(cx: &m
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn titlebar_divider_resizes_mono_details_and_closed_panels_keep_the_corner(
     cx: &mut TestAppContext,
 ) {
@@ -1736,7 +1736,7 @@ fn titlebar_divider_resizes_mono_details_and_closed_panels_keep_the_corner(
             })
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     for width in [220., 280., 400., 500.] {
         s.window
@@ -1764,7 +1764,7 @@ fn titlebar_divider_resizes_mono_details_and_closed_panels_keep_the_corner(
         .debug_bounds("titlebar-right-panel-resize")
         .unwrap()
         .center();
-    let end = start - gpui::point(px(40.), px(0.));
+    let end = start - gpui_kit::point(px(40.), px(0.));
     visual.simulate_mouse_down(start, MouseButton::Left, Default::default());
     visual.simulate_mouse_move(end, MouseButton::Left, Default::default());
     visual.simulate_mouse_up(end, MouseButton::Left, Default::default());
@@ -1802,7 +1802,7 @@ fn titlebar_divider_resizes_mono_details_and_closed_panels_keep_the_corner(
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn opening_a_session_card_uses_the_shared_sidebar_state(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(|cx| cx.set_reduce_motion(true));
@@ -1816,7 +1816,7 @@ fn opening_a_session_card_uses_the_shared_sidebar_state(cx: &mut TestAppContext)
             shell.workspace.active.unwrap()
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     let toggle = visual.debug_bounds("toggle-right-panel").unwrap();
     visual.simulate_click(toggle.center(), Default::default());
@@ -1845,7 +1845,7 @@ fn opening_a_session_card_uses_the_shared_sidebar_state(cx: &mut TestAppContext)
     assert_eq!(visual.debug_bounds("right-panel-frame").unwrap(), details);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_session_open_in_mono_details_keeps_its_history(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(|cx| cx.set_reduce_motion(true));
@@ -1859,7 +1859,7 @@ fn a_session_open_in_mono_details_keeps_its_history(cx: &mut TestAppContext) {
             shell.workspace.active.unwrap()
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     s.window
         .update(visual, |_, _, cx| {
@@ -1881,7 +1881,7 @@ fn a_session_open_in_mono_details_keeps_its_history(cx: &mut TestAppContext) {
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn long_habit_draft_keeps_fields_and_schedule_inside_the_scrolling_page(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(|cx| {
@@ -1900,7 +1900,7 @@ fn long_habit_draft_keeps_fields_and_schedule_inside_the_scrolling_page(cx: &mut
             });
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     s.manager.update(visual, |m, cx| {
         m.fields["habit-name"].update(cx, |f, cx| {
@@ -1994,7 +1994,7 @@ fn long_habit_draft_keeps_fields_and_schedule_inside_the_scrolling_page(cx: &mut
     assert!(s.manager.read_with(visual, |m, _| m.route.is_none()));
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn habit_detail_preserves_long_content_history_and_actions_without_edit_fields(
     cx: &mut TestAppContext,
 ) {
@@ -2032,7 +2032,7 @@ fn habit_detail_preserves_long_content_history_and_actions_without_edit_fields(
             });
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     assert!(
         s.manager
@@ -2075,7 +2075,7 @@ fn habit_detail_preserves_long_content_history_and_actions_without_edit_fields(
     assert!(s.manager.read_with(visual, |m, _| m.route.is_none()));
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn new_habit_click_transfers_composer_focus_after_the_animated_page_mounts(
     cx: &mut TestAppContext,
 ) {
@@ -2092,7 +2092,7 @@ fn new_habit_click_transfers_composer_focus_after_the_animated_page_mounts(
             });
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     s.window
         .update(visual, |_, window, cx| {
@@ -2108,7 +2108,7 @@ fn new_habit_click_transfers_composer_focus_after_the_animated_page_mounts(
             });
         })
         .unwrap();
-    let advance_focus_frame = |visual: &mut gpui::VisualTestContext| {
+    let advance_focus_frame = |visual: &mut gpui_kit::VisualTestContext| {
         visual
             .update_window(s.window.into(), |_, window, cx| {
                 // Use the untyped window context: callbacks and drawing may
@@ -2173,7 +2173,7 @@ fn new_habit_click_transfers_composer_focus_after_the_animated_page_mounts(
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn sidebar_mono_only_marks_unread_replies_and_swaps_the_mark_for_options_on_hover(
     cx: &mut TestAppContext,
 ) {
@@ -2187,13 +2187,13 @@ fn sidebar_mono_only_marks_unread_replies_and_swaps_the_mark_for_options_on_hove
             });
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     let unread_selector: &'static str =
         Box::leak(format!("mono-rail-unread-{}", s.id).into_boxed_str());
     let options_selector: &'static str =
         Box::leak(format!("mono-rail-options-{}", s.id).into_boxed_str());
     let row_selector: &'static str = Box::leak(format!("mono-rail-{}", s.id).into_boxed_str());
-    let away = gpui::point(px(5.), px(5.));
+    let away = gpui_kit::point(px(5.), px(5.));
     visual.simulate_mouse_move(away, None, Default::default());
     visual.run_until_parked();
     visual.refresh().unwrap();
@@ -2217,7 +2217,7 @@ fn sidebar_mono_only_marks_unread_replies_and_swaps_the_mark_for_options_on_hove
         })
         .unwrap();
 
-    let post = |role, text: &str, visual: &mut gpui::VisualTestContext| {
+    let post = |role, text: &str, visual: &mut gpui_kit::VisualTestContext| {
         s.window
             .update(visual, |_, _, cx| {
                 let chat = s.manager.read(cx).chats[&s.id].clone();
@@ -2234,7 +2234,7 @@ fn sidebar_mono_only_marks_unread_replies_and_swaps_the_mark_for_options_on_hove
     let unread = visual
         .debug_bounds(unread_selector)
         .expect("an unseen assistant reply has an accent circle");
-    assert_eq!(unread.size, gpui::size(px(6.), px(6.)));
+    assert_eq!(unread.size, gpui_kit::size(px(6.), px(6.)));
     assert!(visual.debug_bounds(options_selector).is_none());
     let before_hover = visual.debug_bounds(row_selector).unwrap();
     visual.simulate_mouse_move(before_hover.center(), None, Default::default());
@@ -2245,7 +2245,7 @@ fn sidebar_mono_only_marks_unread_replies_and_swaps_the_mark_for_options_on_hove
         "options replace the unread circle on hover"
     );
     let options = visual.debug_bounds(options_selector).unwrap();
-    assert_eq!(options.size, gpui::size(px(24.), px(24.)));
+    assert_eq!(options.size, gpui_kit::size(px(24.), px(24.)));
     assert_eq!(options.center(), unread.center());
     assert_eq!(visual.debug_bounds(row_selector).unwrap(), before_hover);
     visual.simulate_click(options.center(), Default::default());
@@ -2286,7 +2286,7 @@ fn sidebar_mono_only_marks_unread_replies_and_swaps_the_mark_for_options_on_hove
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn sidebar_right_click_opens_mono_menu_outside_the_mono_and_edits_its_look(
     cx: &mut TestAppContext,
 ) {
@@ -2303,21 +2303,21 @@ fn sidebar_right_click_opens_mono_menu_outside_the_mono_and_edits_its_look(
             })
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
     let row = s
         .manager
         .read_with(visual, |m, _| m.rail_bounds[&s.id].get())
         .expect("the sidebar lists the Mono");
     let at = row.center();
-    visual.simulate_event(gpui::MouseDownEvent {
+    visual.simulate_event(gpui_kit::MouseDownEvent {
         position: at,
         button: MouseButton::Right,
         modifiers: Default::default(),
         click_count: 1,
         first_mouse: false,
     });
-    visual.simulate_event(gpui::MouseUpEvent {
+    visual.simulate_event(gpui_kit::MouseUpEvent {
         position: at,
         button: MouseButton::Right,
         modifiers: Default::default(),
@@ -2362,7 +2362,7 @@ fn sidebar_right_click_opens_mono_menu_outside_the_mono_and_edits_its_look(
     assert!(visual.debug_bounds("mono-mascot-0").is_none());
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn habits_and_documents_search_like_sessions(cx: &mut TestAppContext) {
     let s = setup(cx);
     cx.update(|cx| cx.set_reduce_motion(true));
@@ -2402,9 +2402,9 @@ fn habits_and_documents_search_like_sessions(cx: &mut TestAppContext) {
             });
         })
         .unwrap();
-    let visual = &mut gpui::VisualTestContext::from_window(s.window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(s.window.into(), cx);
     visual.run_until_parked();
-    let search = |visual: &mut gpui::VisualTestContext, key: &str, text: &str| {
+    let search = |visual: &mut gpui_kit::VisualTestContext, key: &str, text: &str| {
         s.manager.update(visual, |m, cx| {
             m.fields[key].update(cx, |f, cx| f.set_text(text.into(), cx));
         });
@@ -2428,7 +2428,7 @@ fn habits_and_documents_search_like_sessions(cx: &mut TestAppContext) {
 /// A delegated session interrupted by an app restart reports its turn as
 /// unfinished, and the read call it offers names the project a multi-project
 /// Mono needs.
-#[gpui::test]
+#[gpui_kit::test]
 fn completion_report_flags_an_interrupted_child_and_names_its_project(cx: &mut TestAppContext) {
     let s = setup(cx);
     let tool = serde_json::to_string(&monocode_core::tool::ToolCall::new("t", "Read")).unwrap();
@@ -2592,7 +2592,7 @@ fn completion_is_held_until_the_child_settles(
 
 /// A turn that starts after the readiness check, while the report is being
 /// read, holds the report back until that turn settles.
-#[gpui::test]
+#[gpui_kit::test]
 fn completion_waits_for_a_turn_started_while_its_report_was_read(cx: &mut TestAppContext) {
     completion_is_held_until_the_child_settles(
         cx,
@@ -2604,14 +2604,14 @@ fn completion_waits_for_a_turn_started_while_its_report_was_read(cx: &mut TestAp
 /// A whole turn can start and finish between the readiness check and delivery,
 /// so busy is never seen. Its updated_at moved, so the held report is dropped
 /// and the next check reports the newer turn.
-#[gpui::test]
+#[gpui_kit::test]
 fn completion_drops_a_report_when_a_newer_turn_ran_while_it_was_read(cx: &mut TestAppContext) {
     completion_is_held_until_the_child_settles(cx, |chat| chat.summary.updated_at += 1, |_| {});
 }
 
 /// A stop clears busy at once, but the runtime settles the rows and the
 /// receipt later; until then the child isn't ready to report.
-#[gpui::test]
+#[gpui_kit::test]
 fn completion_waits_for_a_stop_to_settle(cx: &mut TestAppContext) {
     completion_is_held_until_the_child_settles(
         cx,
@@ -2622,7 +2622,7 @@ fn completion_waits_for_a_stop_to_settle(cx: &mut TestAppContext) {
 
 /// A native stop leaves no row. Its closed receipt records the stop, so a
 /// child stopped before an app restart still reports its turn as unfinished.
-#[gpui::test]
+#[gpui_kit::test]
 fn completion_report_flags_a_child_stopped_before_a_restart(cx: &mut TestAppContext) {
     let s = setup(cx);
     let progress = "I will investigate this now";

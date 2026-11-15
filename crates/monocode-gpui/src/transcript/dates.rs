@@ -35,7 +35,7 @@ fn day_label(date: NaiveDate, today: NaiveDate) -> String {
     }
 }
 
-fn separator(at: u64) -> Option<gpui::AnyElement> {
+fn separator(at: u64) -> Option<gpui_kit::AnyElement> {
     let day = day_label(local_day(at)?, Local::now().date_naive());
     Some(
         div()
@@ -60,7 +60,7 @@ fn separator(at: u64) -> Option<gpui::AnyElement> {
                     .bg(content(0.07))
                     .px_3()
                     .py_1()
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                     .text_color(content(0.75))
                     .child(day),
             )
@@ -141,11 +141,11 @@ impl TranscriptView {
             .flatten()
     }
 
-    pub(super) fn mono_separator(&self, start: usize) -> Option<gpui::AnyElement> {
+    pub(super) fn mono_separator(&self, start: usize) -> Option<gpui_kit::AnyElement> {
         self.mono_stamp(start).and_then(separator)
     }
 
-    pub(super) fn pending_separator(&self, index: usize) -> Option<gpui::AnyElement> {
+    pub(super) fn pending_separator(&self, index: usize) -> Option<gpui_kit::AnyElement> {
         let at = self.pending.get(index)?.sent_at;
         let previous = if index == 0 {
             self.previous_send(self.source.len())
@@ -171,9 +171,9 @@ mod tests {
             .timestamp_millis() as u64
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn habit_reports_on_later_days_get_their_own_day_inside_one_turn(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let view = cx.new(|_| {
             let mut view = TranscriptView::new();
@@ -243,9 +243,9 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_dates_survive_streaming_and_split_reactions_and_completion_runs(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let view = cx.new(|_| {
@@ -332,14 +332,14 @@ mod tests {
         });
     }
 
-    #[gpui::test]
-    fn mono_renders_date_pills_and_removes_the_session_outline(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn mono_renders_date_pills_and_removes_the_session_outline(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let window = cx.update(|cx| {
             cx.open_window(
-                gpui::WindowOptions {
-                    window_bounds: Some(gpui::WindowBounds::Windowed(Bounds::new(
-                        gpui::point(px(0.), px(0.)),
+                gpui_kit::WindowOptions {
+                    window_bounds: Some(gpui_kit::WindowBounds::Windowed(Bounds::new(
+                        gpui_kit::point(px(0.), px(0.)),
                         size(px(1100.), px(700.)),
                     ))),
                     ..Default::default()
@@ -384,7 +384,7 @@ mod tests {
             )
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("prompt-outline").is_some());
         assert!(visual.debug_bounds("mono-day-separator").is_none());

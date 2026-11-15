@@ -1,8 +1,8 @@
 use super::*;
 use base64::Engine;
-use gpui::{TestAppContext, VisualTestContext, point};
+use gpui_kit::{TestAppContext, VisualTestContext, point};
 
-#[gpui::test]
+#[gpui_kit::test]
 fn image_lightbox_opens_from_composer_and_sent_images_and_restores_focus(cx: &mut TestAppContext) {
     cx.update(|cx| {
         crate::input::bind(cx);
@@ -30,9 +30,9 @@ fn image_lightbox_opens_from_composer_and_sent_images_and_restores_focus(cx: &mu
         .unwrap();
     visual.update(|_, cx| {
         cx.write_to_clipboard(ClipboardItem {
-            entries: vec![gpui::ClipboardEntry::ExternalPaths(gpui::ExternalPaths(
-                vec![path.clone()].into(),
-            ))],
+            entries: vec![gpui_kit::ClipboardEntry::ExternalPaths(
+                gpui_kit::ExternalPaths(vec![path.clone()].into()),
+            )],
         })
     });
     let modifier = "ctrl";

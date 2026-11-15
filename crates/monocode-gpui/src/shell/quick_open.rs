@@ -92,7 +92,7 @@ impl Shell {
         let open = self.quick_open.as_ref()?;
         let viewport = window.viewport_size();
         let width = 560f32.min(viewport.width.as_f32() - 32.);
-        let anchor = Anchor::Point(gpui::point(
+        let anchor = Anchor::Point(gpui_kit::point(
             px((viewport.width.as_f32() - width) / 2.),
             px((viewport.height.as_f32() * 0.16).max(32.)),
         ));
@@ -121,8 +121,8 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
-    #[gpui::test]
+    use gpui_kit::TestAppContext;
+    #[gpui_kit::test]
     fn titlebar_search_opens_files_and_sidebar_search_opens_global_search(cx: &mut TestAppContext) {
         let (window, _, active) = crate::shell::tests::window(cx);
         window
@@ -131,7 +131,7 @@ mod tests {
                 input.update(cx, |input, cx| input.set_text("keep this draft".into(), cx));
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         for classic in [false, true] {
             window
                 .update(visual, |shell, _, cx| {
@@ -175,7 +175,7 @@ mod tests {
             visual.run_until_parked();
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cmd_p_and_command_palette_preserve_the_composer_draft(cx: &mut TestAppContext) {
         cx.update(|cx| {
             crate::input::bind(cx);

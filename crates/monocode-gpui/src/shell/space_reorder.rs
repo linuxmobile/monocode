@@ -224,7 +224,7 @@ impl Shell {
 mod tests {
     use super::super::{MenuTarget, locked};
     use crate::workspace::Workspace;
-    use gpui::{
+    use gpui_kit::{
         Modifiers, MouseButton, TestAppContext, VisualTestContext, WindowHandle, point, px, size,
     };
 
@@ -258,13 +258,13 @@ mod tests {
             .unwrap()
     }
 
-    fn space(visual: &mut VisualTestContext, ix: usize) -> gpui::Bounds<gpui::Pixels> {
+    fn space(visual: &mut VisualTestContext, ix: usize) -> gpui_kit::Bounds<gpui_kit::Pixels> {
         visual
             .debug_bounds(format!("project-space-{ix}").leak())
             .unwrap()
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn dragging_a_space_reorders_and_saves_the_projects(cx: &mut TestAppContext) {
         let (window, mut visual) = spaces(cx);
         let visual = &mut visual;
@@ -314,7 +314,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn escape_puts_a_dragged_space_back(cx: &mut TestAppContext) {
         let (window, mut visual) = spaces(cx);
         let visual = &mut visual;
@@ -333,7 +333,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn holding_a_drag_past_the_end_pages_along(cx: &mut TestAppContext) {
         let (window, mut visual) = spaces(cx);
         let visual = &mut visual;
@@ -363,7 +363,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn the_project_menu_and_shortcut_move_a_space(cx: &mut TestAppContext) {
         let (window, mut visual) = spaces(cx);
         let visual = &mut visual;

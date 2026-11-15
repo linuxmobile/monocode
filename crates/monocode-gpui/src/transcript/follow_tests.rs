@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{TestAppContext, WindowBounds, WindowOptions, point};
+use gpui_kit::{TestAppContext, WindowBounds, WindowOptions, point};
 
 fn row(role: &str, text: &str) -> Row {
     Row {
@@ -10,11 +10,11 @@ fn row(role: &str, text: &str) -> Row {
     }
 }
 
-fn chat(cx: &mut TestAppContext) -> gpui::WindowHandle<TranscriptView> {
+fn chat(cx: &mut TestAppContext) -> gpui_kit::WindowHandle<TranscriptView> {
     chat_mode(cx, true)
 }
 
-fn chat_mode(cx: &mut TestAppContext, mono: bool) -> gpui::WindowHandle<TranscriptView> {
+fn chat_mode(cx: &mut TestAppContext, mono: bool) -> gpui_kit::WindowHandle<TranscriptView> {
     cx.update(|cx| {
         cx.open_window(
             WindowOptions {
@@ -38,13 +38,13 @@ fn chat_mode(cx: &mut TestAppContext, mono: bool) -> gpui::WindowHandle<Transcri
     })
 }
 
-fn render(window: gpui::WindowHandle<TranscriptView>, cx: &mut TestAppContext) {
+fn render(window: gpui_kit::WindowHandle<TranscriptView>, cx: &mut TestAppContext) {
     window.update(cx, |_, _, cx| cx.notify()).unwrap();
     cx.refresh().unwrap();
     cx.run_until_parked();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn ordinary_send_keeps_the_previous_anchor_until_its_prompt_arrives(cx: &mut TestAppContext) {
     for reading_history in [false, true] {
         let window = chat_mode(cx, false);
@@ -104,7 +104,7 @@ fn ordinary_send_keeps_the_previous_anchor_until_its_prompt_arrives(cx: &mut Tes
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_new_turn_keeps_its_pending_message_below_the_previous_answer(cx: &mut TestAppContext) {
     for reduced in [false, true] {
         cx.update(|cx| cx.set_reduce_motion(reduced));
@@ -175,7 +175,7 @@ fn mono_new_turn_keeps_its_pending_message_below_the_previous_answer(cx: &mut Te
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_pending_messages_show_thinking_and_keep_the_same_height_on_delivery(
     cx: &mut TestAppContext,
 ) {
@@ -212,12 +212,12 @@ fn mono_pending_messages_show_thinking_and_keep_the_same_height_on_delivery(
                 })
                 .unwrap();
             render(window, cx);
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             assert!(
                 visual.debug_bounds("mono-turn-ticker").is_some(),
                 "a new message shows Thinking before the outbox is saved"
             );
-            let span = |visual: &mut gpui::VisualTestContext| {
+            let span = |visual: &mut gpui_kit::VisualTestContext| {
                 let bottom = visual.debug_bounds("mono-turn-ticker").unwrap().bottom();
                 let top = window
                     .update(visual, |_, window, _| {
@@ -262,7 +262,7 @@ fn mono_pending_messages_show_thinking_and_keep_the_same_height_on_delivery(
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_steered_bubbles_align_and_stay_together_after_the_answer_and_reload(
     cx: &mut TestAppContext,
 ) {
@@ -419,7 +419,7 @@ fn mono_steered_bubbles_align_and_stay_together_after_the_answer_and_reload(
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_steer_after_the_mono_spoke_reads_in_order_as_a_new_turn(cx: &mut TestAppContext) {
     cx.update(|cx| cx.set_reduce_motion(true));
     let view = cx.new(|_| {
@@ -476,7 +476,7 @@ fn a_steer_after_the_mono_spoke_reads_in_order_as_a_new_turn(cx: &mut TestAppCon
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_follow_ups_stay_above_thinking_until_the_final_answer(cx: &mut TestAppContext) {
     cx.update(|cx| cx.set_reduce_motion(true));
     let view = cx.new(|_| {
@@ -557,7 +557,7 @@ fn mono_follow_ups_stay_above_thinking_until_the_final_answer(cx: &mut TestAppCo
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn optimistic_prompt_anchors_once_and_worker_acceptance_keeps_its_entrance(
     cx: &mut TestAppContext,
 ) {
@@ -606,7 +606,7 @@ fn optimistic_prompt_anchors_once_and_worker_acceptance_keeps_its_entrance(
 }
 
 // Patch with row entrances disabled to isolate follow motion from disclosures.
-#[gpui::test]
+#[gpui_kit::test]
 fn ordinary_short_replies_fill_the_prompt_spacer_without_moving_the_chat(cx: &mut TestAppContext) {
     let window = chat_mode(cx, false);
     window
@@ -647,7 +647,7 @@ fn ordinary_short_replies_fill_the_prompt_spacer_without_moving_the_chat(cx: &mu
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn ordinary_overflow_glides_and_keeps_settling_after_streaming_ends(cx: &mut TestAppContext) {
     let window = chat_mode(cx, false);
     window
@@ -702,7 +702,7 @@ fn ordinary_overflow_glides_and_keeps_settling_after_streaming_ends(cx: &mut Tes
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn ordinary_height_collapse_eases_back_and_a_new_prompt_resets_follow(cx: &mut TestAppContext) {
     let window = chat_mode(cx, false);
     window
@@ -760,10 +760,10 @@ fn ordinary_height_collapse_eases_back_and_a_new_prompt_resets_follow(cx: &mut T
 }
 
 struct SubmitChat {
-    transcript: gpui::Entity<TranscriptView>,
-    input: gpui::Entity<crate::input::Input>,
+    transcript: gpui_kit::Entity<TranscriptView>,
+    input: gpui_kit::Entity<crate::input::Input>,
 }
-impl gpui::Render for SubmitChat {
+impl gpui_kit::Render for SubmitChat {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
@@ -774,7 +774,7 @@ impl gpui::Render for SubmitChat {
     }
 }
 
-fn input_chat(cx: &mut TestAppContext, text: &str) -> gpui::WindowHandle<SubmitChat> {
+fn input_chat(cx: &mut TestAppContext, text: &str) -> gpui_kit::WindowHandle<SubmitChat> {
     cx.update(|cx| {
         cx.open_window(
             WindowOptions {
@@ -809,7 +809,7 @@ fn input_chat(cx: &mut TestAppContext, text: &str) -> gpui::WindowHandle<SubmitC
     })
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn input_height_changes_preserve_the_chats_painted_position_and_follow_momentum(
     cx: &mut TestAppContext,
 ) {
@@ -908,7 +908,7 @@ fn input_height_changes_preserve_the_chats_painted_position_and_follow_momentum(
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn multiline_sends_keep_sliding_when_the_composer_shrinks_and_delivery_is_immediate(
     cx: &mut TestAppContext,
 ) {
@@ -1011,7 +1011,7 @@ fn multiline_sends_keep_sliding_when_the_composer_shrinks_and_delivery_is_immedi
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn delivery_does_not_restart_settled_bubbles_or_override_reduced_motion(cx: &mut TestAppContext) {
     for reduced in [false, true] {
         cx.update(|cx| cx.set_reduce_motion(reduced));
@@ -1058,7 +1058,7 @@ fn delivery_does_not_restart_settled_bubbles_or_override_reduced_motion(cx: &mut
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn sending_the_next_message_keeps_the_previous_reply_settled(cx: &mut TestAppContext) {
     let window = chat(cx);
     window
@@ -1102,7 +1102,7 @@ fn sending_the_next_message_keeps_the_previous_reply_settled(cx: &mut TestAppCon
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_name_badge_stays_visible_after_the_live_ticker_finishes(cx: &mut TestAppContext) {
     let window = chat(cx);
     window
@@ -1114,7 +1114,7 @@ fn mono_name_badge_stays_visible_after_the_live_ticker_finishes(cx: &mut TestApp
         .unwrap();
     render(window, cx);
     assert!(
-        gpui::VisualTestContext::from_window(window.into(), cx)
+        gpui_kit::VisualTestContext::from_window(window.into(), cx)
             .debug_bounds("mono-signature-pill")
             .is_some()
     );
@@ -1130,18 +1130,18 @@ fn mono_name_badge_stays_visible_after_the_live_ticker_finishes(cx: &mut TestApp
         .unwrap();
     render(window, cx);
     assert!(
-        gpui::VisualTestContext::from_window(window.into(), cx)
+        gpui_kit::VisualTestContext::from_window(window.into(), cx)
             .debug_bounds("mono-signature-pill")
             .is_some()
     );
     assert!(
-        gpui::VisualTestContext::from_window(window.into(), cx)
+        gpui_kit::VisualTestContext::from_window(window.into(), cx)
             .debug_bounds("mono-turn-ticker")
             .is_none()
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_badge_ticker_tracks_work_at_the_top_of_the_turn(cx: &mut TestAppContext) {
     let window = chat(cx);
     window
@@ -1162,7 +1162,7 @@ fn mono_badge_ticker_tracks_work_at_the_top_of_the_turn(cx: &mut TestAppContext)
         .unwrap();
     render(window, cx);
     {
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         assert!(
             visual.debug_bounds("mono-turn-ticker").is_none(),
             "the completed turn shows no status while the new prompt is being delivered"
@@ -1180,7 +1180,7 @@ fn mono_badge_ticker_tracks_work_at_the_top_of_the_turn(cx: &mut TestAppContext)
         .unwrap();
     render(window, cx);
     {
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         assert!(
             visual.debug_bounds("mono-turn-ticker").is_some(),
             "Thinking appears as soon as the live prompt arrives"
@@ -1200,7 +1200,7 @@ fn mono_badge_ticker_tracks_work_at_the_top_of_the_turn(cx: &mut TestAppContext)
             })
             .unwrap();
         render(window, cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         assert!(visual.debug_bounds("mono-turn-ticker").is_some());
         assert!(visual.debug_bounds("mono-signature-pill").is_some());
         assert!(visual.debug_bounds("mono-status").is_none());
@@ -1237,7 +1237,7 @@ fn mono_badge_ticker_tracks_work_at_the_top_of_the_turn(cx: &mut TestAppContext)
             })
             .unwrap();
         render(window, cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let ticker = visual.debug_bounds("mono-turn-ticker").unwrap();
         let opening = visual.debug_bounds("mono-prose-3-16").unwrap();
         assert!(
@@ -1260,18 +1260,18 @@ fn mono_badge_ticker_tracks_work_at_the_top_of_the_turn(cx: &mut TestAppContext)
         .unwrap();
     render(window, cx);
     assert!(
-        gpui::VisualTestContext::from_window(window.into(), cx)
+        gpui_kit::VisualTestContext::from_window(window.into(), cx)
             .debug_bounds("mono-status")
             .is_none()
     );
     assert!(
-        gpui::VisualTestContext::from_window(window.into(), cx)
+        gpui_kit::VisualTestContext::from_window(window.into(), cx)
             .debug_bounds("mono-turn-ticker")
             .is_none()
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_reply_dividers_separate_messages_and_let_cards_do_the_job(cx: &mut TestAppContext) {
     for mono in [false, true] {
         for card in [None, Some("document"), Some("session"), Some("choices")] {
@@ -1324,7 +1324,7 @@ fn mono_reply_dividers_separate_messages_and_let_cards_do_the_job(cx: &mut TestA
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_reply_divider_waits_for_the_reply_and_disappears_when_a_card_arrives(
     cx: &mut TestAppContext,
 ) {
@@ -1394,7 +1394,7 @@ fn mono_reply_divider_waits_for_the_reply_and_disappears_when_a_card_arrives(
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_reply_divider_paints_a_short_dithered_zigzag(cx: &mut TestAppContext) {
     cx.update(|cx| cx.set_reduce_motion(true));
     let window = chat(cx);
@@ -1413,7 +1413,7 @@ fn mono_reply_divider_paints_a_short_dithered_zigzag(cx: &mut TestAppContext) {
         })
         .unwrap();
     render(window, cx);
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     let divider = visual.debug_bounds("mono-response-divider").unwrap();
     let opening = visual.debug_bounds("mono-prose-1-17").unwrap();
     let reply = visual.debug_bounds("mono-prose-3-16").unwrap();
@@ -1456,7 +1456,7 @@ fn mono_reply_divider_paints_a_short_dithered_zigzag(cx: &mut TestAppContext) {
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_notifications_show_only_the_final_message_live_and_after_reload(cx: &mut TestAppContext) {
     let visible = |view: &TranscriptView, at: usize| {
         view.rows
@@ -1573,7 +1573,7 @@ fn mono_notifications_show_only_the_final_message_live_and_after_reload(cx: &mut
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_notification_continuing_a_turn_does_not_move_the_chat(cx: &mut TestAppContext) {
     let window = chat(cx);
     let mut tool = ToolCall::new("launch", "exec_command");
@@ -1609,7 +1609,7 @@ fn a_notification_continuing_a_turn_does_not_move_the_chat(cx: &mut TestAppConte
         })
         .unwrap();
     render(window, cx);
-    let before = gpui::VisualTestContext::from_window(window.into(), cx)
+    let before = gpui_kit::VisualTestContext::from_window(window.into(), cx)
         .debug_bounds("mono-launch-card-776")
         .expect("a native launch receipt renders its session card");
     window
@@ -1619,7 +1619,7 @@ fn a_notification_continuing_a_turn_does_not_move_the_chat(cx: &mut TestAppConte
         })
         .unwrap();
     render(window, cx);
-    let waiting = gpui::VisualTestContext::from_window(window.into(), cx)
+    let waiting = gpui_kit::VisualTestContext::from_window(window.into(), cx)
         .debug_bounds("mono-launch-card-776")
         .expect("the card stays visible before the notification prompt is stored");
     assert!((waiting.top() - before.top()).abs() < px(0.25));
@@ -1633,7 +1633,7 @@ fn a_notification_continuing_a_turn_does_not_move_the_chat(cx: &mut TestAppConte
         })
         .unwrap();
     render(window, cx);
-    let notified = gpui::VisualTestContext::from_window(window.into(), cx)
+    let notified = gpui_kit::VisualTestContext::from_window(window.into(), cx)
         .debug_bounds("mono-launch-card-776")
         .expect("the session card remains above the notification's reply");
     assert!((notified.top() - before.top()).abs() < px(0.25));
@@ -1685,7 +1685,7 @@ fn a_notification_continuing_a_turn_does_not_move_the_chat(cx: &mut TestAppConte
     // Measure the final spacing with the reply entrance settled.
     cx.update(|cx| cx.set_reduce_motion(true));
     render(window, cx);
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     let card = visual.debug_bounds("mono-launch-card-776").unwrap();
     let opening = visual.debug_bounds("mono-prose-2-16").unwrap();
     let answer = visual.debug_bounds("mono-prose-6-16").unwrap();
@@ -1695,7 +1695,7 @@ fn a_notification_continuing_a_turn_does_not_move_the_chat(cx: &mut TestAppConte
     assert_eq!(below, above, "the card sits equally far from both replies");
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn queued_messages_contribute_their_height_once(cx: &mut TestAppContext) {
     let window = chat(cx);
     window
@@ -1725,7 +1725,7 @@ fn queued_messages_contribute_their_height_once(cx: &mut TestAppContext) {
         })
         .unwrap();
     render(window, cx);
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     let height = f32::from(
         visual
             .debug_bounds("mono-pending-message")
@@ -1744,7 +1744,7 @@ fn queued_messages_contribute_their_height_once(cx: &mut TestAppContext) {
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn changing_hidden_work_status_does_not_move_settled_messages(cx: &mut TestAppContext) {
     let window = chat(cx);
     window
@@ -1858,7 +1858,7 @@ fn bubble_top(window: &mut Window) -> f32 {
         .expect("the sent bubble is painted")
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_document_and_final_reply_preserve_position_then_glide_up_without_reversing(
     cx: &mut TestAppContext,
 ) {
@@ -1937,7 +1937,7 @@ fn a_document_and_final_reply_preserve_position_then_glide_up_without_reversing(
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_large_reveal_keeps_settling_after_the_reply_grace_period(cx: &mut TestAppContext) {
     let window = chat(cx);
     window
@@ -1970,7 +1970,7 @@ fn a_large_reveal_keeps_settling_after_the_reply_grace_period(cx: &mut TestAppCo
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn scrolling_away_hands_over_the_visible_position_once(cx: &mut TestAppContext) {
     let window = chat(cx);
     window
@@ -2011,7 +2011,7 @@ fn scrolling_away_hands_over_the_visible_position_once(cx: &mut TestAppContext) 
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn closing_work_above_the_answer_moves_it_one_way(cx: &mut TestAppContext) {
     let window = chat_mode(cx, false);
     window
@@ -2096,7 +2096,7 @@ fn tool(ix: usize, done: bool) -> Row {
     )
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn the_line_being_read_never_moves_back_down_as_work_folds(cx: &mut TestAppContext) {
     let window = chat_mode(cx, false);
     window
@@ -2194,7 +2194,7 @@ fn the_line_being_read_never_moves_back_down_as_work_folds(cx: &mut TestAppConte
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_line_being_read_that_folds_into_the_work_line_keeps_the_reader_in_its_turn(
     cx: &mut TestAppContext,
 ) {
@@ -2296,7 +2296,7 @@ fn a_line_being_read_that_folds_into_the_work_line_keeps_the_reader_in_its_turn(
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_trimmed_final_message_keeps_the_reader_on_its_own_prose_not_its_actions(
     cx: &mut TestAppContext,
 ) {
@@ -2365,7 +2365,7 @@ fn a_trimmed_final_message_keeps_the_reader_on_its_own_prose_not_its_actions(
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn long_user_messages_clamp_to_four_lines_until_shown_in_full(cx: &mut TestAppContext) {
     let lines = |n: usize| {
         (1..=n)
@@ -2464,7 +2464,7 @@ fn long_user_messages_clamp_to_four_lines_until_shown_in_full(cx: &mut TestAppCo
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn an_anchored_prompt_stays_put_while_new_prose_folds_the_work_above(cx: &mut TestAppContext) {
     let window = chat_mode(cx, false);
     window
@@ -2540,7 +2540,7 @@ fn an_anchored_prompt_stays_put_while_new_prose_folds_the_work_above(cx: &mut Te
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn replacing_work_near_the_viewport_limit_keeps_the_prompt_anchored(cx: &mut TestAppContext) {
     let window = chat_mode(cx, false);
     window
@@ -2656,7 +2656,7 @@ fn replacing_work_near_the_viewport_limit_keeps_the_prompt_anchored(cx: &mut Tes
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn empty_and_unrevealed_replacements_do_not_reopen_previous_work(cx: &mut TestAppContext) {
     let window = chat_mode(cx, false);
     window
@@ -2705,7 +2705,7 @@ fn empty_and_unrevealed_replacements_do_not_reopen_previous_work(cx: &mut TestAp
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_mono_opening_sentence_already_shown_does_not_enter_again_when_the_run_ends(
     cx: &mut TestAppContext,
 ) {
@@ -2832,21 +2832,21 @@ fn reinstall_after_eviction(
         .unwrap()
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_reinstalled_history_returns_the_reader_to_where_they_left_it(cx: &mut TestAppContext) {
     let (after, same, consumed) = reinstall_after_eviction(cx, true, false);
     assert!(same, "the reader moved to {after:?}");
     assert!(consumed, "the suspended position is still pending");
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_reinstalled_history_with_a_new_tail_row_keeps_the_reader_in_place(cx: &mut TestAppContext) {
     let (after, same, consumed) = reinstall_after_eviction(cx, true, true);
     assert!(same, "the reader moved to {after:?}");
     assert!(consumed, "the suspended position is still pending");
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_reinstalled_history_keeps_following_the_tail(cx: &mut TestAppContext) {
     for grown in [false, true] {
         let (after, same, consumed) = reinstall_after_eviction(cx, false, grown);

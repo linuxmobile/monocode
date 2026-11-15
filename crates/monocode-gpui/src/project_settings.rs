@@ -5,7 +5,7 @@ use crate::{
     project_background::ProjectBackground,
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Context, Entity, EventEmitter, FocusHandle, Focusable, MouseButton,
     MouseDownEvent, MouseMoveEvent, ObjectFit, PathPromptOptions, Role, SharedString, Subscription,
     Window, canvas, div, prelude::*, px, rgb,
@@ -63,7 +63,7 @@ const SPRITES: [[&str; 8]; 10] = [
         "........",
     ],
 ];
-fn mascot(index: usize, side: f32, color: gpui::Hsla) -> AnyElement {
+fn mascot(index: usize, side: f32, color: gpui_kit::Hsla) -> AnyElement {
     canvas(
         |_, _, _| {},
         move |bounds, _, window, _| {
@@ -71,10 +71,10 @@ fn mascot(index: usize, side: f32, color: gpui::Hsla) -> AnyElement {
             for (y, row) in SPRITES[index].iter().enumerate() {
                 for (x, pixel) in row.bytes().enumerate() {
                     if pixel == b'#' {
-                        window.paint_quad(gpui::fill(
-                            gpui::Bounds::new(
-                                bounds.origin + gpui::point(unit * x as f32, unit * y as f32),
-                                gpui::size(unit, unit),
+                        window.paint_quad(gpui_kit::fill(
+                            gpui_kit::Bounds::new(
+                                bounds.origin + gpui_kit::point(unit * x as f32, unit * y as f32),
+                                gpui_kit::size(unit, unit),
                             ),
                             color,
                         ));
@@ -141,9 +141,9 @@ pub(crate) fn header_project_icon(appearance: &ProjectAppearance, project: &str)
     }
 }
 pub(crate) fn button(
-    id: impl Into<gpui::ElementId>,
+    id: impl Into<gpui_kit::ElementId>,
     label: impl Into<SharedString>,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     let label = label.into();
     let selector = label.clone();
     div()
@@ -669,23 +669,25 @@ impl BackgroundDialog {
                     .track_focus(&self.effect_focus)
                     .flex()
                     .flex_col()
-                    .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
-                        match event.keystroke.key.as_str() {
-                            "up" => this.effect_active = this.effect_active.saturating_sub(1),
-                            "down" => {
-                                this.effect_active =
-                                    (this.effect_active + 1).min(Effect::ALL.len() - 1)
+                    .on_key_down(
+                        cx.listener(|this, event: &gpui_kit::KeyDownEvent, window, cx| {
+                            match event.keystroke.key.as_str() {
+                                "up" => this.effect_active = this.effect_active.saturating_sub(1),
+                                "down" => {
+                                    this.effect_active =
+                                        (this.effect_active + 1).min(Effect::ALL.len() - 1)
+                                }
+                                "enter" | "space" => {
+                                    this.choose_effect(Effect::ALL[this.effect_active], window, cx)
+                                }
+                                "escape" => this.close_effect(window, cx),
+                                _ => return,
                             }
-                            "enter" | "space" => {
-                                this.choose_effect(Effect::ALL[this.effect_active], window, cx)
-                            }
-                            "escape" => this.close_effect(window, cx),
-                            _ => return,
-                        }
-                        window.prevent_default();
-                        cx.stop_propagation();
-                        cx.notify();
-                    }))
+                            window.prevent_default();
+                            cx.stop_propagation();
+                            cx.notify();
+                        }),
+                    )
                     .children(Effect::ALL.into_iter().enumerate().map(|(ix, effect)| {
                         div()
                             .id(("background-effect-option", ix))
@@ -767,7 +769,7 @@ impl BackgroundDialog {
                 div()
                     .text_size(px(13.))
                     .line_height(px(19.5))
-                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                     .child(label),
             )
             .child(
@@ -849,7 +851,7 @@ impl BackgroundDialog {
                                 },
                             ))
                             .on_key_down(cx.listener(
-                                move |this, event: &gpui::KeyDownEvent, _, cx| {
+                                move |this, event: &gpui_kit::KeyDownEvent, _, cx| {
                                     let old = if empty {
                                         this.background.empty_opacity
                                     } else {
@@ -901,7 +903,7 @@ impl BackgroundDialog {
                             .text_size(px(13.))
                             // React's inline label sits in a 16px / 24px line box.
                             .line_height(px(24.))
-                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                             .child("Background effect"),
                     )
                     .child(
@@ -948,13 +950,15 @@ impl BackgroundDialog {
                     )
                     .child(icon("chevron-down", 14.).text_color(content(0.45)))
                     .on_click(cx.listener(|this, _, window, cx| this.toggle_effect(window, cx)))
-                    .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space" | "down") {
-                            this.toggle_effect(window, cx);
-                            window.prevent_default();
-                            cx.stop_propagation();
-                        }
-                    })),
+                    .on_key_down(cx.listener(
+                        |this, event: &gpui_kit::KeyDownEvent, window, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space" | "down") {
+                                this.toggle_effect(window, cx);
+                                window.prevent_default();
+                                cx.stop_propagation();
+                            }
+                        },
+                    )),
             )
             .into_any_element()
     }
@@ -973,7 +977,7 @@ impl BackgroundDialog {
                 div()
                     .text_size(px(13.))
                     .line_height(px(19.5))
-                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                     .child("Show on"),
             )
             .child(
@@ -1047,7 +1051,7 @@ impl Render for BackgroundDialog {
             .relative().min_h_0().max_h(px(window.viewport_size().height.as_f32()-34.))
             .flex().flex_col().text_color(content(1.))
             .child(self.bounds.layout_probe())
-            .on_key_down(cx.listener(|this,event:&gpui::KeyDownEvent,window,cx| {
+            .on_key_down(cx.listener(|this,event:&gpui_kit::KeyDownEvent,window,cx| {
                 if event.keystroke.key=="escape" {
                     if this.effect_open {this.close_effect(window,cx);} else {cx.emit(Event::Close);}
                     window.prevent_default();cx.stop_propagation();
@@ -1056,7 +1060,7 @@ impl Render for BackgroundDialog {
             .on_mouse_up(MouseButton::Left,cx.listener(|this,_,_,_|this.dragging=None))
             .child(div().debug_selector(||"background-dialog-header".into()).flex_shrink_0().flex().items_start().gap_2().px_4().pt_3()
                 .child(div().min_w_0().flex_1().pt(px(2.)).flex().flex_col()
-                    .child(div().debug_selector(||"background-dialog-title".into()).text_size(px(16.)).line_height(px(20.)).font_weight(gpui::FontWeight::SEMIBOLD).child("Background Image"))
+                    .child(div().debug_selector(||"background-dialog-title".into()).text_size(px(16.)).line_height(px(20.)).font_weight(gpui_kit::FontWeight::SEMIBOLD).child("Background Image"))
                     .child(div().mt(px(2.)).min_w_0().truncate().text_size(px(12.)).line_height(px(16.5)).text_color(content(0.5)).child(format!("Choose a background image for {}",self.appearance.label(&self.project)))))
                 .child(icon_button("close-project-background","Close background settings","close").size(px(28.)).on_click(cx.listener(|_,_,_,cx|cx.emit(Event::Close)))))
             .child(div().id("background-dialog-body").debug_selector(||"background-dialog-body".into())

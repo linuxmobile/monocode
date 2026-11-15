@@ -12,7 +12,7 @@ use crate::{
     right_panel::*,
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Context, Entity, EventEmitter, FontWeight, Hsla, PromptLevel, Role,
     SharedString, Subscription, Task, Window, div, prelude::*, px, rgb, uniform_list,
 };
@@ -444,14 +444,14 @@ impl Changes {
         ok: &'static str,
         window: &mut Window,
         cx: &mut App,
-    ) -> gpui::Task<bool> {
+    ) -> gpui_kit::Task<bool> {
         let answer = window.prompt(
             PromptLevel::Warning,
             &message,
             None,
             &[
-                gpui::PromptButton::ok(ok),
-                gpui::PromptButton::cancel("Cancel"),
+                gpui_kit::PromptButton::ok(ok),
+                gpui_kit::PromptButton::cancel("Cancel"),
             ],
             cx,
         );
@@ -1990,8 +1990,8 @@ impl Render for Changes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[gpui::test]
-    fn enabling_an_enabled_changes_panel_does_not_reload(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn enabling_an_enabled_changes_panel_does_not_reload(cx: &mut gpui_kit::TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(Default::default(), |window, cx| {
                 let git = cx.new(|cx| ProjectGit::new("~".into(), cx));

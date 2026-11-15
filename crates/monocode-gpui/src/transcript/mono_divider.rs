@@ -31,7 +31,7 @@ pub(super) fn insert(rows: &mut Vec<UiRow>, messages: &[Message], from: usize) {
     }
 }
 
-pub(super) fn render() -> gpui::AnyElement {
+pub(super) fn render() -> gpui_kit::AnyElement {
     div()
         .debug_selector(|| "mono-response-divider".into())
         .flex()

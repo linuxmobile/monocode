@@ -3,7 +3,7 @@ use super::*;
 
 #[derive(PartialEq)]
 struct LayoutStyle {
-    text: gpui::TextStyle,
+    text: gpui_kit::TextStyle,
     rem: Pixels,
     scale: f32,
     reduced_motion: bool,
@@ -13,7 +13,7 @@ struct LayoutStyle {
 pub(super) struct Measurements {
     diagram_generation: u64,
     style: Option<LayoutStyle>,
-    viewport: gpui::Size<Pixels>,
+    viewport: gpui_kit::Size<Pixels>,
     rows: HashMap<usize, Pixels>,
     /// Bubble widths by message start, with the content they were measured for.
     prompt_widths: HashMap<usize, (u64, Pixels)>,
@@ -75,11 +75,11 @@ pub(super) fn shape_prompt(
     text: SharedString,
     wrap_width: Option<Pixels>,
     window: &Window,
-) -> impl Iterator<Item = gpui::WrappedLine> {
+) -> impl Iterator<Item = gpui_kit::WrappedLine> {
     // The transcript inherits the shell's UI font; the bubble sets it too.
-    let run = gpui::TextRun {
+    let run = gpui_kit::TextRun {
         len: text.len(),
-        font: gpui::font(crate::fonts::UI),
+        font: gpui_kit::font(crate::fonts::UI),
         color: Default::default(),
         background_color: None,
         underline: None,
@@ -185,10 +185,8 @@ impl TranscriptView {
             self.measurements.viewport = self.viewport.size;
         }
         self.measurements.rows.clear();
-        if window.view_layout_dirty(cx.entity_id())
-            || !self.motions.is_empty()
-            || self.agent_panels.animating()
-        {
+        // GPUI Fast exposes no layout-dirty query; epoch bumps on known movers.
+        if !self.motions.is_empty() || self.agent_panels.animating() {
             self.measurements.layout_epoch = self.measurements.layout_epoch.wrapping_add(1);
         }
         let motions = &self.motions;
@@ -260,7 +258,7 @@ impl TranscriptView {
                 cx,
             )
             .height;
-        gpui::frame_stats::add(kind, started.elapsed().as_micros() as u32);
+        let _ = (kind, started);
         #[cfg(test)]
         {
             self.measurements.fresh += 1;
@@ -443,7 +441,7 @@ pub(super) fn same_layout(a: &UiRow, b: &UiRow) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{Entity, Render, TestAppContext, WindowBounds, WindowOptions, point};
+    use gpui_kit::{Entity, Render, TestAppContext, WindowBounds, WindowOptions, point};
     use std::{cell::RefCell, rc::Rc, time::Duration};
 
     type Probe = Box<dyn FnOnce(&mut TranscriptView, &mut Window, &mut Context<TranscriptView>)>;
@@ -486,11 +484,11 @@ mod tests {
         }
     }
 
-    fn chat(cx: &mut TestAppContext) -> gpui::WindowHandle<Fixture> {
+    fn chat(cx: &mut TestAppContext) -> gpui_kit::WindowHandle<Fixture> {
         fixture(cx, false)
     }
 
-    fn fixture(cx: &mut TestAppContext, mono: bool) -> gpui::WindowHandle<Fixture> {
+    fn fixture(cx: &mut TestAppContext, mono: bool) -> gpui_kit::WindowHandle<Fixture> {
         let window = cx.update(|cx| {
             cx.open_window(
                 WindowOptions {
@@ -530,7 +528,7 @@ mod tests {
         window
     }
 
-    fn render(window: gpui::WindowHandle<Fixture>, cx: &mut TestAppContext) {
+    fn render(window: gpui_kit::WindowHandle<Fixture>, cx: &mut TestAppContext) {
         window.update(cx, |_, _, cx| cx.notify()).unwrap();
         cx.refresh().unwrap();
         cx.run_until_parked();
@@ -538,7 +536,7 @@ mod tests {
 
     // GPUI layout must run in a real draw phase, rather than an update handler.
     fn probe<R: 'static>(
-        window: gpui::WindowHandle<Fixture>,
+        window: gpui_kit::WindowHandle<Fixture>,
         cx: &mut TestAppContext,
         inspect: impl FnOnce(&mut TranscriptView, &mut Window, &mut Context<TranscriptView>) -> R
         + 'static,
@@ -596,7 +594,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn prompt_widths_survive_streaming_suffix_updates_and_refresh_after_edits(
         cx: &mut TestAppContext,
     ) {
@@ -671,7 +669,7 @@ mod tests {
             .unwrap()
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_prompt_widths_survive_streaming_replies_and_refresh_with_attachments(
         cx: &mut TestAppContext,
     ) {
@@ -736,7 +734,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn prompt_widths_survive_viewport_resizes(cx: &mut TestAppContext) {
         let window = chat(cx);
         let (prompt, width, viewport, fresh) = probe(window, cx, |view, window, cx| {
@@ -778,7 +776,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn retained_row_measurements_skip_unchanged_layout_and_match_fresh_heights(
         cx: &mut TestAppContext,
     ) {
@@ -808,7 +806,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn retained_row_measurements_refresh_after_text_resize_and_font_changes(
         cx: &mut TestAppContext,
     ) {
@@ -848,7 +846,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn retained_row_measurements_keep_height_animation_live(cx: &mut TestAppContext) {
         let window = chat(cx);
         probe(window, cx, |view, window, cx| {
@@ -868,7 +866,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn retained_row_measurements_refresh_when_closing_rows_leave(cx: &mut TestAppContext) {
         let window = chat(cx);
         probe(window, cx, |view, window, cx| {
@@ -905,7 +903,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn streaming_tail_changes_reuse_prefix_rows_and_measurements(cx: &mut TestAppContext) {
         let window = chat(cx);
         probe(window, cx, |view, window, cx| {

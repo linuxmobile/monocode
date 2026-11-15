@@ -3,7 +3,7 @@ use crate::{
     settings::{Preferences, SettingsView},
     theme::*,
 };
-use gpui::{AnyElement, Context, FontWeight, Role, div, prelude::*, px};
+use gpui_kit::{AnyElement, Context, FontWeight, Role, div, prelude::*, px};
 #[derive(Clone, Copy)]
 pub(crate) struct Binding {
     pub command: &'static str,
@@ -461,7 +461,7 @@ impl SettingsView {
                             .gap(px(2.))
                             .child(
                                 div()
-                                    .id(gpui::SharedString::from(format!("shortcut-{command}")))
+                                    .id(gpui_kit::SharedString::from(format!("shortcut-{command}")))
                                     .debug_selector(move || format!("shortcut-{command}"))
                                     .role(if row.fixed { Role::Label } else { Role::Button })
                                     .aria_label(format!("Change {command} shortcut"))
@@ -503,7 +503,9 @@ impl SettingsView {
                             .when(modified, |d| {
                                 d.child(
                                     div()
-                                        .id(gpui::SharedString::from(format!("reset-{command}")))
+                                        .id(gpui_kit::SharedString::from(format!(
+                                            "reset-{command}"
+                                        )))
                                         .debug_selector(move || format!("reset-shortcut-{command}"))
                                         .role(Role::Button)
                                         .aria_label(format!("Reset {command} shortcut"))
@@ -539,7 +541,7 @@ impl SettingsView {
                     .px_4()
                     .py_2()
                     .text_size(px(11.))
-                    .text_color(gpui::rgb(0xf87171))
+                    .text_color(gpui_kit::rgb(0xf87171))
                     .child(error.clone())
                     .into_any_element(),
             );
@@ -551,7 +553,7 @@ impl SettingsView {
     }
     pub(in crate::settings) fn record_key(
         &mut self,
-        key: &gpui::Keystroke,
+        key: &gpui_kit::Keystroke,
         cx: &mut Context<Self>,
     ) {
         let Some(command) = self.recording.clone() else {
@@ -580,7 +582,7 @@ impl SettingsView {
             });
             return;
         }
-        let shortcut = key.unparse();
+        let shortcut = key.unparse(cx.platform_info().os);
         self.recording_preview = shortcut_label(&shortcut);
         if bare || (!key.modifiers.platform && !key.modifiers.control && !key.modifiers.alt) {
             self.recording_error = Some("Use Command, Control, or Option with a key.".into());
@@ -639,6 +641,11 @@ fn default_shortcuts(row: &Binding) -> Vec<String> {
     };
     chords
         .into_iter()
-        .filter_map(|s| gpui::Keystroke::parse(&s).ok().map(|s| s.unparse()))
+        .filter_map(|s| {
+            let source: &'static str = Box::leak(s.into_boxed_str());
+            gpui_kit::Keystroke::parse(source)
+                .ok()
+                .map(|s| s.unparse(gpui_kit::OperatingSystem::Linux))
+        })
         .collect()
 }

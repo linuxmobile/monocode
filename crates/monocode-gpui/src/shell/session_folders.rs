@@ -23,7 +23,7 @@ struct Picker {
     scroll: ScrollHandle,
     _changed: Subscription,
 }
-impl gpui::EventEmitter<Target> for Picker {}
+impl gpui_kit::EventEmitter<Target> for Picker {}
 impl Picker {
     fn new(folders: Vec<Folder>, cx: &mut Context<Self>) -> Self {
         let input = cx.new(|cx| {
@@ -309,9 +309,9 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn folder_command_searches_creates_and_moves_without_sending_or_losing_a_draft(
         cx: &mut TestAppContext,
     ) {
@@ -328,7 +328,7 @@ mod tests {
                 });
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("session-folder-picker").is_some());
         visual.simulate_input("Migration");

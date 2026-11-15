@@ -5,7 +5,7 @@ use crate::{
     markdown_model,
     theme::*,
 };
-use gpui::{Context, EventEmitter, FontWeight, Render, Role, Window, div, img, prelude::*, px};
+use gpui_kit::{Context, EventEmitter, FontWeight, Render, Role, Window, div, img, prelude::*, px};
 use monocode_core::store::Store;
 use std::time::Instant;
 const MARKER: &str = "monocode.installedUpdate";

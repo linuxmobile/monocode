@@ -1,6 +1,6 @@
 //! ChatPage.
 use crate::settings::SettingsView;
-use gpui::{AnyElement, Context};
+use gpui_kit::{AnyElement, Context};
 
 impl SettingsView {
     pub(super) fn chat_page(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {

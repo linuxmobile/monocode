@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{Context, Render, TestAppContext, size};
+use gpui_kit::{Context, Render, TestAppContext, size};
 
 #[test]
 fn particles_wait_for_the_edge_then_drift_shrink_and_expire() {
@@ -33,9 +33,9 @@ fn particles_wait_for_the_edge_then_drift_shrink_and_expire() {
     assert_eq!(particle.frame(1.26, 200.), (false, None));
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn interruption_uses_the_last_target_and_completion_discards_all_effects(cx: &mut TestAppContext) {
-    use gpui::canvas;
+    use gpui_kit::canvas;
     use std::{cell::RefCell, rc::Rc, time::Duration};
     struct Harness(Rc<RefCell<Option<()>>>);
     impl Render for Harness {
@@ -47,7 +47,7 @@ fn interruption_uses_the_last_target_and_completion_discards_all_effects(cx: &mu
                         width: bounds.size.width,
                         font: window.text_style().font(),
                         font_size: px(14.),
-                        color: gpui::white(),
+                        color: gpui_kit::white(),
                     };
                     let now = Instant::now();
                     let mut state = State {

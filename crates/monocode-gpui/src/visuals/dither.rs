@@ -2,7 +2,7 @@
 //! becomes a share of inked 3px cells through a 4×4 Bayer matrix, so fills
 //! read as halftone texture instead of flat translucent colour.
 use crate::theme::content;
-use gpui::{
+use gpui_kit::{
     App, Bounds, BoxShadow, Corners, FontWeight, Hsla, Pixels, Point, TextRun, Window, fill, point,
     px, size,
 };
@@ -125,7 +125,7 @@ impl Label {
             weight,
         }
     }
-    fn shape(&self, text: &str, window: &mut Window) -> gpui::ShapedLine {
+    fn shape(&self, text: &str, window: &mut Window) -> gpui_kit::ShapedLine {
         let mut font = window.text_style().font();
         if self.mono {
             font.family = crate::fonts::mono().into();
@@ -173,7 +173,7 @@ impl Label {
         let _ = line.paint(
             at - point(px(x), px(height / 2.)),
             px(height),
-            gpui::TextAlign::Left,
+            gpui_kit::TextAlign::Left,
             None,
             window,
             cx,
@@ -214,8 +214,8 @@ pub(crate) fn pointer(bounds: Bounds<Pixels>, window: &Window) -> Option<(f32, f
 }
 
 /// A chart canvas that repaints as the pointer moves over it and leaves.
-pub(crate) fn hoverable(id: gpui::SharedString) -> gpui::Stateful<gpui::Div> {
-    use gpui::{InteractiveElement, StatefulInteractiveElement, div};
+pub(crate) fn hoverable(id: gpui_kit::SharedString) -> gpui_kit::Stateful<gpui_kit::Div> {
+    use gpui_kit::{InteractiveElement, StatefulInteractiveElement, div};
     div()
         .id(id)
         .on_mouse_move(|_, window, _| window.refresh())
@@ -233,7 +233,7 @@ pub(crate) fn readout(
     cx: &mut App,
 ) {
     let head = Label::mono(10., content(0.55));
-    let name = Label::sans(12., content(0.75), gpui::FontWeight::NORMAL);
+    let name = Label::sans(12., content(0.75), gpui_kit::FontWeight::NORMAL);
     let value = Label::mono(12., content(1.));
     let pad = 10.;
     let line = 20.;
@@ -518,8 +518,8 @@ pub(super) fn marker(window: &mut Window, center: Point<Pixels>, side: f32, colo
 }
 
 /// A legend swatch: a translucent body under a solid cap, like a bar.
-pub(super) fn swatch(color: Hsla) -> gpui::Div {
-    use gpui::{Styled, div, prelude::*};
+pub(super) fn swatch(color: Hsla) -> gpui_kit::Div {
+    use gpui_kit::{Styled, div, prelude::*};
     let mut body = color;
     body.a = 0.4;
     div()

@@ -1,6 +1,6 @@
 //! UI invariants around the host-owned conversation and the next local draft.
 use super::*;
-use gpui::TestAppContext;
+use gpui_kit::TestAppContext;
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -27,7 +27,7 @@ fn conversation(cx: &mut TestAppContext) -> Entity<Conversation> {
     })
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn offline_pending_and_busy_guards_preserve_typed_message(cx: &mut TestAppContext) {
     let view = conversation(cx);
     cx.update(|cx| {
@@ -59,7 +59,7 @@ fn offline_pending_and_busy_guards_preserve_typed_message(cx: &mut TestAppContex
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn remote_capability_and_command_guards_keep_composer_and_attachments(cx: &mut TestAppContext) {
     let view = conversation(cx);
     cx.update(|cx| {
@@ -92,7 +92,7 @@ fn remote_capability_and_command_guards_keep_composer_and_attachments(cx: &mut T
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn restoring_host_saved_draft_preserves_the_next_typed_message(cx: &mut TestAppContext) {
     let view = conversation(cx);
     cx.update(|cx| {
@@ -111,7 +111,7 @@ fn restoring_host_saved_draft_preserves_the_next_typed_message(cx: &mut TestAppC
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn dropping_remote_conversation_does_not_cancel_its_host_turn(cx: &mut TestAppContext) {
     let view = conversation(cx);
     let cancel = cx.update(|cx| view.read(cx).cancel.clone());
@@ -295,7 +295,7 @@ impl Drop for HostFixture {
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn snapshot_load_restores_host_draft_without_replacing_unsent_composer(cx: &mut TestAppContext) {
     let host = HostFixture::new(false, true);
     let view = host.conversation(cx);
@@ -322,7 +322,7 @@ fn snapshot_load_restores_host_draft_without_replacing_unsent_composer(cx: &mut 
 
 /// The GPUI test executor runs the remote observer inline, so the host itself
 /// scripts the turn: it renames the conversation on sync 3 and goes idle on 4.
-#[gpui::test]
+#[gpui_kit::test]
 fn a_host_title_change_reaches_the_busy_view_without_a_rename_request(cx: &mut TestAppContext) {
     let host = HostFixture::new(true, false);
     host.idle_after.store(3, Ordering::Relaxed);
@@ -371,7 +371,7 @@ fn a_host_title_change_reaches_the_busy_view_without_a_rename_request(cx: &mut T
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn opening_running_host_reattaches_without_dispatching_another_turn(cx: &mut TestAppContext) {
     let host = HostFixture::new(true, false);
     let view = host.conversation(cx);
@@ -397,7 +397,7 @@ fn opening_running_host_reattaches_without_dispatching_another_turn(cx: &mut Tes
     assert!(!requests.iter().any(|r| r["method"] == "commands.dispatch"));
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn explicit_retry_reuses_pending_command_and_preserves_new_composer_and_attachment(
     cx: &mut TestAppContext,
 ) {
@@ -443,7 +443,7 @@ fn explicit_retry_reuses_pending_command_and_preserves_new_composer_and_attachme
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn rejected_message_restore_preserves_new_draft_then_restores_original_text_and_files(
     cx: &mut TestAppContext,
 ) {
@@ -473,7 +473,7 @@ fn rejected_message_restore_preserves_new_draft_then_restores_original_text_and_
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn ambiguous_legacy_requests_block_send_retry_and_restore_without_consuming_draft(
     cx: &mut TestAppContext,
 ) {

@@ -21,7 +21,7 @@ impl UsageFooter {
                 .is_some_and(|credits| credits.available_count > 0)
     }
 
-    pub(super) fn banked_resets(&self, cx: &mut Context<Self>) -> Option<gpui::AnyElement> {
+    pub(super) fn banked_resets(&self, cx: &mut Context<Self>) -> Option<gpui_kit::AnyElement> {
         if self.kind != Kind::Codex {
             return None;
         }
@@ -111,7 +111,7 @@ impl UsageFooter {
         applying: bool,
         disabled: bool,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         let confirming = self.confirm_reset.as_ref() == Some(&row.key) && !disabled;
         let now = usage::now_ms();
         let expiry = match row.credit.as_ref().and_then(|c| c.expires_at) {
@@ -120,7 +120,7 @@ impl UsageFooter {
             Some(at) => format!("Expires in {}", usage::duration(at - now)),
         };
         div()
-            .id(gpui::SharedString::from(format!(
+            .id(gpui_kit::SharedString::from(format!(
                 "banked-reset-{}",
                 row.key
             )))
@@ -229,9 +229,9 @@ impl UsageFooter {
         command: Command,
         disabled: bool,
         cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         let id =
-            gpui::SharedString::from(format!("banked-reset-{}-{row}", label.replace(' ', "-")));
+            gpui_kit::SharedString::from(format!("banked-reset-{}-{row}", label.replace(' ', "-")));
         let selector = id.clone();
         let button = if label == "Confirm" {
             primary_button(id, label, disabled)
@@ -253,7 +253,7 @@ impl UsageFooter {
                         this.reset_command(click.clone(), window, cx)
                     }))
                     .on_key_down(cx.listener(
-                        move |this, event: &gpui::KeyDownEvent, window, cx| {
+                        move |this, event: &gpui_kit::KeyDownEvent, window, cx| {
                             if matches!(event.keystroke.key.as_str(), "enter" | "space") {
                                 cx.stop_propagation();
                                 this.reset_command(command.clone(), window, cx);
@@ -297,15 +297,15 @@ impl UsageFooter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::VisualTestContext;
+    use gpui_kit::VisualTestContext;
     use std::{
         path::Path,
         sync::{Arc, Mutex},
     };
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn banked_cards_require_confirmation_cancel_without_claiming_and_hide_when_empty(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let store = Arc::new(Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),

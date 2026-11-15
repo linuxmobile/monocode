@@ -1,6 +1,6 @@
 //! Cmd+P's project-file search and `>` command palette.
 use crate::{input, theme::*};
-use gpui::{
+use gpui_kit::{
     Context, Entity, EventEmitter, FocusHandle, Focusable, Role, Subscription, Window, div,
     prelude::*, px,
 };
@@ -60,7 +60,7 @@ pub(crate) struct QuickOpen {
     files: Vec<ProjectFile>,
     rows: Vec<Row>,
     active: usize,
-    scroll: gpui::ScrollHandle,
+    scroll: gpui_kit::ScrollHandle,
     loading: bool,
     error: Option<String>,
     cancel: Arc<AtomicBool>,
@@ -68,7 +68,7 @@ pub(crate) struct QuickOpen {
 }
 impl EventEmitter<Picked> for QuickOpen {}
 impl Focusable for QuickOpen {
-    fn focus_handle(&self, cx: &gpui::App) -> FocusHandle {
+    fn focus_handle(&self, cx: &gpui_kit::App) -> FocusHandle {
         self.search.focus_handle(cx)
     }
 }
@@ -118,7 +118,7 @@ impl QuickOpen {
             files: Vec::new(),
             rows: Vec::new(),
             active: 0,
-            scroll: gpui::ScrollHandle::new(),
+            scroll: gpui_kit::ScrollHandle::new(),
             loading: true,
             error: None,
             cancel,
@@ -127,7 +127,7 @@ impl QuickOpen {
         this.rank(cx);
         this
     }
-    fn rank(&mut self, cx: &gpui::App) {
+    fn rank(&mut self, cx: &gpui_kit::App) {
         let query = self.search.read(cx).content.trim();
         self.rows = if let Some(query) = query.strip_prefix('>') {
             let mut commands: Vec<_> = COMMANDS

@@ -163,7 +163,7 @@ impl Shell {
 mod tests {
     use super::*;
 
-    fn account_switch(cx: &mut gpui::TestAppContext, carry: bool, cold: bool, limited: bool) {
+    fn account_switch(cx: &mut gpui_kit::TestAppContext, carry: bool, cold: bool, limited: bool) {
         use monocode_core::{accounts::Profile, transcript::Row};
         let (window, _, id) = crate::shell::tests::window(cx);
         let (target, destination, original_count, active, tab_count) = window
@@ -297,40 +297,42 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
-    fn footer_account_switch_carries_a_limited_session_in_place(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn footer_account_switch_carries_a_limited_session_in_place(cx: &mut gpui_kit::TestAppContext) {
         account_switch(cx, true, false, true);
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn footer_account_switch_restores_a_saved_limit_before_choosing_a_session(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         account_switch(cx, true, true, true);
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn footer_account_switch_keeps_the_local_session_when_native_history_is_missing(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         account_switch(cx, false, false, true);
     }
 
-    #[gpui::test]
-    fn footer_account_switch_carries_an_unlimited_session_in_place(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn footer_account_switch_carries_an_unlimited_session_in_place(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         account_switch(cx, true, false, false);
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn footer_account_switch_hands_off_an_unlimited_session_without_native_history(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         account_switch(cx, false, false, false);
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn switching_accounts_reuses_the_session_with_or_without_messages(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let (window, _, id) = crate::shell::tests::window(cx);
         let count = window

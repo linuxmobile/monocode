@@ -5,7 +5,7 @@ use crate::{
     editor_analysis::Analysis,
     editor_scrollbar::{Metrics, WIDTH},
 };
-use gpui::{AnyElement, Task};
+use gpui_kit::{AnyElement, Task};
 use std::{cell::Cell, sync::Arc};
 
 const TOP_PADDING: f32 = 8.;
@@ -947,7 +947,7 @@ impl Input {
     }
     pub(super) fn code_scroll(
         &mut self,
-        e: &gpui::ScrollWheelEvent,
+        e: &gpui_kit::ScrollEvent,
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -1349,7 +1349,7 @@ fn plain_line(
             px(font_size),
             &[TextRun {
                 len: text.len(),
-                font: gpui::font(crate::fonts::mono()),
+                font: gpui_kit::font(crate::fonts::mono()),
                 color,
                 background_color: None,
                 underline: None,
@@ -1370,7 +1370,7 @@ fn token_line(
 ) -> WrappedLine {
     let base = TextRun {
         len: 0,
-        font: gpui::font(crate::fonts::mono()),
+        font: gpui_kit::font(crate::fonts::mono()),
         color: crate::theme::content(1.),
         background_color: None,
         underline: None,
@@ -1419,7 +1419,7 @@ fn shape(i: &Input, row: usize, width: Option<Pixels>, w: &mut Window) -> Wrappe
     };
     let base = TextRun {
         len: text.len(),
-        font: gpui::font(crate::fonts::mono()),
+        font: gpui_kit::font(crate::fonts::mono()),
         color: crate::theme::content(1.),
         background_color: None,
         underline: None,
@@ -1619,7 +1619,7 @@ impl Element for CodeElement {
                     px(i.font_size),
                     &[TextRun {
                         len: 1,
-                        font: gpui::font(crate::fonts::mono()),
+                        font: gpui_kit::font(crate::fonts::mono()),
                         color: crate::theme::content(1.),
                         background_color: None,
                         underline: None,
@@ -1910,7 +1910,7 @@ impl Element for CodeElement {
                             } else {
                                 "⌄".len()
                             },
-                            font: gpui::font(crate::fonts::mono()),
+                            font: gpui_kit::font(crate::fonts::mono()),
                             color: crate::theme::content(0.45),
                             background_color: None,
                             underline: None,
@@ -1938,7 +1938,7 @@ impl Element for CodeElement {
                     px(11.),
                     &[TextRun {
                         len,
-                        font: gpui::font(crate::fonts::mono()),
+                        font: gpui_kit::font(crate::fonts::mono()),
                         color: crate::theme::content(0.3),
                         background_color: None,
                         underline: None,
@@ -2073,8 +2073,8 @@ impl Element for CodeElement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, WindowBounds, WindowOptions};
-    #[gpui::test]
+    use gpui_kit::{TestAppContext, WindowBounds, WindowOptions};
+    #[gpui_kit::test]
     fn wrapped_editor_keeps_unicode_selection_visual_navigation_and_resize_in_sync(
         cx: &mut TestAppContext,
     ) {
@@ -2149,7 +2149,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn overview_markers_jump_and_the_thumb_drags_without_editing_or_selecting(
         cx: &mut TestAppContext,
     ) {
@@ -2199,7 +2199,7 @@ mod tests {
                 );
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let (rail, error_tick, change_tick) = window
             .update(visual, |i, _, _| {
@@ -2254,7 +2254,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn drag_selection_keeps_scrolling_past_the_viewport_edge(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             bind(cx);
@@ -2277,7 +2277,7 @@ mod tests {
                 input.move_to(0, cx);
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let bounds = window.update(visual, |i, _, _| i.bounds.unwrap()).unwrap();
         let start = bounds.origin + point(px(4.), px(10.));
@@ -2309,7 +2309,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn editor_keyboard_undo_ime_and_viewport_are_native_and_bounded(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             bind(cx);
@@ -2398,8 +2398,8 @@ mod tests {
 #[cfg(test)]
 mod feature_tests {
     use super::*;
-    use gpui::{TestAppContext, WindowBounds, WindowOptions};
-    fn editor(cx: &mut TestAppContext) -> gpui::WindowHandle<Input> {
+    use gpui_kit::{TestAppContext, WindowBounds, WindowOptions};
+    fn editor(cx: &mut TestAppContext) -> gpui_kit::WindowHandle<Input> {
         cx.update(|cx| {
             bind(cx);
             cx.open_window(
@@ -2415,7 +2415,7 @@ mod feature_tests {
             .unwrap()
         })
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn folds_keep_source_offsets_and_expand_when_search_reveals_hidden_text(
         cx: &mut TestAppContext,
     ) {
@@ -2458,7 +2458,7 @@ mod feature_tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn autocomplete_accepts_with_tab_and_deleted_diff_rows_remain_outside_the_document(
         cx: &mut TestAppContext,
     ) {

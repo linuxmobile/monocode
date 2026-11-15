@@ -27,7 +27,7 @@ use crate::{
     shell::Shell,
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Context, Entity, EventEmitter, Focusable, MouseButton, Role, SharedString,
     Subscription, WeakEntity, Window, div, prelude::*, px, rgb,
 };
@@ -70,7 +70,7 @@ struct RunningHabit {
     mailbox: Vec<String>,
 }
 pub(crate) struct Monos {
-    parent_window: Option<gpui::AnyWindowHandle>,
+    parent_window: Option<gpui_kit::AnyWindowHandle>,
     owner: WeakEntity<Shell>,
     store: Database,
     root: PathBuf,
@@ -80,9 +80,9 @@ pub(crate) struct Monos {
     chats: HashMap<String, Entity<Conversation>>,
     bridge: Option<mono::bridge::Server>,
     observations: Vec<Subscription>,
-    _bridge_task: Option<gpui::Task<()>>,
-    _clock: Option<gpui::Task<()>>,
-    writes: Option<gpui::Task<()>>,
+    _bridge_task: Option<gpui_kit::Task<()>>,
+    _clock: Option<gpui_kit::Task<()>>,
+    writes: Option<gpui_kit::Task<()>>,
     loading_chats: HashSet<String>,
     work: work::Cache,
     pub(crate) error: Option<String>,
@@ -103,14 +103,14 @@ pub(crate) struct Monos {
     panel_views: HashMap<String, PanelView>,
     /// Drops a restored session page once it proves archived or deleted;
     /// explicit navigation cancels it.
-    panel_check: Option<gpui::Task<()>>,
+    panel_check: Option<gpui_kit::Task<()>>,
     settings: Option<SettingsSection>,
-    settings_focus: gpui::FocusHandle,
+    settings_focus: gpui_kit::FocusHandle,
     fields: HashMap<String, Entity<Input>>,
     memory_edit: Option<String>,
     memory_adding: bool,
     memory_pending: HashSet<String>,
-    field_blurs: HashSet<gpui::EntityId>,
+    field_blurs: HashSet<gpui_kit::EntityId>,
     file_versions: HashMap<String, (String, String)>,
     saving_files: HashSet<String>,
     file_load_revision: u64,
@@ -142,10 +142,10 @@ pub(crate) struct Monos {
     background: Option<(
         Entity<crate::project_settings::BackgroundDialog>,
         Subscription,
-        gpui::Point<gpui::Pixels>,
+        gpui_kit::Point<gpui_kit::Pixels>,
     )>,
     backgrounds: HashMap<String, Entity<crate::project_background::ProjectBackground>>,
-    drag: Option<(String, gpui::Point<gpui::Pixels>, Option<String>)>,
+    drag: Option<(String, gpui_kit::Point<gpui_kit::Pixels>, Option<String>)>,
     rail_bounds: HashMap<String, AnchorSlot>,
     skip_click: bool,
     scheduling: bool,
@@ -210,7 +210,11 @@ impl Monos {
         });
     }
     /// Move a Mono in the rail while its handle is dragged.
-    pub(crate) fn move_rail_drag(&mut self, event: &gpui::MouseMoveEvent, cx: &mut Context<Self>) {
+    pub(crate) fn move_rail_drag(
+        &mut self,
+        event: &gpui_kit::MouseMoveEvent,
+        cx: &mut Context<Self>,
+    ) {
         if let Some((_, start, over)) = &mut self.drag {
             if event.pressed_button != Some(MouseButton::Left) {
                 self.finish_reorder(cx);
@@ -347,7 +351,7 @@ impl Monos {
             projects_anchor: AnchorSlot::default(),
             access_anchor: AnchorSlot::default(),
             menu: None,
-            menu_anchor: Anchor::Point(gpui::Point::default()),
+            menu_anchor: Anchor::Point(gpui_kit::Point::default()),
             documents: HashMap::new(),
             html_documents: HashMap::new(),
             visual_documents: HashMap::new(),
@@ -511,7 +515,7 @@ impl Monos {
                     .min_w_0()
                     .truncate()
                     .text_size(px(13.))
-                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                     .text_color(content(1.))
                     .child(mono.label()),
             )
@@ -520,7 +524,7 @@ impl Monos {
                     .debug_selector(|| "original-mono-status".into())
                     .flex_shrink_0()
                     .text_size(px(12.))
-                    .font_weight(gpui::FontWeight::NORMAL)
+                    .font_weight(gpui_kit::FontWeight::NORMAL)
                     .text_color(if state == "needs-you" {
                         accent_color()
                     } else {
@@ -1244,7 +1248,9 @@ impl Monos {
                         .aria_label("New mono")
                         .h(px(32.))
                         .when(original, |d| {
-                            d.ml(px(6.)).mr_2().font_weight(gpui::FontWeight::MEDIUM)
+                            d.ml(px(6.))
+                                .mr_2()
+                                .font_weight(gpui_kit::FontWeight::MEDIUM)
                         })
                         .px_2()
                         .rounded_md()
@@ -1357,7 +1363,7 @@ impl Monos {
                                 .when(unread > 0, |d| d.pr(px(24.)))
                                 .group_hover("mono-rail-row", |s| s.pr(px(24.)))
                                 .text_size(px(14.))
-                                .font_weight(gpui::FontWeight::MEDIUM)
+                                .font_weight(gpui_kit::FontWeight::MEDIUM)
                                 .child(mono.label()),
                         )
                     })
@@ -1387,7 +1393,7 @@ impl Monos {
                                                 .items_center()
                                                 .justify_center()
                                                 .text_size(px(10.))
-                                                .font_weight(gpui::FontWeight::MEDIUM)
+                                                .font_weight(gpui_kit::FontWeight::MEDIUM)
                                                 .text_color(rgb(0xffffff))
                                                 .child(if unread > 99 {
                                                     "99+".into()
@@ -1433,13 +1439,13 @@ impl Monos {
                     }))
                     .on_mouse_down(
                         MouseButton::Right,
-                        cx.listener(move |this, event: &gpui::MouseDownEvent, w, cx| {
+                        cx.listener(move |this, event: &gpui_kit::MouseDownEvent, w, cx| {
                             this.open_options(&context, Some(event.position), w, cx)
                         }),
                     )
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(move |this, event: &gpui::MouseDownEvent, _, _| {
+                        cx.listener(move |this, event: &gpui_kit::MouseDownEvent, _, _| {
                             this.skip_click = false;
                             this.drag = Some((drag.clone(), event.position, None));
                         }),
@@ -1554,7 +1560,7 @@ impl Monos {
         })
     }
 }
-impl gpui::Render for Monos {
+impl gpui_kit::Render for Monos {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.hide_html(cx);
         let Some(mono) = self.current().cloned() else {
@@ -1575,7 +1581,7 @@ impl gpui::Render for Monos {
             .min_w_0()
             .flex()
             .relative()
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape"
                     && this.settings.is_some()
                     && this.picker.is_none()
@@ -1617,7 +1623,7 @@ impl gpui::Render for Monos {
             .children(self.picker_surface(cx))
             .children(self.options_surface(cx))
             .children(self.background_modal())
-            .on_mouse_move(cx.listener(|this, event: &gpui::MouseMoveEvent, _, _| {
+            .on_mouse_move(cx.listener(|this, event: &gpui_kit::MouseMoveEvent, _, _| {
                 if let Some((_, start, over)) = &mut this.drag
                     && (event.position - *start).magnitude() > 5.
                 {

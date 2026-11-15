@@ -369,7 +369,7 @@ impl Shell {
                     }
                     Err(error) => {
                         let prompt = window.prompt(
-                            gpui::PromptLevel::Critical,
+                            gpui_kit::PromptLevel::Critical,
                             "Cannot use this image",
                             Some(&error),
                             &["OK"],
@@ -460,7 +460,7 @@ impl Shell {
     }
     fn delete_from_settings(&mut self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
         let prompt = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             "Delete this conversation permanently?",
             Some("Its messages and saved settings will be removed."),
             &["Delete", "Cancel"],
@@ -487,9 +487,9 @@ fn this_update(this: &mut Shell, cx: &mut Context<Shell>) {
 mod tests {
     use super::*;
     use crate::shell::tests::window;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn settings_skill_form_opens_and_cancels_without_leaving_settings(cx: &mut TestAppContext) {
         cx.update(super::super::bind_keys);
         let (window, _, _) = window(cx);
@@ -498,7 +498,7 @@ mod tests {
                 shell.open_settings(Section::Skills, w, cx)
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let add = visual.debug_bounds("settings-add-skill").unwrap();
         visual.simulate_click(add.center(), Default::default());
@@ -513,14 +513,14 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn escape_closes_the_inner_settings_dialog_first(cx: &mut TestAppContext) {
         cx.update(super::super::bind_keys);
         let (window, _, _) = window(cx);
         window
             .update(cx, |shell, w, cx| shell.open_settings(Section::Mcp, w, cx))
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let add = visual.debug_bounds("settings-add-mcp").unwrap();
         visual.simulate_click(add.center(), Default::default());
@@ -538,7 +538,7 @@ mod tests {
             .update(visual, |shell, _, _| assert!(shell.settings.is_none()))
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn settings_nav_search_steps_through_results_with_arrows(cx: &mut TestAppContext) {
         cx.update(|cx| {
             super::super::bind_keys(cx);
@@ -552,7 +552,7 @@ mod tests {
                 shell.open_settings(Section::General, w, cx)
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let back = visual.debug_bounds("settings-nav-back").unwrap();
         let search = visual.debug_bounds("settings-search").unwrap();
@@ -573,7 +573,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn settings_replace_native_rail_and_tabs_and_return_to_the_same_session(
         cx: &mut TestAppContext,
     ) {
@@ -582,7 +582,7 @@ mod tests {
         window
             .update(cx, |shell, w, cx| shell.focus_active(w, cx))
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.simulate_keystrokes("cmd-,");
         visual.run_until_parked();
         let card = visual.debug_bounds("main-pane-frame").unwrap();
@@ -644,7 +644,7 @@ mod tests {
         assert!(visual.debug_bounds("sidebar-content").is_some());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn settings_nav_collapses_with_search_on_top_and_back_at_the_bottom(cx: &mut TestAppContext) {
         cx.update(super::super::bind_keys);
         cx.update(|cx| cx.set_reduce_motion(true));
@@ -652,7 +652,7 @@ mod tests {
         window
             .update(cx, |shell, w, cx| shell.focus_active(w, cx))
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.simulate_keystrokes("cmd-,");
         visual.run_until_parked();
         let back = visual.debug_bounds("settings-nav-back").unwrap();
@@ -694,7 +694,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn native_setting_edits_persist_and_theme_switches_live(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         window
@@ -702,7 +702,7 @@ mod tests {
                 shell.open_settings(Section::Appearance, w, cx)
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let light = visual.debug_bounds("settings-theme-light").unwrap();
         visual.simulate_click(light.center(), Default::default());
@@ -728,7 +728,7 @@ mod tests {
         visual.run_until_parked();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn shortcut_recording_rebinds_native_settings_and_reset_restores_it(cx: &mut TestAppContext) {
         cx.update(crate::input::bind);
         cx.update(super::super::bind_keys);
@@ -738,7 +738,7 @@ mod tests {
                 shell.open_settings(Section::Keybindings, w, cx)
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let recorder = visual.debug_bounds("shortcut-App: Settings").unwrap();
         visual.simulate_click(recorder.center(), Default::default());

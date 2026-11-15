@@ -35,7 +35,7 @@ pub(crate) enum GitAction {
 /// The action the pill offers: the last one picked, across sessions.
 #[derive(Clone, Copy)]
 struct LastGitAction(GitAction);
-impl gpui::Global for LastGitAction {}
+impl gpui_kit::Global for LastGitAction {}
 
 impl GitAction {
     pub(crate) const ALL: [Self; 3] = [Self::Stage, Self::Commit, Self::CommitPush];
@@ -210,7 +210,7 @@ impl Conversation {
     /// The next steps for the session's work, the pill's default first:
     /// unstaged work offers every action, staged work skips Stage, and a
     /// committed but unpushed session offers only Push.
-    fn git_offers(&self, cx: &gpui::App) -> Vec<GitAction> {
+    fn git_offers(&self, cx: &gpui_kit::App) -> Vec<GitAction> {
         let mut offers = if self.session_git.unstaged {
             GitAction::ALL.to_vec()
         } else if self.session_git.staged {
@@ -250,7 +250,7 @@ impl Conversation {
             && self.settings.mono.is_none()
             && !self.settings.worktree_removed
     }
-    pub(super) fn git_action_menu_items(&self, cx: &gpui::App) -> Vec<MenuItem> {
+    pub(super) fn git_action_menu_items(&self, cx: &gpui_kit::App) -> Vec<MenuItem> {
         let offers = self.git_offers(cx);
         let current = offers.first().copied();
         offers
@@ -402,8 +402,8 @@ impl Conversation {
                             .w_px()
                             .my(px(4.))
                             .bg(content(0.1))
-                            .group_hover("git-actions", |s| s.bg(gpui::transparent_black()))
-                            .when(menu_open, |d| d.bg(gpui::transparent_black())),
+                            .group_hover("git-actions", |s| s.bg(gpui_kit::transparent_black()))
+                            .when(menu_open, |d| d.bg(gpui_kit::transparent_black())),
                     )
                     .child(chevron)
                 })
@@ -415,7 +415,7 @@ impl Conversation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use monocode_core::store::Store;
     use monocode_core::{
         tool::{ToolCall, ToolState},
@@ -474,7 +474,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn session_pill_survives_keep_questions_and_stage_but_clears_on_commit_or_undo(
         cx: &mut TestAppContext,
     ) {
@@ -519,8 +519,8 @@ mod tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
-        let shown = |visual: &mut gpui::VisualTestContext| {
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        let shown = |visual: &mut gpui_kit::VisualTestContext| {
             visual.run_until_parked();
             visual.debug_bounds("git-actions").is_some()
         };
@@ -640,7 +640,7 @@ mod tests {
         assert!(!shown(visual), "reverting the edits also hides the pill");
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn shell_edits_in_the_recorded_turns_offer_the_pill(cx: &mut TestAppContext) {
         let repo = Repo::new();
         std::fs::write(repo.0.join("own.rs"), "written by a shell command\n").unwrap();
@@ -673,8 +673,8 @@ mod tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
-        let shown = |visual: &mut gpui::VisualTestContext| {
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        let shown = |visual: &mut gpui_kit::VisualTestContext| {
             visual.run_until_parked();
             visual.debug_bounds("git-actions").is_some()
         };
@@ -700,7 +700,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn the_pill_requires_session_changes_and_sends_straight_away(cx: &mut TestAppContext) {
         let store = Store::open(Path::new(":memory:")).unwrap();
         // Fails after saving the turn, without launching a real provider.
@@ -721,8 +721,8 @@ mod tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
-        let shown = |visual: &mut gpui::VisualTestContext| {
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        let shown = |visual: &mut gpui_kit::VisualTestContext| {
             visual.run_until_parked();
             visual.debug_bounds("git-actions").is_some()
         };
@@ -778,7 +778,7 @@ mod tests {
         assert!(!shown(visual), "hidden while its turn runs");
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn the_pill_moves_on_to_the_next_step(cx: &mut TestAppContext) {
         let store = Store::open(Path::new(":memory:")).unwrap();
         let mut summary = store.create("codex", "/missing/git-next-step").unwrap();
@@ -796,7 +796,7 @@ mod tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         window
             .update(visual, |view, _, cx| {
                 cx.set_global(LastGitAction(GitAction::Stage));
@@ -836,7 +836,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn slash_commands_run_the_pills_actions(cx: &mut TestAppContext) {
         let store = Store::open(Path::new(":memory:")).unwrap();
         let mut summary = store.create("codex", "/missing/git-command").unwrap();
@@ -854,7 +854,7 @@ mod tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         window
             .update(visual, |view, _, cx| {
                 view.busy = true;

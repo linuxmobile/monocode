@@ -22,11 +22,11 @@ use alacritty_terminal::{
     tty,
     vte::ansi::{Color as AnsiColor, CursorShape, CursorStyle as TermCursorStyle, NamedColor, Rgb},
 };
-use gpui::{
+use gpui_kit::{
     App, Bounds, ClipboardItem, Context, Element, ElementId, Entity, EventEmitter, FocusHandle,
     Focusable, FontStyle, FontWeight, GlobalElementId, Hsla, InspectorElementId, KeyBinding,
     KeyDownEvent, Keystroke, LayoutId, MouseButton, MouseDownEvent, MouseMoveEvent, ScrollDelta,
-    ScrollWheelEvent, ShapedLine, SharedString, Size, StrikethroughStyle, Style, Task, TextAlign,
+    ScrollEvent, ShapedLine, SharedString, Size, StrikethroughStyle, Style, Task, TextAlign,
     TextRun, UnderlineStyle, Window, actions, div, point, prelude::*, px, rgb, size,
 };
 use std::{
@@ -49,9 +49,9 @@ pub(crate) fn bind(cx: &mut App) {
         KeyBinding::new("tab", SendTab, c),
         KeyBinding::new("shift-tab", SendBackTab, c),
         KeyBinding::new("escape", SendEscape, c),
-        KeyBinding::new(&format!("{m}-c"), Copy, c),
-        KeyBinding::new(&format!("{m}-v"), Paste, c),
-        KeyBinding::new(&format!("{m}-a"), SelectAll, c),
+        KeyBinding::new(Box::leak(format!("{m}-c").into_boxed_str()), Copy, c),
+        KeyBinding::new(Box::leak(format!("{m}-v").into_boxed_str()), Paste, c),
+        KeyBinding::new(Box::leak(format!("{m}-a").into_boxed_str()), SelectAll, c),
     ]);
 }
 
@@ -96,8 +96,8 @@ pub(crate) enum TerminalEvent {
 /// Where the grid was painted, for mapping the pointer to cells.
 #[derive(Clone, Copy, Default)]
 struct Geometry {
-    origin: gpui::Point<gpui::Pixels>,
-    cell: Size<gpui::Pixels>,
+    origin: gpui_kit::Point<gpui_kit::Pixels>,
+    cell: Size<gpui_kit::Pixels>,
 }
 
 /// An HTTP(S) link in the grid: an OSC 8 hyperlink or a plain URL.
@@ -123,12 +123,12 @@ pub(crate) struct Terminal {
     master_fd: i32,
     shell_pid: u32,
     selecting: bool,
-    selection_pointer: Option<gpui::Point<gpui::Pixels>>,
+    selection_pointer: Option<gpui_kit::Point<gpui_kit::Pixels>>,
     selection_scroll: Option<Task<()>>,
     scroll_remainder: f32,
     url_regex: Option<RegexSearch>,
     /// The pointer over the grid, for underlining the link beneath it.
-    hover: Option<gpui::Point<gpui::Pixels>>,
+    hover: Option<gpui_kit::Point<gpui_kit::Pixels>>,
     /// The link a plain click pressed; releasing on it opens it.
     pressed_link: Option<Link>,
     pub(crate) visible: bool,
@@ -425,7 +425,7 @@ impl Terminal {
         }
     }
     /// Fit the grid to the painted area; the PTY learns its new size.
-    fn resize(&mut self, columns: usize, lines: usize, cell: Size<gpui::Pixels>) {
+    fn resize(&mut self, columns: usize, lines: usize, cell: Size<gpui_kit::Pixels>) {
         let next = GridSize { columns, lines };
         if next == self.size {
             return;
@@ -491,7 +491,7 @@ impl Terminal {
 
     /// The cell under a window position, and which half of it.
     /// The zero-based viewport line and column under a pointer.
-    fn viewport_cell(&self, position: gpui::Point<gpui::Pixels>) -> (usize, usize) {
+    fn viewport_cell(&self, position: gpui_kit::Point<gpui_kit::Pixels>) -> (usize, usize) {
         let Some(g) = self.geometry.get() else {
             return (0, 0);
         };
@@ -502,7 +502,7 @@ impl Terminal {
             (x as usize).min(self.size.columns.saturating_sub(1)),
         )
     }
-    fn grid_point(&self, position: gpui::Point<gpui::Pixels>) -> Option<(GridPoint, Side)> {
+    fn grid_point(&self, position: gpui_kit::Point<gpui_kit::Pixels>) -> Option<(GridPoint, Side)> {
         let g = self.geometry.get()?;
         let x = ((position.x - g.origin.x) / g.cell.width).max(0.);
         let y = ((position.y - g.origin.y) / g.cell.height).max(0.);
@@ -520,7 +520,7 @@ impl Terminal {
         ))
     }
     /// The HTTP(S) link under a window position, if the pointer is on a cell.
-    fn link_at(&mut self, position: gpui::Point<gpui::Pixels>) -> Option<Link> {
+    fn link_at(&mut self, position: gpui_kit::Point<gpui_kit::Pixels>) -> Option<Link> {
         let g = self.geometry.get()?;
         let x = (position.x - g.origin.x) / g.cell.width;
         let y = (position.y - g.origin.y) / g.cell.height;
@@ -581,7 +581,7 @@ impl Terminal {
     }
     /// A click that pressed and released on the same link, without
     /// dragging out a selection, opens it as the web build's xterm does.
-    fn mouse_up(&mut self, event: &gpui::MouseUpEvent, cx: &mut Context<Self>) {
+    fn mouse_up(&mut self, event: &gpui_kit::MouseUpEvent, cx: &mut Context<Self>) {
         self.stop_selection();
         let Some(link) = self.pressed_link.take() else {
             return;
@@ -659,7 +659,7 @@ impl Terminal {
             cx.notify();
         }
     }
-    fn scroll(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
+    fn scroll(&mut self, event: &ScrollEvent, cx: &mut Context<Self>) {
         let line = self.geometry.get().map_or(16., |g| g.cell.height.as_f32());
         let delta = match event.delta {
             ScrollDelta::Lines(lines) => lines.y,
@@ -716,7 +716,7 @@ impl Render for Terminal {
             .key_context("Terminal")
             .track_focus(&self.focus)
             .size_full()
-            .cursor(gpui::CursorStyle::IBeam)
+            .cursor(gpui_kit::CursorStyle::IBeam)
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
                 if this.hover != Some(event.position) {
                     this.hover = Some(event.position);
@@ -744,7 +744,7 @@ impl Render for Terminal {
                 }),
             )
             .on_mouse_down(MouseButton::Right, cx.listener(Self::open_context_menu))
-            .on_scroll_wheel(cx.listener(|this, event, _, cx| this.scroll(event, cx)))
+            .on_scroll(cx.listener(|this, event, _, cx| this.scroll(event, cx)))
             .child(Grid {
                 terminal: cx.entity(),
                 focused,
@@ -755,12 +755,12 @@ impl Render for Terminal {
 
 /// One shaped run at a column, or a filled cell span.
 struct Painted {
-    lines: Vec<(gpui::Point<gpui::Pixels>, ShapedLine)>,
-    rects: Vec<(Bounds<gpui::Pixels>, Hsla)>,
-    cursor: Option<(Bounds<gpui::Pixels>, Hsla, bool)>,
-    line_height: gpui::Pixels,
+    lines: Vec<(gpui_kit::Point<gpui_kit::Pixels>, ShapedLine)>,
+    rects: Vec<(Bounds<gpui_kit::Pixels>, Hsla)>,
+    cursor: Option<(Bounds<gpui_kit::Pixels>, Hsla, bool)>,
+    line_height: gpui_kit::Pixels,
     /// Set while the pointer is over a link, for the pointing hand.
-    link_hitbox: Option<gpui::Hitbox>,
+    link_hitbox: Option<gpui_kit::Hitbox>,
 }
 
 struct Grid {
@@ -800,15 +800,15 @@ impl Element for Grid {
         cx: &mut App,
     ) -> (LayoutId, ()) {
         let mut style = Style::default();
-        style.size.width = gpui::relative(1.).into();
-        style.size.height = gpui::relative(1.).into();
+        style.size.width = gpui_kit::relative(1.).into();
+        style.size.height = gpui_kit::relative(1.).into();
         (window.request_layout(style, [], cx), ())
     }
     fn prepaint(
         &mut self,
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
-        bounds: Bounds<gpui::Pixels>,
+        bounds: Bounds<gpui_kit::Pixels>,
         _: &mut (),
         window: &mut Window,
         cx: &mut App,
@@ -901,7 +901,8 @@ impl Element for Grid {
             rects: Vec::new(),
             cursor: None,
             line_height,
-            link_hitbox: link.map(|_| window.insert_hitbox(bounds, gpui::HitboxBehavior::Normal)),
+            link_hitbox: link
+                .map(|_| window.insert_hitbox(bounds, gpui_kit::HitboxBehavior::Normal)),
         };
         for (line, cells) in rows.iter().enumerate() {
             let y = origin.y + line_height * line as f32;
@@ -1018,7 +1019,7 @@ impl Element for Grid {
         &mut self,
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
-        bounds: Bounds<gpui::Pixels>,
+        bounds: Bounds<gpui_kit::Pixels>,
         _: &mut (),
         painted: &mut Painted,
         window: &mut Window,
@@ -1028,22 +1029,22 @@ impl Element for Grid {
         // must keep tracking movement and release anywhere in the window.
         let terminal = self.terminal.downgrade();
         window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
-            if phase == gpui::DispatchPhase::Capture {
+            if phase == gpui_kit::DispatchPhase::Capture {
                 let _ = terminal.update(cx, |terminal, cx| terminal.mouse_move(event, cx));
             }
         });
         let terminal = self.terminal.downgrade();
-        window.on_mouse_event(move |event: &gpui::MouseUpEvent, phase, _, cx| {
-            if phase == gpui::DispatchPhase::Capture && event.button == MouseButton::Left {
+        window.on_mouse_event(move |event: &gpui_kit::MouseUpEvent, phase, _, cx| {
+            if phase == gpui_kit::DispatchPhase::Capture && event.button == MouseButton::Left {
                 let _ = terminal.update(cx, |terminal, cx| terminal.mouse_up(event, cx));
             }
         });
         if let Some(hitbox) = &painted.link_hitbox {
-            window.set_cursor_style(gpui::CursorStyle::PointingHand, hitbox);
+            window.set_cursor_style(gpui_kit::CursorStyle::PointingHand, hitbox);
         }
-        window.with_content_mask(Some(gpui::ContentMask { bounds }), |window| {
+        window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
             for (rect, fill) in &painted.rects {
-                window.paint_quad(gpui::fill(*rect, *fill));
+                window.paint_quad(gpui_kit::fill(*rect, *fill));
             }
             for (origin, line) in &painted.lines {
                 let _ = line.paint(
@@ -1057,9 +1058,9 @@ impl Element for Grid {
             }
             if let Some((rect, fill, hollow)) = painted.cursor {
                 if hollow {
-                    window.paint_quad(gpui::outline(rect, fill, gpui::BorderStyle::Solid));
+                    window.paint_quad(gpui_kit::outline(rect, fill, gpui_kit::BorderStyle::Solid));
                 } else {
-                    window.paint_quad(gpui::fill(rect, fill));
+                    window.paint_quad(gpui_kit::fill(rect, fill));
                 }
             }
         });
@@ -1067,12 +1068,12 @@ impl Element for Grid {
 }
 
 fn cell_rect(
-    origin: gpui::Point<gpui::Pixels>,
-    cell: Size<gpui::Pixels>,
+    origin: gpui_kit::Point<gpui_kit::Pixels>,
+    cell: Size<gpui_kit::Pixels>,
     line: usize,
     start: usize,
     end: usize,
-) -> Bounds<gpui::Pixels> {
+) -> Bounds<gpui_kit::Pixels> {
     Bounds::new(
         point(
             origin.x + cell.width * start as f32,
@@ -1204,7 +1205,7 @@ fn color(value: AnsiColor, colors: &Colors, foreground: bool) -> Hsla {
                     if foreground {
                         rgb(CHAT).into()
                     } else {
-                        gpui::transparent_black()
+                        gpui_kit::transparent_black()
                     }
                 }
                 NamedColor::Cursor => accent_color(),
@@ -1461,7 +1462,7 @@ fn wheel_report(up: bool, line: usize, column: usize, mode: TermMode) -> Vec<u8>
 mod tests {
     use super::*;
     use alacritty_terminal::index::Line;
-    use gpui::{AppContext, Modifiers};
+    use gpui_kit::{AppContext, Modifiers};
 
     #[test]
     fn wheel_reports_match_the_requested_encoding() {
@@ -1475,14 +1476,14 @@ mod tests {
     }
 
     fn key(spec: &str) -> Keystroke {
-        Keystroke::parse(spec).unwrap()
+        Keystroke::parse(Box::leak(spec.to_owned().into_boxed_str())).unwrap()
     }
     fn bytes(spec: &str) -> Option<Vec<u8>> {
         key_bytes(&key(spec), TermMode::empty())
     }
 
-    #[gpui::test]
-    fn links_cover_plain_urls_and_osc8_hyperlinks(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn links_cover_plain_urls_and_osc8_hyperlinks(cx: &mut gpui_kit::TestAppContext) {
         let view = cx.new(|cx| Terminal::new("/tmp".into(), cx));
         view.update(cx, |terminal, _| {
             let cell = size(px(8.), px(16.));
@@ -1523,8 +1524,8 @@ mod tests {
         });
     }
 
-    #[gpui::test]
-    fn dragging_at_edges_extends_selection_through_history(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn dragging_at_edges_extends_selection_through_history(cx: &mut gpui_kit::TestAppContext) {
         let view = cx.new(|cx| Terminal::new("/tmp".into(), cx));
         view.update(cx, |terminal, cx| {
             let cell = size(px(8.), px(16.));

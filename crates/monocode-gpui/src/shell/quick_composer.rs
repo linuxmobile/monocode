@@ -64,7 +64,7 @@ impl Shell {
             return;
         }
         let display = cx.primary_display();
-        let size = gpui::size(
+        let size = gpui_kit::size(
             px(crate::quick_composer::WIDTH),
             px(crate::quick_composer::INITIAL_HEIGHT),
         );
@@ -72,21 +72,21 @@ impl Shell {
         let bounds = match &display {
             Some(display) => {
                 let area = display.visible_bounds();
-                gpui::Bounds {
-                    origin: gpui::point(
+                gpui_kit::Bounds {
+                    origin: gpui_kit::point(
                         area.origin.x + (area.size.width - size.width) / 2.,
                         area.origin.y + area.size.height * crate::quick_composer::TOP_FRACTION,
                     ),
                     size,
                 }
             }
-            None => gpui::Bounds::centered(None, size, cx),
+            None => gpui_kit::Bounds::centered(None, size, cx),
         };
         let handle = cx.open_window(
-            gpui::WindowOptions {
-                window_bounds: Some(gpui::WindowBounds::Windowed(bounds)),
+            gpui_kit::WindowOptions {
+                window_bounds: Some(gpui_kit::WindowBounds::Windowed(bounds)),
                 display_id: display.map(|d| d.id()),
-                kind: gpui::WindowKind::PopUp,
+                kind: gpui_kit::WindowKind::PopUp,
                 titlebar: None,
                 is_resizable: false,
                 is_minimizable: false,

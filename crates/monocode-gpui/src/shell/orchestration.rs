@@ -394,8 +394,8 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
-    #[gpui::test]
+    use gpui_kit::TestAppContext;
+    #[gpui_kit::test]
     fn reviewed_dispatch_caps_workers_serializes_scopes_and_stops_before_launch(
         cx: &mut TestAppContext,
     ) {

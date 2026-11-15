@@ -1,5 +1,5 @@
 //! PixelMascot.tsx / pixelMascots.ts rendered as native quads.
-use gpui::{AnyElement, Hsla, canvas, prelude::*, px, rgb, rgba};
+use gpui_kit::{AnyElement, Hsla, canvas, prelude::*, px, rgb, rgba};
 use serde::Deserialize;
 use std::sync::LazyLock;
 #[derive(Deserialize)]
@@ -72,15 +72,16 @@ pub(crate) fn avatar(name: &str, color: u32, status: &str, side: f32, still: boo
             } else {
                 0.
             };
-            let draw = |x: f32, y: f32, w: f32, h: f32, color: Hsla, window: &mut gpui::Window| {
-                window.paint_quad(gpui::fill(
-                    gpui::Bounds::new(
-                        bounds.origin + gpui::point(unit * x, unit * (y + hop)),
-                        gpui::size(unit * w, unit * h),
-                    ),
-                    color,
-                ));
-            };
+            let draw =
+                |x: f32, y: f32, w: f32, h: f32, color: Hsla, window: &mut gpui_kit::Window| {
+                    window.paint_quad(gpui_kit::fill(
+                        gpui_kit::Bounds::new(
+                            bounds.origin + gpui_kit::point(unit * x, unit * (y + hop)),
+                            gpui_kit::size(unit * w, unit * h),
+                        ),
+                        color,
+                    ));
+                };
             let mut base: Hsla = rgb(color).into();
             base.s *= 0.55;
             base.l += (0.82 - base.l) * 0.55;

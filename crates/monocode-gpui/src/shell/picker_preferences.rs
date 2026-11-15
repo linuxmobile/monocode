@@ -31,10 +31,10 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use monocode_core::store::Store;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn favorite_models_reach_the_workspace_and_the_saved_state(cx: &mut TestAppContext) {
         let store = Store::open_monocode(std::path::Path::new(":memory:")).unwrap();
         let summary = store.create("codex", "/work/monocode").unwrap();

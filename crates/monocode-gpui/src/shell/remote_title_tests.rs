@@ -1,6 +1,6 @@
 //! A title the host changes reaches open remote views, busy or not, and is never sent back.
 use super::*;
-use gpui::TestAppContext;
+use gpui_kit::TestAppContext;
 use monocode_core::store::Store;
 use serde_json::{Value, json};
 use std::sync::atomic::AtomicBool;
@@ -132,7 +132,7 @@ impl Drop for FakeHost {
 }
 
 struct Ui {
-    window: gpui::WindowHandle<Shell>,
+    window: gpui_kit::WindowHandle<Shell>,
     chat: i64,
 }
 
@@ -233,7 +233,7 @@ fn set_busy(ui: &Ui, cx: &mut TestAppContext, busy: bool) {
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_host_title_in_a_refresh_reaches_a_busy_view_without_a_rename(cx: &mut TestAppContext) {
     let host = FakeHost::new(vec![host_row("chat", "New chat")]);
     let ui = open(cx, &host);
@@ -262,7 +262,7 @@ fn a_host_title_in_a_refresh_reaches_a_busy_view_without_a_rename(cx: &mut TestA
     });
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn an_idle_view_still_takes_the_whole_host_summary(cx: &mut TestAppContext) {
     let host = FakeHost::new(vec![host_row("chat", "New chat")]);
     let ui = open(cx, &host);
@@ -277,7 +277,7 @@ fn an_idle_view_still_takes_the_whole_host_summary(cx: &mut TestAppContext) {
     assert_eq!(host.sent("sessions.update"), 0);
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn a_busy_view_keeps_its_title_when_the_host_has_not_changed_it(cx: &mut TestAppContext) {
     let host = FakeHost::new(vec![host_row("chat", "New chat")]);
     let ui = open(cx, &host);

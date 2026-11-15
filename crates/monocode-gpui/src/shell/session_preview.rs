@@ -1,6 +1,6 @@
 //! Hover cards for unopened sessions do not construct conversation entities.
 use crate::{pickers::cached_model_name, theme::*};
-use gpui::{AnyElement, FontWeight, div, prelude::*, px};
+use gpui_kit::{AnyElement, FontWeight, div, prelude::*, px};
 use monocode_core::{
     provider::Kind,
     store::{Session, SessionPreviewData},
@@ -56,7 +56,7 @@ pub(super) fn render(
                         .flex_shrink_0()
                         .text_size(px(11.))
                         .text_color(if done {
-                            gpui::rgb(0x34d399).into()
+                            gpui_kit::rgb(0x34d399).into()
                         } else {
                             content(0.45)
                         })

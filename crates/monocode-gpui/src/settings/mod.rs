@@ -25,7 +25,7 @@ use crate::{
     popover::{Align, Anchor, AnchorSlot, Side, popover},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Context, Entity, EventEmitter, FocusHandle, Focusable, MouseButton,
     MouseMoveEvent, Role, ScrollHandle, SharedString, Subscription, Task, Window, div, prelude::*,
     px,
@@ -466,7 +466,7 @@ impl SettingsView {
             }
             self.select_open = None;
             self.recording = None;
-            self.scroll.set_offset(gpui::point(px(0.), px(0.)));
+            self.scroll.set_offset(gpui_kit::point(px(0.), px(0.)));
             cx.notify();
         }
     }
@@ -564,7 +564,7 @@ impl SettingsView {
         let delta = target.center().y - viewport.center().y;
         let max = self.scroll.max_offset().y;
         let y = (offset.y - delta).clamp(-max, px(0.));
-        self.scroll.set_offset(gpui::point(offset.x, y));
+        self.scroll.set_offset(gpui_kit::point(offset.x, y));
     }
 
     /// The breadcrumb and Restore defaults: in the inset title bar, or the
@@ -642,7 +642,7 @@ impl SettingsView {
                                 .hover(|s| s.bg(content(0.1)).text_color(content(1.)))
                                 .child(
                                     icon("rotate-ccw", 14.)
-                                        .text_color(gpui::transparent_black())
+                                        .text_color(gpui_kit::transparent_black())
                                         .map(|i| i.text_color(content(0.5))),
                                 )
                                 .child("Restore defaults")
@@ -752,7 +752,7 @@ impl SettingsView {
                     cx.stop_propagation();
                 }
             }))
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if this.search_query.trim().is_empty() {
                     return;
                 }
@@ -898,7 +898,7 @@ pub(crate) fn nav(
                 }
             })
             .child(
-                gpui::svg()
+                gpui_kit::svg()
                     .path(path)
                     .size(px(16.))
                     .flex_shrink_0()
@@ -912,7 +912,7 @@ pub(crate) fn nav(
                     .truncate()
                     .text_size(px(14.))
                     .line_height(px(17.5))
-                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                     .child(label),
             )
     };
@@ -957,7 +957,7 @@ pub(crate) fn nav(
                                 .pb_1()
                                 .text_size(px(12.))
                                 .line_height(px(16.))
-                                .font_weight(gpui::FontWeight::SEMIBOLD)
+                                .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                                 .text_color(content(0.35))
                                 .child(*group),
                         )
@@ -1021,7 +1021,7 @@ pub(crate) fn nav(
                                 .pr_1()
                                 .text_size(px(13.))
                                 .line_height(px(16.))
-                                .font_weight(gpui::FontWeight::MEDIUM)
+                                .font_weight(gpui_kit::FontWeight::MEDIUM)
                                 .child("Back to app"),
                         )
                         .on_click(move |_, window, cx| back(window, cx)),

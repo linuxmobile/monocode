@@ -4,12 +4,12 @@ use crate::{
     settings::widgets::{primary_button, secondary_button},
     theme::*,
 };
-use gpui::{AnyElement, App, Div, FontWeight, MouseButton, Role, SharedString, div, px};
+use gpui_kit::{AnyElement, App, Div, FontWeight, MouseButton, Role, SharedString, div, px};
 fn account_button(
     id: SharedString,
     label: SharedString,
     path: &'static str,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -102,7 +102,7 @@ impl Accounts {
                             crate::pulse::Rate::Smooth,
                             move |delta| {
                                 icon("refresh-cw", 14.).with_transformation(
-                                    gpui::Transformation::rotate(gpui::percentage(delta)),
+                                    gpui_kit::Transformation::rotate(gpui_kit::percentage(delta)),
                                 )
                             },
                         ))
@@ -119,7 +119,7 @@ impl Accounts {
                         .mt_2()
                         .text_size(px(10.))
                         .line_height(px(16.))
-                        .text_color(gpui::rgb(0xf87171))
+                        .text_color(gpui_kit::rgb(0xf87171))
                         .child(error.clone())
                 }))
                 .into_any_element();
@@ -201,7 +201,9 @@ impl Accounts {
                                 crate::pulse::Rate::Smooth,
                                 move |delta| {
                                     icon("refresh-cw", 12.).with_transformation(
-                                        gpui::Transformation::rotate(gpui::percentage(delta)),
+                                        gpui_kit::Transformation::rotate(gpui_kit::percentage(
+                                            delta,
+                                        )),
                                     )
                                 },
                             ))
@@ -470,7 +472,7 @@ impl Accounts {
                     .px_4()
                     .py_2()
                     .text_size(px(11.))
-                    .text_color(gpui::rgb(0xf87171))
+                    .text_color(gpui_kit::rgb(0xf87171))
                     .child(error.clone())
                     .into_any_element(),
             );
@@ -520,9 +522,9 @@ impl Accounts {
                                     .w(px(64. * percent as f32 / 100.))
                                     .rounded_full()
                                     .bg(if used >= 100. {
-                                        gpui::rgb(0xf87171).into()
+                                        gpui_kit::rgb(0xf87171).into()
                                     } else if used >= 80. {
-                                        gpui::rgb(0xfbbf24).into()
+                                        gpui_kit::rgb(0xfbbf24).into()
                                     } else {
                                         content(0.55)
                                     }),
@@ -814,17 +816,17 @@ fn organization_tag(identity: &accounts::Identity) -> Option<String> {
 }
 
 /// React's barClass, shared with the footer chip and usage cards.
-pub(crate) fn bar_color(used: f64) -> gpui::Hsla {
+pub(crate) fn bar_color(used: f64) -> gpui_kit::Hsla {
     if used >= 90. {
-        gpui::rgb(0xf87171).into()
+        gpui_kit::rgb(0xf87171).into()
     } else if used >= 80. {
-        gpui::rgb(0xfbbf24).into()
+        gpui_kit::rgb(0xfbbf24).into()
     } else {
         content(0.45)
     }
 }
 
-fn accent(alpha: f32) -> gpui::Hsla {
+fn accent(alpha: f32) -> gpui_kit::Hsla {
     let mut color = accent_color();
     color.a = alpha;
     color
@@ -833,7 +835,7 @@ fn accent(alpha: f32) -> gpui::Hsla {
 /// AccountStatusLabel: "● Ready" or "● Exhausted back in 31m".
 pub(crate) fn status_label(status: &Status) -> Div {
     let tinted = |hex: u32, alpha: f32| {
-        let mut color: gpui::Hsla = gpui::rgb(hex).into();
+        let mut color: gpui_kit::Hsla = gpui_kit::rgb(hex).into();
         color.a = alpha;
         color
     };
@@ -905,7 +907,7 @@ fn meter(w: &usage::Window, now: i64, show_remaining: bool) -> Div {
                         .map(|d| {
                             if full {
                                 d.font_weight(FontWeight::MEDIUM)
-                                    .text_color(gpui::rgb(0xf87171))
+                                    .text_color(gpui_kit::rgb(0xf87171))
                             } else {
                                 d.text_color(content(0.6))
                             }
@@ -929,7 +931,7 @@ fn meter(w: &usage::Window, now: i64, show_remaining: bool) -> Div {
                 .child(
                     div()
                         .h_full()
-                        .w(gpui::relative(shown as f32 / 100.))
+                        .w(gpui_kit::relative(shown as f32 / 100.))
                         .rounded_full()
                         .bg(bar_color(used)),
                 ),
@@ -991,12 +993,14 @@ impl Render for Accounts {
                     .role(Role::Dialog)
                     .aria_label("Authentication required")
                     .track_focus(&self.dialog_focus)
-                    .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
-                        if event.keystroke.key == "escape" {
-                            this.close_auth(window, cx);
-                            cx.stop_propagation();
-                        }
-                    }))
+                    .on_key_down(
+                        cx.listener(|this, event: &gpui_kit::KeyDownEvent, window, cx| {
+                            if event.keystroke.key == "escape" {
+                                this.close_auth(window, cx);
+                                cx.stop_propagation();
+                            }
+                        }),
+                    )
                     .w(px(400.))
                     .relative()
                     .rounded(px(crate::modal::RADIUS))
@@ -1079,7 +1083,7 @@ impl Render for Accounts {
                             .role(Role::Alert)
                             .mt_2()
                             .text_size(px(10.))
-                            .text_color(gpui::rgb(0xf87171))
+                            .text_color(gpui_kit::rgb(0xf87171))
                             .child(error)
                     })),
             )

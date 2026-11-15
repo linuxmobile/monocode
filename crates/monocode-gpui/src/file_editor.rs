@@ -7,7 +7,7 @@ use crate::{
     theme::*,
     transcript::TranscriptView,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Context, Entity, EventEmitter, FocusHandle, Focusable, Image, ImageCacheError,
     ImageFormat, ImageSource, KeyBinding, ObjectFit, PromptLevel, RenderImage, Role, SharedString,
     Subscription, Task, Window, actions, div, img, prelude::*, px, rgb,
@@ -48,9 +48,21 @@ actions!(
 pub(crate) fn bind(cx: &mut App) {
     let m = "ctrl";
     cx.bind_keys([
-        KeyBinding::new(&format!("{m}-s"), Save, Some("FileEditor")),
-        KeyBinding::new(&format!("{m}-f"), Find, Some("FileEditor")),
-        KeyBinding::new(&format!("{m}-alt-f"), Replace, Some("FileEditor")),
+        KeyBinding::new(
+            Box::leak(format!("{m}-s").into_boxed_str()),
+            Save,
+            Some("FileEditor"),
+        ),
+        KeyBinding::new(
+            Box::leak(format!("{m}-f").into_boxed_str()),
+            Find,
+            Some("FileEditor"),
+        ),
+        KeyBinding::new(
+            Box::leak(format!("{m}-alt-f").into_boxed_str()),
+            Replace,
+            Some("FileEditor"),
+        ),
         KeyBinding::new("alt-shift-f", Format, Some("FileEditor")),
         KeyBinding::new("alt-z", ToggleWordWrap, Some("FileEditor")),
         KeyBinding::new("alt-c", MatchCase, Some("FileEditor")),
@@ -60,12 +72,20 @@ pub(crate) fn bind(cx: &mut App) {
         KeyBinding::new("shift-f3", FindPrevious, Some("FileEditor")),
         KeyBinding::new("alt-up", PreviousChange, Some("FileEditor")),
         KeyBinding::new("alt-down", NextChange, Some("FileEditor")),
-        KeyBinding::new(&format!("{m}-g"), FindNext, Some("FileEditor")),
-        KeyBinding::new(&format!("{m}-shift-g"), FindPrevious, Some("FileEditor")),
+        KeyBinding::new(
+            Box::leak(format!("{m}-g").into_boxed_str()),
+            FindNext,
+            Some("FileEditor"),
+        ),
+        KeyBinding::new(
+            Box::leak(format!("{m}-shift-g").into_boxed_str()),
+            FindPrevious,
+            Some("FileEditor"),
+        ),
         KeyBinding::new("escape", DismissSearch, Some("FileEditor")),
     ]);
 }
-#[derive(Clone, Debug, PartialEq, gpui::Action)]
+#[derive(Clone, Debug, PartialEq, gpui_kit::Action)]
 #[action(namespace = file_editor, no_json)]
 pub(crate) struct OpenPath(pub String);
 
@@ -977,7 +997,7 @@ impl FileEditor {
         }
     }
 }
-impl gpui::Render for FileEditor {
+impl gpui_kit::Render for FileEditor {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let ready = self.document.is_some();
         let controls = ready.then(|| {
@@ -1135,7 +1155,7 @@ impl gpui::Render for FileEditor {
                                     .bg(content(0.1))
                                     .child("Copy path")
                                     .on_click(cx.listener(|this, _, _, cx| {
-                                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(
+                                        cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(
                                             this.path.clone(),
                                         ))
                                     })),
@@ -1154,16 +1174,16 @@ impl gpui::Render for FileEditor {
             .key_context("FileEditor")
             .track_focus(&self.focus)
             .on_mouse_up(
-                gpui::MouseButton::Left,
+                gpui_kit::MouseButton::Left,
                 cx.listener(|this, _, window, cx| this.finish_code_selection(window, cx)),
             )
-            .capture_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+            .capture_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
                     this.selection.dismiss();
                     cx.notify();
                 }
             }))
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, w, cx| {
+            .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, w, cx| {
                 if this.search_open
                     && event.keystroke.key == "enter"
                     && event.keystroke.modifiers.shift
@@ -1247,11 +1267,11 @@ impl gpui::Render for FileEditor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{
+    use gpui_kit::{
         Bounds, EntityInputHandler, TestAppContext, VisualTestContext, WindowBounds, WindowOptions,
         point, size,
     };
-    #[gpui::test]
+    #[gpui_kit::test]
     fn file_overview_tracks_unsaved_syntax_and_staged_or_unstaged_git_baselines(
         cx: &mut TestAppContext,
     ) {
@@ -1373,7 +1393,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn remembered_preview_mode_keeps_focus_and_find_switches_to_source(cx: &mut TestAppContext) {
         for (extension, source_mode) in [("md", false), ("svg", false), ("md", true), ("svg", true)]
         {
@@ -1439,7 +1459,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn editor_load_find_save_and_external_edits_preserve_the_draft(cx: &mut TestAppContext) {
         let path = std::env::temp_dir().join(format!("monocode-editor-{}.rs", std::process::id()));
         std::fs::write(&path, "fn hello() {}\r\n// hello 🙂\r\n").unwrap();

@@ -422,7 +422,7 @@ impl Shell {
             )
             .child(deck)
             // The caption hangs below the bar, past the strip's clip.
-            .children(caption.map(|c| gpui::deferred(c).with_priority(3)));
+            .children(caption.map(|c| gpui_kit::deferred(c).with_priority(3)));
         Some((slot.into_any_element(), slot_w))
     }
 }
@@ -431,7 +431,7 @@ impl Shell {
 mod tests {
     use super::*;
     use crate::shell::tests::window;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
     fn add_session(shell: &mut Shell, window: &mut Window, cx: &mut Context<Shell>) -> i64 {
         let summary = locked(&shell.store)
@@ -446,7 +446,7 @@ mod tests {
         id
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn pinned_tabs_lead_the_order_leave_the_strip_and_survive_bulk_closes(cx: &mut TestAppContext) {
         let (window, _, first) = window(cx);
         let (second, third) = window
@@ -494,7 +494,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_few_pins_sit_in_a_row_and_more_fan_out_of_a_deck(cx: &mut TestAppContext) {
         let (window, _, first) = window(cx);
         cx.update(|cx| cx.set_reduce_motion(true));
@@ -511,7 +511,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
         // Three pins lie side by side, with no deck to spread.
         let row = visual.debug_bounds("pinned-tab-deck").unwrap();
@@ -532,7 +532,11 @@ mod tests {
             visual.debug_bounds("pinned-tab-deck").unwrap().size.width,
             row.size.width
         );
-        visual.simulate_mouse_move(gpui::point(px(900.), px(400.)), None, Default::default());
+        visual.simulate_mouse_move(
+            gpui_kit::point(px(900.), px(400.)),
+            None,
+            Default::default(),
+        );
         visual.run_until_parked();
         // A fourth gathers them into a deck, which spreads on hover.
         window
@@ -558,7 +562,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cmd_w_leaves_a_pin_open_and_the_strip_keeps_a_blank_tab(cx: &mut TestAppContext) {
         let (window, _, first) = window(cx);
         cx.update(bind_keys);
@@ -570,7 +574,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.simulate_keystrokes("cmd-w");
         visual.run_until_parked();
         window
@@ -592,7 +596,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn choosing_a_stacked_pin_by_number_shuffles_it_to_the_front(cx: &mut TestAppContext) {
         let (window, _, first) = window(cx);
         cx.update(bind_keys);
@@ -610,7 +614,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
         visual.simulate_keystrokes("cmd-2");
         visual.run_until_parked();
@@ -625,7 +629,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_spread_deck_stays_open_while_a_card_menu_is(cx: &mut TestAppContext) {
         let (window, _, first) = window(cx);
         cx.update(|cx| cx.set_reduce_motion(true));
@@ -641,7 +645,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
         let resting = visual.debug_bounds("pinned-tab-deck").unwrap();
         visual.simulate_mouse_move(resting.center(), None, Default::default());
@@ -652,7 +656,11 @@ mod tests {
         let card = visual.debug_bounds("pinned-tab-1").unwrap();
         visual.simulate_mouse_down(card.center(), MouseButton::Right, Default::default());
         visual.simulate_mouse_up(card.center(), MouseButton::Right, Default::default());
-        visual.simulate_mouse_move(gpui::point(px(900.), px(400.)), None, Default::default());
+        visual.simulate_mouse_move(
+            gpui_kit::point(px(900.), px(400.)),
+            None,
+            Default::default(),
+        );
         visual.run_until_parked();
         visual.refresh().unwrap();
         assert!(

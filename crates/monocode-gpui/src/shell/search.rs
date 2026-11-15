@@ -25,7 +25,7 @@ impl Shell {
         let open = self.app_search.as_ref().filter(|s| s.panel)?;
         let viewport = window.viewport_size();
         let width = 680f32.min(viewport.width.as_f32() - 32.);
-        let anchor = Anchor::Point(gpui::point(
+        let anchor = Anchor::Point(gpui_kit::point(
             px((viewport.width.as_f32() - width) / 2.),
             px((viewport.height.as_f32() * 0.14).max(32.)),
         ));
@@ -61,7 +61,7 @@ impl Shell {
         &self,
         width: f32,
         cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         let active = self.app_search.is_some();
         let close = active || width >= TAB_CLOSE_MIN_WIDTH;
         div()
@@ -422,8 +422,8 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
-    #[gpui::test]
+    use gpui_kit::TestAppContext;
+    #[gpui_kit::test]
     fn app_search_restores_draft_and_opens_cross_project_result(cx: &mut TestAppContext) {
         cx.update(|cx| {
             input::bind(cx);
@@ -478,7 +478,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn app_search_shares_tab_sizing_order_cycle_and_close(cx: &mut TestAppContext) {
         cx.update(|cx| {
             input::bind(cx);
@@ -503,7 +503,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let strip = visual.debug_bounds("title-tab-strip").unwrap();
         let search = visual.debug_bounds("search-title-tab").unwrap();
@@ -541,7 +541,7 @@ mod tests {
             .unwrap();
         visual.run_until_parked();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn search_panel_preference_floats_over_the_workspace_without_a_tab(cx: &mut TestAppContext) {
         cx.update(|cx| {
             input::bind(cx);
@@ -562,7 +562,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("app-search").is_some());
         assert!(visual.debug_bounds("title-tab-strip").is_some());

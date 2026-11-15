@@ -1,4 +1,4 @@
-use gpui::{App, Font, FontFallbacks};
+use gpui_kit::{App, Font, FontFallbacks};
 use std::sync::OnceLock;
 
 /// GPUI resolves this family to the platform system UI font.
@@ -74,7 +74,7 @@ fn terminal_font(installed: &[String], mono: &str) -> Font {
         .filter(|name| has(name) && **name != family)
         .map(|name| name.to_string())
         .collect();
-    let mut font = gpui::font(family.to_owned());
+    let mut font = gpui_kit::font(family.to_owned());
     font.fallbacks = (!icons.is_empty()).then(|| FontFallbacks::from_fonts(icons));
     font
 }

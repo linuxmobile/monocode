@@ -5,7 +5,7 @@ use crate::settings::{
     widgets::{primary_button, secondary_button},
 };
 use crate::theme::*;
-use gpui::{AnyElement, Context, FontWeight, div, prelude::*, px};
+use gpui_kit::{AnyElement, Context, FontWeight, div, prelude::*, px};
 
 impl SettingsView {
     pub(super) fn general_page(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {

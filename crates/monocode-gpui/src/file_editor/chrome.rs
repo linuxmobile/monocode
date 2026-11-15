@@ -4,7 +4,7 @@ use crate::{
     right_panel::{stroke, tabular},
     theme::*,
 };
-use gpui::{AnyElement, App, Context, Role, div, prelude::*, px};
+use gpui_kit::{AnyElement, App, Context, Role, div, prelude::*, px};
 use std::path::{Component, Path};
 
 const HEADER_HEIGHT: f32 = 30.;
@@ -103,9 +103,9 @@ impl FileEditor {
             .aria_label("Word wrap")
             .aria_description("Toggle word wrap (Alt+Z)")
             .aria_toggled(if wrap {
-                gpui::Toggled::True
+                gpui_kit::Toggled::True
             } else {
-                gpui::Toggled::False
+                gpui_kit::Toggled::False
             })
             .cursor_pointer()
             .flex_shrink_0()

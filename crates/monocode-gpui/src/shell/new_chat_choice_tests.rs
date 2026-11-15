@@ -145,7 +145,7 @@ fn explicit_provider_takes_the_project_then_default_model() {
 
 // --- Through the real Shell ---
 
-use gpui::TestAppContext;
+use gpui_kit::TestAppContext;
 
 /// The newest session's provider and saved model after a new chat.
 fn created(shell: &Shell, cx: &App) -> (String, Option<String>) {
@@ -161,7 +161,7 @@ fn created(shell: &Shell, cx: &App) -> (String, Option<String>) {
     (provider, model)
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn ordinary_shell_new_chat_follows_the_last_choice(cx: &mut TestAppContext) {
     let (window, _, _) = super::tests::window(cx);
     let new_chat = |cx: &mut TestAppContext, recents: Vec<ModelChoice>, hidden: &[&str]| {

@@ -22,7 +22,7 @@ impl Shell {
         view: AppView,
         width: f32,
         cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         let active = self.active_app_view == Some(view);
         let close = active || width >= TAB_CLOSE_MIN_WIDTH;
         div()

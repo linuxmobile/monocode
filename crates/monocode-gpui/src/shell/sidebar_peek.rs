@@ -4,7 +4,7 @@
 // pointer leaves it.
 use super::Shell;
 use crate::{reveal::bezier, theme::*};
-use gpui::{
+use gpui_kit::{
     AnyElement, BoxShadow, Context, DispatchPhase, MouseDownEvent, MouseMoveEvent, Pixels, Point,
     StyleRefinement, Window, canvas, div, prelude::*, px, rgba,
 };
@@ -241,20 +241,20 @@ impl Shell {
 
     /// The rest of the window dims behind the panel. It takes no hitbox, so
     /// the pointer still reaches the toggle beneath it.
-    fn peek_backdrop(&self, progress: f32, cx: &mut Context<Self>) -> gpui::Div {
+    fn peek_backdrop(&self, progress: f32, cx: &mut Context<Self>) -> gpui_kit::Div {
         let p = &self.workspace.preferences;
         let light = p.theme == "light"
             || (p.theme == "system"
                 && matches!(
                     cx.window_appearance(),
-                    gpui::WindowAppearance::Light | gpui::WindowAppearance::VibrantLight
+                    gpui_kit::WindowAppearance::Light | gpui_kit::WindowAppearance::VibrantLight
                 ));
-        let mut dim: gpui::Hsla = rgba(0x000000ff).into();
+        let mut dim: gpui_kit::Hsla = rgba(0x000000ff).into();
         dim.a = if light { 0.18 } else { 0.4 } * progress;
         div().absolute().top_0().left_0().size_full().bg(dim)
     }
 
-    fn peek_panel(&self, progress: f32, window: &mut Window) -> gpui::Stateful<gpui::Div> {
+    fn peek_panel(&self, progress: f32, window: &mut Window) -> gpui_kit::Stateful<gpui_kit::Div> {
         // Glass blurs the dimmed workspace under a faint wash; otherwise the
         // panel takes the window's own surface.
         let glass = self.window_glass == Some(true) && !is_light();
@@ -299,7 +299,7 @@ impl Shell {
                         move |bounds, _, window, _| {
                             let quad = {
                                 let _ = blur;
-                                gpui::fill(bounds, shell_fill())
+                                gpui_kit::fill(bounds, shell_fill())
                             };
                             window.paint_quad(quad.corner_radii(px(10.)));
                         },

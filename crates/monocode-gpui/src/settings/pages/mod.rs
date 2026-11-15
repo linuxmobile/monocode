@@ -18,7 +18,7 @@ pub(super) use connections::ConnectionsState;
 pub(crate) use keybindings::command_shortcut;
 
 use super::{Section, SettingsView};
-use gpui::{AnyElement, Context, Window};
+use gpui_kit::{AnyElement, Context, Window};
 
 impl SettingsView {
     pub(super) fn page(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Vec<AnyElement> {

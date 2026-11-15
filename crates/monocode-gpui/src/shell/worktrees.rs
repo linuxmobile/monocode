@@ -217,9 +217,9 @@ impl Shell {
 mod tests {
     use super::*;
     use crate::shell::tests::window;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn header_settings_and_worktree_actions_open_focused_native_surfaces(cx: &mut TestAppContext) {
         cx.update(|cx| {
             input::bind(cx);
@@ -238,7 +238,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let settings = visual.debug_bounds("menu-action-settings").unwrap();
         visual.simulate_click(settings.center(), Default::default());
         visual.run_until_parked();
@@ -302,7 +302,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn project_folder_selection_keeps_subfolder_sessions_and_new_session_cwd(
         cx: &mut TestAppContext,
     ) {
@@ -337,7 +337,7 @@ mod tests {
                 );
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let row = visual.debug_bounds("menu-action-switch-worktree").unwrap();
         visual.simulate_click(row.center(), Default::default());
@@ -370,7 +370,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn copies_keep_running_sessions_and_route_new_tabs_and_splits(cx: &mut TestAppContext) {
         let (window, feature_session, main_session) = window(cx);
         window

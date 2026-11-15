@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{TestAppContext, WindowHandle};
+use gpui_kit::{TestAppContext, WindowHandle};
 use monocode_core::{store::Store, transcript::attachments};
 use std::sync::Mutex;
 
@@ -23,7 +23,7 @@ fn conversation(cx: &mut TestAppContext) -> WindowHandle<Conversation> {
     })
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_messages_steer_the_ready_provider_once_and_keep_their_send_time(cx: &mut TestAppContext) {
     let window = conversation(cx);
     let (send, receive) = std::sync::mpsc::channel();
@@ -89,7 +89,7 @@ fn mono_messages_steer_the_ready_provider_once_and_keep_their_send_time(cx: &mut
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn send_paints_before_storage_and_keeps_one_message_after_startup_failure(cx: &mut TestAppContext) {
     for text in [
         "First message".to_owned(),
@@ -205,7 +205,7 @@ fn send_paints_before_storage_and_keeps_one_message_after_startup_failure(cx: &m
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn worktree_setup_shows_the_prompt_immediately_and_preserves_it_on_failure(
     cx: &mut TestAppContext,
 ) {
@@ -257,7 +257,7 @@ fn worktree_setup_shows_the_prompt_immediately_and_preserves_it_on_failure(
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn stopping_before_the_worker_runs_keeps_the_optimistic_message(cx: &mut TestAppContext) {
     for new_worktree in [false, true] {
         let window = conversation(cx);

@@ -184,10 +184,10 @@ impl NewSessionDefaults {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use monocode_core::{agent::Settings, store::Store};
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn whole_project_sidebar_keeps_seven_today_sessions_across_worktrees_lazy(
         cx: &mut TestAppContext,
     ) {
@@ -305,7 +305,7 @@ mod tests {
         assert!(changed.model_settings.is_empty());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn restoring_large_history_materializes_only_visible_chats(cx: &mut TestAppContext) {
         let store = Store::open(std::path::Path::new(":memory:")).unwrap();
         let mut summaries = Vec::new();
@@ -368,7 +368,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn inactive_history_cache_has_a_count_bound_and_reopens_evicted_history(
         cx: &mut TestAppContext,
     ) {

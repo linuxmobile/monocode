@@ -1,3 +1,5 @@
+extern crate gpui_kit as gpui;
+
 mod accounts;
 mod activity;
 mod app_log;
@@ -85,7 +87,7 @@ mod window_state;
 mod workspace;
 mod worktree_switcher;
 
-use gpui::{App, KeyBinding, TitlebarOptions, WindowOptions, actions, prelude::*, px, size};
+use gpui_kit::{App, KeyBinding, TitlebarOptions, WindowOptions, actions, prelude::*, px, size};
 use monocode_core::{store::Store, transcript::Transcript};
 use std::{
     path::PathBuf,
@@ -390,11 +392,12 @@ fn main() {
     let sidebar_metadata = db.session_sidebar_metadata(&projects);
     let db = Arc::new(Mutex::new(db));
     app_log::init();
-    let platform = gpui_platform::current_platform(false);
+    let platform = gpui_kit::platform::current_platform(false);
     let title_raster = particle_text::GlyphRaster(platform.text_system());
-    gpui::Application::with_platform(platform)
+    gpui_kit::Application::with_platform(platform)
         .with_assets(assets::Assets)
         .run(move |cx: &mut App| {
+            gpui_kit::init(cx);
             #[cfg(debug_assertions)]
             dev_reload::install(cx);
             cx.set_global(title_raster);
@@ -413,7 +416,11 @@ fn main() {
             fonts::init(cx);
             terminal::bind(cx);
             let modifier = "ctrl";
-            cx.bind_keys([KeyBinding::new(&format!("{modifier}-q"), Quit, None)]);
+            cx.bind_keys([KeyBinding::new(
+                Box::leak(format!("{modifier}-q").into_boxed_str()),
+                Quit,
+                None,
+            )]);
             shell::bind_keys(cx);
             app_menu::bind(cx);
             usage_footer::bind(cx);
@@ -493,8 +500,8 @@ fn main() {
 mod native_tests {
     use super::*;
     use crate::{input, transcript::TranscriptView};
-    use gpui::{Bounds, Context, Entity, Render, StyleRefinement, Window, WindowBounds, div};
-    use gpui::{EntityInputHandler, ListOffset, TestAppContext, point};
+    use gpui_kit::{Bounds, Context, Entity, Render, StyleRefinement, Window, WindowBounds, div};
+    use gpui_kit::{EntityInputHandler, ListOffset, TestAppContext, point};
     use monocode_core::transcript::Row;
     struct Surface {
         transcript: Entity<TranscriptView>,
@@ -530,7 +537,7 @@ mod native_tests {
         assert_eq!(plist_data_mode(&plist("other")), None);
         assert_eq!(plist_data_mode("<dict></dict>"), None);
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn long_history_virtualizes_and_typing_does_not_rebuild_it(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(

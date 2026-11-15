@@ -160,7 +160,7 @@ impl Conversation {
         text
     }
     pub(super) fn choose_attachments(&mut self, cx: &mut Context<Self>) {
-        let paths = cx.prompt_for_paths(gpui::PathPromptOptions {
+        let paths = cx.prompt_for_paths(gpui_kit::PathPromptOptions {
             files: true,
             directories: false,
             multiple: true,
@@ -181,7 +181,7 @@ impl Conversation {
             .entries()
             .iter()
             .filter_map(|entry| match entry {
-                gpui::ClipboardEntry::ExternalPaths(paths) => Some(paths.paths().to_vec()),
+                gpui_kit::ClipboardEntry::ExternalPaths(paths) => Some(paths.paths().to_vec()),
                 _ => None,
             })
             .flatten()
@@ -194,7 +194,7 @@ impl Conversation {
             .entries()
             .iter()
             .filter_map(|entry| match entry {
-                gpui::ClipboardEntry::Image(image) => Some(image.clone()),
+                gpui_kit::ClipboardEntry::Image(image) => Some(image.clone()),
                 _ => None,
             })
             .collect();
@@ -448,7 +448,7 @@ impl Conversation {
         }
         cx.notify();
     }
-    pub(crate) fn external_outcome(&self, cx: &gpui::App) -> (bool, String) {
+    pub(crate) fn external_outcome(&self, cx: &gpui_kit::App) -> (bool, String) {
         let rows = self.transcript.read(cx).source_rows();
         let start = rows.iter().rposition(|row| row.role == "user").unwrap_or(0);
         let text = monocode_core::response::prose(&rows[start..]);
@@ -457,7 +457,7 @@ impl Conversation {
             monocode_core::response::limit(&format!("{}\n{}", self.status, text), 12_000),
         )
     }
-    pub(crate) fn ready_for_external(&self, cx: &gpui::App) -> bool {
+    pub(crate) fn ready_for_external(&self, cx: &gpui_kit::App) -> bool {
         self.history_ready()
             && !self.editing_last_turn.pending()
             && !self.busy
@@ -482,7 +482,7 @@ impl Conversation {
     }
     /// An evicted history can be restored for a managed run; a user's draft
     /// or an already accepted message must keep ownership of this composer.
-    pub(crate) fn available_for_managed_run(&self, cx: &gpui::App) -> bool {
+    pub(crate) fn available_for_managed_run(&self, cx: &gpui_kit::App) -> bool {
         !self.busy
             && !self.stopping
             && !self.preparing_worktree

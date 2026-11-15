@@ -5,7 +5,7 @@ use crate::{
     runtime::{Database, locked},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, HighlightStyle,
     MouseButton, MouseMoveEvent, Pixels, Point, Render, Role, ScrollHandle, StyledText,
     Subscription, Task, Window, canvas, div, fill, point, prelude::*, px, relative, size,
@@ -504,7 +504,7 @@ fn section(target: &Target, suggesting: bool) -> &'static str {
         (Target::Project(_), _) => "Projects",
     }
 }
-fn keycap(text: impl Into<gpui::SharedString>) -> gpui::Div {
+fn keycap(text: impl Into<gpui_kit::SharedString>) -> gpui_kit::Div {
     div()
         .min_w(px(18.))
         .h(px(18.))
@@ -520,7 +520,7 @@ fn keycap(text: impl Into<gpui::SharedString>) -> gpui::Div {
         .text_color(content(0.55))
         .child(text.into())
 }
-fn hint(keys: &[&'static str], label: &'static str) -> gpui::Div {
+fn hint(keys: &[&'static str], label: &'static str) -> gpui_kit::Div {
     div()
         .flex()
         .items_center()
@@ -668,7 +668,7 @@ impl SearchView {
                 (
                     range,
                     HighlightStyle {
-                        font_weight: Some(gpui::FontWeight::SEMIBOLD),
+                        font_weight: Some(gpui_kit::FontWeight::SEMIBOLD),
                         color: Some(accent_color()),
                         ..Default::default()
                     },
@@ -1026,7 +1026,7 @@ impl SearchView {
                         .pt(px(if ix == 0 { 6. } else { 12. }))
                         .pb(px(5.))
                         .text_size(px(11.))
-                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .font_weight(gpui_kit::FontWeight::MEDIUM)
                         .text_color(content(0.42))
                         .child(heading)
                         .into_any_element(),
@@ -1059,7 +1059,7 @@ impl SearchView {
                 this.pick(this.active, cx);
                 cx.stop_propagation();
             }))
-            .capture_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+            .capture_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                 let k = &event.keystroke;
                 if k.key == "tab" && !k.modifiers.platform && !k.modifiers.control {
                     this.cycle_scope(if k.modifiers.shift { -1 } else { 1 }, cx);
@@ -1217,7 +1217,7 @@ impl SearchView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use monocode_core::store::Store;
     use std::sync::Mutex;
 
@@ -1244,7 +1244,7 @@ mod tests {
             let _ = std::fs::remove_dir_all(&self.0);
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn app_search_debounce_scope_keyboard_and_stale_results(cx: &mut TestAppContext) {
         let dir = TempDir::new();
         std::fs::write(
@@ -1292,7 +1292,7 @@ mod tests {
         });
         cx.run_until_parked();
         {
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             visual.run_until_parked();
             assert_eq!(
                 visual
@@ -1401,7 +1401,7 @@ mod tests {
             .update(cx, |view, _, _| assert!(view.hits.is_empty()))
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn search_panel_suggests_recent_work_and_tabs_through_scopes(cx: &mut TestAppContext) {
         let store = Store::open(std::path::Path::new(":memory:")).unwrap();
         let mut session = store.create("codex", "/project").unwrap();
@@ -1429,7 +1429,7 @@ mod tests {
             .unwrap()
         });
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert_eq!(
             visual

@@ -166,7 +166,7 @@ fn change_stat_layout(
     available: f32,
     window: &Window,
 ) -> ChangeStatLayout {
-    let mut font = gpui::font(crate::fonts::UI);
+    let mut font = gpui_kit::font(crate::fonts::UI);
     font.weight = FontWeight::SEMIBOLD;
     font.features = crate::right_panel::tabular();
     let width_at = |text: &str, size: f32| {
@@ -178,7 +178,7 @@ fn change_stat_layout(
             .shape_line(
                 text.to_owned().into(),
                 px(size),
-                &[gpui::TextRun {
+                &[gpui_kit::TextRun {
                     len: text.len(),
                     font: font.clone(),
                     color: content(1.),
@@ -218,14 +218,14 @@ fn change_stat_layout(
     }
 }
 
-#[derive(gpui::IntoElement)]
+#[derive(gpui_kit::IntoElement)]
 struct ChangeStats {
     added: String,
     deleted: String,
     available: f32,
 }
 
-impl gpui::RenderOnce for ChangeStats {
+impl gpui_kit::RenderOnce for ChangeStats {
     fn render(self, window: &mut Window, _: &mut App) -> impl IntoElement {
         let layout = change_stat_layout(&self.added, &self.deleted, self.available, window);
         div()
@@ -440,12 +440,16 @@ impl Shell {
                             this.open_classic_worktree_picker(window, cx);
                         }
                     }))
-                    .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
-                        if event.keystroke.key == "down" && this.classic_worktree_picker.is_none() {
-                            this.open_classic_worktree_picker(window, cx);
-                            cx.stop_propagation();
-                        }
-                    })),
+                    .on_key_down(cx.listener(
+                        |this, event: &gpui_kit::KeyDownEvent, window, cx| {
+                            if event.keystroke.key == "down"
+                                && this.classic_worktree_picker.is_none()
+                            {
+                                this.open_classic_worktree_picker(window, cx);
+                                cx.stop_propagation();
+                            }
+                        },
+                    )),
             )
             .into_any()
     }
@@ -602,7 +606,7 @@ impl Shell {
                             .text_color(content(0.5)),
                     )
                     .child(self.classic_session_search.clone())
-                    .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                    .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                         if event.keystroke.key == "escape" {
                             if !this.classic_session_search.read(cx).content.is_empty() {
                                 this.classic_session_search
@@ -961,7 +965,7 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, VisualTestContext, WindowHandle, point, size};
+    use gpui_kit::{TestAppContext, VisualTestContext, WindowHandle, point, size};
 
     fn original_window(cx: &mut TestAppContext) -> WindowHandle<Shell> {
         cx.update(|cx| cx.set_reduce_motion(true));
@@ -1003,7 +1007,7 @@ mod tests {
             .unwrap()
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn original_workspace_tabs_hover_without_replacing_the_selected_fill(cx: &mut TestAppContext) {
         let window = original_window(cx);
         let visual = &mut VisualTestContext::from_window(window.into(), cx);
@@ -1045,7 +1049,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn original_workspace_changes_counts_fit_completely_after_sidebar_resize(
         cx: &mut TestAppContext,
     ) {

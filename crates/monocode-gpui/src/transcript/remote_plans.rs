@@ -1,7 +1,7 @@
 //! The original PlanPreview actions, backed by host-owned plan identities.
 use super::*;
 use crate::conversation::remote_plans::Plan;
-use gpui::AnyElement;
+use gpui_kit::AnyElement;
 
 impl TranscriptView {
     pub(super) fn remote_plan_card(&self, plan: &Plan, cx: &mut Context<Self>) -> AnyElement {
@@ -42,7 +42,7 @@ impl TranscriptView {
                     .child(
                         div()
                             .text_size(px(13.))
-                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                             .text_color(content(0.9))
                             .truncate()
                             .child(plan.title()),
@@ -108,8 +108,8 @@ impl TranscriptView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[gpui::test]
-    fn remote_plans_render_as_cards_in_their_source_position(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn remote_plans_render_as_cards_in_their_source_position(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| {
             let view=cx.new(|cx| {
                 let mut view=TranscriptView::new();

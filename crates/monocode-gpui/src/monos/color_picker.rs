@@ -1,6 +1,6 @@
 //! ColorPickerPopover.tsx's saturation/value surface, hue track and hex field.
 use super::*;
-use gpui::{DispatchPhase, canvas, linear_color_stop, linear_gradient};
+use gpui_kit::{DispatchPhase, canvas, linear_color_stop, linear_gradient};
 
 pub(super) struct Picked(pub u32);
 #[derive(Clone, Copy)]
@@ -101,7 +101,12 @@ impl ColorPicker {
         self.hex.update(cx, |field, cx| field.set_text(text, cx));
         cx.notify();
     }
-    fn pick(&mut self, hue: bool, position: gpui::Point<gpui::Pixels>, cx: &mut Context<Self>) {
+    fn pick(
+        &mut self,
+        hue: bool,
+        position: gpui_kit::Point<gpui_kit::Pixels>,
+        cx: &mut Context<Self>,
+    ) {
         let Some(bounds) = (if hue { self.hue.get() } else { self.sv.get() }) else {
             return;
         };
@@ -119,7 +124,7 @@ impl ColorPicker {
         cx.notify();
     }
 }
-impl gpui::Render for ColorPicker {
+impl gpui_kit::Render for ColorPicker {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let weak = cx.weak_entity();
         let hue = Hsv {
@@ -135,7 +140,7 @@ impl gpui::Render for ColorPicker {
                 .size(px(14.))
                 .rounded_full()
                 .border_2()
-                .border_color(gpui::white())
+                .border_color(gpui_kit::white())
         };
         div()
             .id("mono-custom-color-picker")
@@ -152,19 +157,21 @@ impl gpui::Render for ColorPicker {
                     |_, _, _| {},
                     move |_, _, window, _| {
                         let moving = weak.clone();
-                        window.on_mouse_event(move |event: &gpui::MouseMoveEvent, phase, _, cx| {
-                            if phase == DispatchPhase::Bubble {
-                                let _ = moving.update(cx, |picker, cx| {
-                                    if event.pressed_button != Some(MouseButton::Left) {
-                                        picker.drag = None;
-                                    } else if let Some(hue) = picker.drag {
-                                        picker.pick(hue, event.position, cx);
-                                    }
-                                });
-                            }
-                        });
+                        window.on_mouse_event(
+                            move |event: &gpui_kit::MouseMoveEvent, phase, _, cx| {
+                                if phase == DispatchPhase::Bubble {
+                                    let _ = moving.update(cx, |picker, cx| {
+                                        if event.pressed_button != Some(MouseButton::Left) {
+                                            picker.drag = None;
+                                        } else if let Some(hue) = picker.drag {
+                                            picker.pick(hue, event.position, cx);
+                                        }
+                                    });
+                                }
+                            },
+                        );
                         let released = weak.clone();
-                        window.on_mouse_event(move |_: &gpui::MouseUpEvent, phase, _, cx| {
+                        window.on_mouse_event(move |_: &gpui_kit::MouseUpEvent, phase, _, cx| {
                             if phase == DispatchPhase::Bubble {
                                 let _ = released.update(cx, |picker, _| picker.drag = None);
                             }
@@ -185,26 +192,26 @@ impl gpui::Render for ColorPicker {
                     .rounded_md()
                     .bg(linear_gradient(
                         90.,
-                        linear_color_stop(gpui::white(), 0.),
+                        linear_color_stop(gpui_kit::white(), 0.),
                         linear_color_stop(rgb(hue), 1.),
                     ))
                     .child(self.sv.probe())
                     .child(div().absolute().inset_0().rounded_md().bg(linear_gradient(
                         180.,
-                        linear_color_stop(gpui::transparent_black(), 0.),
-                        linear_color_stop(gpui::black(), 1.),
+                        linear_color_stop(gpui_kit::transparent_black(), 0.),
+                        linear_color_stop(gpui_kit::black(), 1.),
                     )))
                     .child(
                         knob()
-                            .left(gpui::relative(self.hsv.s))
-                            .top(gpui::relative(1. - self.hsv.v))
+                            .left(gpui_kit::relative(self.hsv.s))
+                            .top(gpui_kit::relative(1. - self.hsv.v))
                             .ml(px(-7.))
                             .mt(px(-7.))
                             .bg(rgb(color)),
                     )
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+                        cx.listener(|this, event: &gpui_kit::MouseDownEvent, _, cx| {
                             this.drag = Some(false);
                             this.pick(false, event.position, cx);
                             cx.stop_propagation();
@@ -254,13 +261,13 @@ impl gpui::Render for ColorPicker {
                     .child(
                         knob()
                             .top(px(-1.))
-                            .left(gpui::relative(self.hsv.h))
+                            .left(gpui_kit::relative(self.hsv.h))
                             .ml(px(-7.))
                             .bg(rgb(hue)),
                     )
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+                        cx.listener(|this, event: &gpui_kit::MouseDownEvent, _, cx| {
                             this.drag = Some(true);
                             this.pick(true, event.position, cx);
                             cx.stop_propagation();
@@ -308,10 +315,10 @@ pub(super) fn spectrum() -> AnyElement {
                     let (dx, dy) = (x as f32 + 0.5 - radius, y as f32 + 0.5 - radius);
                     if dx * dx + dy * dy <= radius * radius {
                         let hue = (dy.atan2(dx) / std::f32::consts::TAU).rem_euclid(1.);
-                        window.paint_quad(gpui::fill(
-                            gpui::Bounds::new(
-                                bounds.origin + gpui::point(px(x as f32), px(y as f32)),
-                                gpui::size(px(1.), px(1.)),
+                        window.paint_quad(gpui_kit::fill(
+                            gpui_kit::Bounds::new(
+                                bounds.origin + gpui_kit::point(px(x as f32), px(y as f32)),
+                                gpui_kit::size(px(1.), px(1.)),
                             ),
                             rgb(Hsv {
                                 h: hue,
@@ -331,9 +338,9 @@ pub(super) fn spectrum() -> AnyElement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mirrored_color_changes_settle_without_rewriting_the_hex_field(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let picker = cx.new(|cx| ColorPicker::new(0xff0000, cx));
         let picks = std::rc::Rc::new(std::cell::Cell::new(0));

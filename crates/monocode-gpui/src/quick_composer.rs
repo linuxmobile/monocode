@@ -9,7 +9,7 @@ use crate::{
     popover::{Anchor, AnchorSlot, Side, popover},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Context, Entity, EventEmitter, ExternalPaths, FocusHandle, Focusable,
     MouseButton, Render, Role, SharedString, Subscription, Task, Window, WindowHandle, div,
     prelude::*, px,
@@ -710,8 +710,8 @@ impl QuickComposer {
         let mut images = Vec::new();
         for entry in clipboard.entries() {
             match entry {
-                gpui::ClipboardEntry::ExternalPaths(p) => paths.extend(p.paths().to_vec()),
-                gpui::ClipboardEntry::Image(image) => images.push(image.clone()),
+                gpui_kit::ClipboardEntry::ExternalPaths(p) => paths.extend(p.paths().to_vec()),
+                gpui_kit::ClipboardEntry::Image(image) => images.push(image.clone()),
                 _ => {}
             }
         }
@@ -743,7 +743,7 @@ impl QuickComposer {
     }
     fn choose_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.close_picker(window, cx);
-        let prompt = cx.prompt_for_paths(gpui::PathPromptOptions {
+        let prompt = cx.prompt_for_paths(gpui_kit::PathPromptOptions {
             files: true,
             directories: false,
             multiple: true,
@@ -856,7 +856,7 @@ impl QuickComposer {
         {
             let size = window.bounds().size;
             if (f32::from(size.height) - height).abs() > 0.5 {
-                window.resize(gpui::size(size.width, px(height)));
+                window.resize(gpui_kit::size(size.width, px(height)));
             }
         }
     }
@@ -883,7 +883,7 @@ fn pill(
     label: impl Into<SharedString>,
     open: bool,
     ink: f32,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -904,8 +904,8 @@ fn pill(
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
 }
 /// Tailwind's amber-400, which marks full access and fast mode.
-fn amber(alpha: f32) -> gpui::Hsla {
-    gpui::Hsla::from(gpui::rgb(0xfbbf24)).opacity(alpha)
+fn amber(alpha: f32) -> gpui_kit::Hsla {
+    gpui_kit::Hsla::from(gpui_kit::rgb(0xfbbf24)).opacity(alpha)
 }
 fn effort_name(value: &str) -> String {
     crate::conversation::effort_name(value)
@@ -1274,7 +1274,7 @@ impl QuickComposer {
                                 div()
                                     .max_w(px(288.))
                                     .truncate()
-                                    .text_color(gpui::rgb(0xf87171))
+                                    .text_color(gpui_kit::rgb(0xf87171))
                                     .child(error),
                             )
                         } else {
@@ -1306,7 +1306,7 @@ impl QuickComposer {
                             .rounded(px(6.))
                             .bg(accent_color())
                             .text_size(px(12.))
-                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                             .text_color(white(1.))
                             .when(!can_submit, |d| d.opacity(0.4))
                             .when(can_submit, |d| d.cursor_pointer())
@@ -1320,7 +1320,7 @@ impl QuickComposer {
         id: (&'static str, usize),
         active: bool,
         cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         let ix = id.1;
         div()
             .id(id)
@@ -1411,15 +1411,17 @@ impl QuickComposer {
             .border_t_1()
             .border_color(content(0.08))
             .p_2()
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
-                match event.keystroke.key.as_str() {
-                    "down" => this.step(1, cx),
-                    "up" => this.step(-1, cx),
-                    "enter" | "space" => this.choose_permission(this.highlight, window, cx),
-                    _ => return,
-                }
-                cx.stop_propagation();
-            }))
+            .on_key_down(
+                cx.listener(|this, event: &gpui_kit::KeyDownEvent, window, cx| {
+                    match event.keystroke.key.as_str() {
+                        "down" => this.step(1, cx),
+                        "up" => this.step(-1, cx),
+                        "enter" | "space" => this.choose_permission(this.highlight, window, cx),
+                        _ => return,
+                    }
+                    cx.stop_propagation();
+                }),
+            )
             .children(
                 PERMISSIONS
                     .into_iter()
@@ -1448,7 +1450,7 @@ impl QuickComposer {
                                     .child(
                                         div()
                                             .text_size(px(13.))
-                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                                             .child(mode.label()),
                                     )
                                     .child(
@@ -1651,7 +1653,7 @@ impl QuickComposer {
         let fast = self.fast;
         let efforts = model.efforts.clone();
         let track = self.effort_track.clone();
-        let pick = move |this: &mut Self, x: gpui::Pixels, cx: &mut Context<Self>| {
+        let pick = move |this: &mut Self, x: gpui_kit::Pixels, cx: &mut Context<Self>| {
             let Some(bounds) = track.get() else {
                 return;
             };
@@ -1689,9 +1691,9 @@ impl QuickComposer {
                                     .role(Role::Button)
                                     .aria_label("Fast mode")
                                     .aria_toggled(if fast {
-                                        gpui::Toggled::True
+                                        gpui_kit::Toggled::True
                                     } else {
-                                        gpui::Toggled::False
+                                        gpui_kit::Toggled::False
                                     })
                                     .cursor_pointer()
                                     .size(px(28.))
@@ -1718,7 +1720,7 @@ impl QuickComposer {
                                 .flex()
                                 .justify_center()
                                 .text_size(px(13.))
-                                .font_weight(gpui::FontWeight::MEDIUM)
+                                .font_weight(gpui_kit::FontWeight::MEDIUM)
                                 .text_color(accent_color())
                                 .child(effort_label.clone()),
                         )
@@ -1777,7 +1779,7 @@ impl QuickComposer {
                                 .child(
                                     div()
                                         .h_full()
-                                        .w(gpui::relative(fraction))
+                                        .w(gpui_kit::relative(fraction))
                                         .bg(accent_color()),
                                 ),
                         )
@@ -1790,7 +1792,9 @@ impl QuickComposer {
                                 .children((0..count).map(|ix| {
                                     div()
                                         .absolute()
-                                        .left(gpui::relative(ix as f32 / (count.max(2) - 1) as f32))
+                                        .left(gpui_kit::relative(
+                                            ix as f32 / (count.max(2) - 1) as f32,
+                                        ))
                                         .ml(px(-2.))
                                         .top(px(-2.))
                                         .size(px(4.))
@@ -1811,16 +1815,16 @@ impl QuickComposer {
                                 .child(
                                     div()
                                         .absolute()
-                                        .left(gpui::relative(fraction))
+                                        .left(gpui_kit::relative(fraction))
                                         .ml(px(-10.))
                                         .size(px(20.))
                                         .rounded_full()
                                         .border_1()
                                         .border_color(black(0.05))
                                         .bg(white(1.))
-                                        .shadow(vec![gpui::BoxShadow {
+                                        .shadow(vec![gpui_kit::BoxShadow {
                                             color: black(0.2),
-                                            offset: gpui::point(px(0.), px(1.)),
+                                            offset: gpui_kit::point(px(0.), px(1.)),
                                             blur_radius: px(4.),
                                             spread_radius: px(0.),
                                             inset: false,
@@ -1829,14 +1833,14 @@ impl QuickComposer {
                         )
                         .on_mouse_down(
                             MouseButton::Left,
-                            cx.listener(move |this, event: &gpui::MouseDownEvent, _, cx| {
+                            cx.listener(move |this, event: &gpui_kit::MouseDownEvent, _, cx| {
                                 this.effort_drag = true;
                                 pick_down(this, event.position.x, cx);
                             }),
                         ),
                 )
                 .on_mouse_move(
-                    cx.listener(move |this, event: &gpui::MouseMoveEvent, _, cx| {
+                    cx.listener(move |this, event: &gpui_kit::MouseMoveEvent, _, cx| {
                         if this.effort_drag {
                             if event.pressed_button == Some(MouseButton::Left) {
                                 pick(this, event.position.x, cx);
@@ -1866,7 +1870,7 @@ impl Render for QuickComposer {
         let fill = if is_light() {
             floating_fill().opacity(0.8)
         } else {
-            gpui::rgba(0x1717178c).into()
+            gpui_kit::rgba(0x1717178c).into()
         };
         let mut root = div()
             .id("quick-composer")
@@ -1874,7 +1878,7 @@ impl Render for QuickComposer {
             .w_full()
             .text_color(content(1.))
             .font_family(crate::fonts::UI)
-            .capture_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
+            .capture_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, window, cx| {
                 let key = event.keystroke.key.as_str();
                 let m = &event.keystroke.modifiers;
                 if key == "escape" {
@@ -1904,7 +1908,7 @@ impl Render for QuickComposer {
                 }
             }))
             .on_drag_move::<ExternalPaths>(cx.listener(
-                |this, event: &gpui::DragMoveEvent<ExternalPaths>, _, cx| {
+                |this, event: &gpui_kit::DragMoveEvent<ExternalPaths>, _, cx| {
                     let over = event.bounds.contains(&event.event.position);
                     if this.dragging != over {
                         this.dragging = over;
@@ -2137,7 +2141,7 @@ impl Render for QuickComposer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
     fn open(cx: &mut TestAppContext) -> WindowHandle<QuickComposer> {
         cx.update(|cx| cx.set_global(crate::settings::Preferences::default()));
@@ -2158,7 +2162,7 @@ mod tests {
         window
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn every_picker_opens_below_the_toolbar_and_escape_closes_it(cx: &mut TestAppContext) {
         let window = open(cx);
         for picker in [
@@ -2186,7 +2190,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_leading_slash_lists_modes_and_picking_one_keeps_it_in_the_prompt(cx: &mut TestAppContext) {
         let window = open(cx);
         window
@@ -2208,7 +2212,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn launch_carries_the_workspace_choice_and_clears_the_draft(cx: &mut TestAppContext) {
         let window = open(cx);
         let launched = std::rc::Rc::new(std::cell::RefCell::new(None));

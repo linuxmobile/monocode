@@ -10,7 +10,9 @@ use crate::{
     theme::*,
 };
 use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, TimeZone};
-use gpui::{AnyElement, Context, Entity, Role, Subscription, Task, Window, div, prelude::*, px};
+use gpui_kit::{
+    AnyElement, Context, Entity, Role, Subscription, Task, Window, div, prelude::*, px,
+};
 use serde_json::{Value, json};
 use std::{
     collections::HashSet,
@@ -212,7 +214,7 @@ struct CustomMute {
     date: NaiveDate,
     focused_date: NaiveDate,
     focus_pending: bool,
-    focus: gpui::FocusHandle,
+    focus: gpui_kit::FocusHandle,
     anchor: AnchorSlot,
     month: NaiveDate,
     error: Option<String>,
@@ -693,15 +695,15 @@ impl SettingsView {
                         .child(*label)
                         .child(
                             div()
-                                .id(gpui::SharedString::from(format!(
+                                .id(gpui_kit::SharedString::from(format!(
                                     "notification-category-{id}-{cat}"
                                 )))
                                 .role(Role::Switch)
                                 .aria_label(format!("{label} for {}", project.name))
                                 .aria_toggled(if enabled {
-                                    gpui::Toggled::True
+                                    gpui_kit::Toggled::True
                                 } else {
-                                    gpui::Toggled::False
+                                    gpui_kit::Toggled::False
                                 })
                                 .cursor_pointer()
                                 .w(px(36.))
@@ -720,7 +722,7 @@ impl SettingsView {
                                         .left(px(if enabled { 18. } else { 2. }))
                                         .size(px(16.))
                                         .rounded_full()
-                                        .bg(gpui::rgb(0xffffff)),
+                                        .bg(gpui_kit::rgb(0xffffff)),
                                 )
                                 .on_click(cx.listener(move |this, _, _, cx| {
                                     this.update(cx, |p| {
@@ -777,7 +779,7 @@ impl SettingsView {
                             })
                             .child(
                                 div()
-                                    .id(gpui::SharedString::from(format!(
+                                    .id(gpui_kit::SharedString::from(format!(
                                         "expand-notification-{id}"
                                     )))
                                     .role(Role::Button)
@@ -800,7 +802,7 @@ impl SettingsView {
                                                 div()
                                                     .truncate()
                                                     .text_size(px(13.))
-                                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                                                     .child(project.name.clone()),
                                             )
                                             .child(
@@ -926,7 +928,7 @@ impl SettingsView {
                                     .role(Role::Alert)
                                     .mt_3()
                                     .text_size(px(12.))
-                                    .text_color(gpui::rgb(0xff6467))
+                                    .text_color(gpui_kit::rgb(0xff6467))
                                     .child(custom.error.clone().unwrap_or_default()),
                             )
                         })
@@ -1148,14 +1150,14 @@ impl SettingsView {
                     .track_focus(&custom.focus)
                     .tab_index(0)
                     .on_mouse_down(
-                        gpui::MouseButton::Left,
+                        gpui_kit::MouseButton::Left,
                         cx.listener(|this, _, window, cx| {
                             if let Some(custom) = &this.notification_state.custom {
                                 window.focus(&custom.focus, cx);
                             }
                         }),
                     )
-                    .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                    .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                         let Some(custom) = &mut this.notification_state.custom else {
                             return;
                         };

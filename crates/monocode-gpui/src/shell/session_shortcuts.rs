@@ -47,7 +47,7 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{KeyUpEvent, Keystroke, TestAppContext};
+    use gpui_kit::{KeyUpEvent, Keystroke, TestAppContext};
 
     fn shortcut() -> String {
         format!("{}-shift-a", "ctrl")
@@ -62,7 +62,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn archive_shortcut_preserves_history_and_ignores_a_held_key(cx: &mut TestAppContext) {
         setup(cx);
         let (window, first, other) = super::super::tests::window(cx);
@@ -100,8 +100,8 @@ mod tests {
             .unwrap();
         cx.update_window(window.into(), |_, window, cx| {
             window.dispatch_event(
-                gpui::PlatformInput::KeyUp(KeyUpEvent {
-                    keystroke: Keystroke::parse(&shortcut()).unwrap(),
+                gpui_kit::PlatformInput::KeyUp(KeyUpEvent {
+                    keystroke: Keystroke::parse(Box::leak(shortcut().into_boxed_str())).unwrap(),
                 }),
                 cx,
             );
@@ -116,7 +116,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn archive_shortcut_respects_disabled_and_remapped_bindings(cx: &mut TestAppContext) {
         setup(cx);
         let (window, first, active) = super::super::tests::window(cx);
@@ -161,7 +161,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn archive_shortcut_does_not_archive_behind_a_picker_or_composer_menu(cx: &mut TestAppContext) {
         setup(cx);
         let (window, _, active) = super::super::tests::window(cx);

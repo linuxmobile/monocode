@@ -1,7 +1,7 @@
 //! Compact semantic tool captions with clickable file targets.
 use super::{TranscriptView, tasks};
 use crate::theme::*;
-use gpui::{AnyElement, Context, Div, Role, div, prelude::*, px, rgb};
+use gpui_kit::{AnyElement, Context, Div, Role, div, prelude::*, px, rgb};
 use monocode_core::tool::{CommandStep, ToolCall, ToolState};
 
 /// Shell plumbing that says nothing about what a chained command was for.
@@ -62,7 +62,7 @@ impl TranscriptView {
         tool: ToolCall,
         start: usize,
         scope: Option<&str>,
-        width: Option<gpui::Pixels>,
+        width: Option<gpui_kit::Pixels>,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         self.tool_line(tool, start, scope, width, false, cx)
@@ -73,7 +73,7 @@ impl TranscriptView {
         tool: ToolCall,
         start: usize,
         scope: Option<&str>,
-        width: Option<gpui::Pixels>,
+        width: Option<gpui_kit::Pixels>,
         tiled: bool,
         cx: &mut Context<Self>,
     ) -> AnyElement {
@@ -86,7 +86,7 @@ impl TranscriptView {
             let failed = tool.state == ToolState::Failed;
             let label = tool.summary().0;
             return div()
-                .id(gpui::SharedString::from(format!("tool:{identity}")))
+                .id(gpui_kit::SharedString::from(format!("tool:{identity}")))
                 .debug_selector(move || format!("tool-{start}"))
                 .role(Role::Group)
                 .aria_label(label.clone())
@@ -110,7 +110,7 @@ impl TranscriptView {
                         .items_center()
                         .justify_center()
                         .child(crate::session_mark::spinner(
-                            gpui::SharedString::from(format!("compaction-loader:{identity}")),
+                            gpui_kit::SharedString::from(format!("compaction-loader:{identity}")),
                             crate::pulse::Rate::Half,
                         ))
                         .into_any_element()
@@ -231,7 +231,7 @@ impl TranscriptView {
         };
         let error_detail = tool.output.clone();
         let summary = div()
-            .id(gpui::SharedString::from(format!("tool:{identity}")))
+            .id(gpui_kit::SharedString::from(format!("tool:{identity}")))
             .debug_selector(move || format!("tool-{start}"))
             .role(Role::Group)
             .aria_label(format!("{state_label} tool call: {caption}"))
@@ -262,7 +262,9 @@ impl TranscriptView {
             .child(
                 div().min_w_0().flex_1().flex().child(
                     div()
-                        .id(gpui::SharedString::from(format!("tool-target:{identity}")))
+                        .id(gpui_kit::SharedString::from(format!(
+                            "tool-target:{identity}"
+                        )))
                         .debug_selector(move || format!("tool-target-{start}"))
                         .min_w_0()
                         .flex()
@@ -295,7 +297,7 @@ impl TranscriptView {
                             .when(hidden > 0, |d| {
                                 d.child(
                                     search_pill()
-                                        .id(gpui::SharedString::from(format!(
+                                        .id(gpui_kit::SharedString::from(format!(
                                             "tool-search-more:{identity}"
                                         )))
                                         .debug_selector(move || format!("tool-search-more-{start}"))
@@ -360,7 +362,7 @@ impl TranscriptView {
                                 .children(chips.into_iter().take(3).enumerate().map(
                                     |(index, (action, label, path))| {
                                         search_pill()
-                                            .id(gpui::SharedString::from(format!(
+                                            .id(gpui_kit::SharedString::from(format!(
                                                 "tool-step-chip:{identity}:{index}"
                                             )))
                                             .debug_selector(move || {
@@ -407,7 +409,7 @@ impl TranscriptView {
                                 .when(hidden > 0, |d| {
                                     d.child(
                                         search_pill()
-                                            .id(gpui::SharedString::from(format!(
+                                            .id(gpui_kit::SharedString::from(format!(
                                                 "tool-step-more:{identity}"
                                             )))
                                             .debug_selector(move || {
@@ -490,7 +492,7 @@ impl TranscriptView {
                         .children(steps.into_iter().enumerate().map(
                             |(index, (op, command, path))| {
                                 div()
-                                    .id(gpui::SharedString::from(format!(
+                                    .id(gpui_kit::SharedString::from(format!(
                                         "tool-step:{identity}:{index}"
                                     )))
                                     .flex()
@@ -551,10 +553,10 @@ impl TranscriptView {
 mod tests {
     use super::*;
     use crate::transcript::Body;
-    use gpui::{TestAppContext, point};
+    use gpui_kit::{TestAppContext, point};
     use monocode_core::transcript::Row;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn search_pills_and_overflow_count_share_a_single_compact_row(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let window = cx.update(|cx| {
@@ -575,9 +577,9 @@ mod tests {
             view.phases.insert(1, true);
             view.rebuild(0, cx);
         }).unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         for width in [900., 320.] {
-            visual.simulate_resize(gpui::size(px(width), px(600.)));
+            visual.simulate_resize(gpui_kit::size(px(width), px(600.)));
             visual.run_until_parked();
             let row = visual.debug_bounds("tool-1").expect("search row");
             let first = visual
@@ -605,7 +607,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn chained_commands_show_step_chips_and_expand_into_steps(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let window = cx.update(|cx| {
@@ -630,9 +632,9 @@ mod tests {
             view.phases.insert(1, true);
             view.rebuild(0, cx);
         }).unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         for width in [900., 320.] {
-            visual.simulate_resize(gpui::size(px(width), px(600.)));
+            visual.simulate_resize(gpui_kit::size(px(width), px(600.)));
             visual.run_until_parked();
             let row = visual.debug_bounds("tool-1").expect("chain row");
             // `cd` is plumbing: git status, package.json, build-native.mjs, then +1.
@@ -657,7 +659,7 @@ mod tests {
         assert!(steps.size.height >= px(100.));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn grouped_tool_rows_stay_compact_when_clicked(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let window = cx.update(|cx| {
@@ -697,7 +699,7 @@ mod tests {
                 view.rebuild(0, cx);
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let caption = visual
             .debug_bounds("tool-1")
@@ -728,7 +730,7 @@ mod tests {
         assert!(visual.debug_bounds("tool-input-toggle-1").is_none());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn reasoning_and_tools_share_the_phase_rail_and_command_count(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let window = cx.update(|cx| {
@@ -804,14 +806,14 @@ mod tests {
                 );
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("thinking-4").is_none());
         assert!(visual.debug_bounds("thinking-6").is_some());
         assert!(visual.debug_bounds("tool-7").is_some());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn first_assistant_prose_replaces_all_streamed_initial_thoughts(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let view = cx.new(|_| TranscriptView::new());
@@ -851,7 +853,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_lone_tool_call_gets_its_own_group_header(cx: &mut TestAppContext) {
         let view = cx.new(|_| TranscriptView::new());
         let row = |role: &str, text: String| Row {

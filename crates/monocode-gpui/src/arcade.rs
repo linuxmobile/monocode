@@ -1,6 +1,6 @@
 //! React's Pac-man and Snake engines, painted with GPUI rather than a web view.
 use crate::{popover::AnchorSlot, theme::*};
-use gpui::{
+use gpui_kit::{
     App, Context, FocusHandle, Focusable, Render, Role, Window, canvas, div, fill, point,
     prelude::*, px, size,
 };
@@ -159,30 +159,32 @@ impl Render for Arcade {
             .when(playing, |d| d.h_full().bg(shell_fill()).occlude())
             .when(!playing, |d| d.h(px(192.)))
             .child(self.anchor.layout_probe())
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
-                if !this.playing
-                    || event.keystroke.modifiers.platform
-                    || event.keystroke.modifiers.control
-                    || event.keystroke.modifiers.alt
-                {
-                    return;
-                }
-                let heading = match event.keystroke.key.as_str() {
-                    "up" | "w" => (0, -1),
-                    "down" | "s" => (0, 1),
-                    "left" | "a" => (-1, 0),
-                    "right" | "d" => (1, 0),
-                    "escape" => {
-                        this.release(window, cx);
-                        cx.stop_propagation();
+            .on_key_down(
+                cx.listener(|this, event: &gpui_kit::KeyDownEvent, window, cx| {
+                    if !this.playing
+                        || event.keystroke.modifiers.platform
+                        || event.keystroke.modifiers.control
+                        || event.keystroke.modifiers.alt
+                    {
                         return;
                     }
-                    _ => return,
-                };
-                this.heading = heading;
-                cx.stop_propagation();
-                cx.notify();
-            }))
+                    let heading = match event.keystroke.key.as_str() {
+                        "up" | "w" => (0, -1),
+                        "down" | "s" => (0, 1),
+                        "left" | "a" => (-1, 0),
+                        "right" | "d" => (1, 0),
+                        "escape" => {
+                            this.release(window, cx);
+                            cx.stop_propagation();
+                            return;
+                        }
+                        _ => return,
+                    };
+                    this.heading = heading;
+                    cx.stop_propagation();
+                    cx.notify();
+                }),
+            )
             .child(
                 canvas(
                     |_, _, _| {},
@@ -201,7 +203,7 @@ impl Render for Arcade {
                                 let a = 0.06 * frame.fade * opacity(y as f32 * 7.);
                                 if a > 0.005 {
                                     window.paint_quad(fill(
-                                        gpui::Bounds::new(
+                                        gpui_kit::Bounds::new(
                                             bounds.origin
                                                 + point(px(x as f32 * 7.), px(y as f32 * 7.)),
                                             size(px(6.), px(6.)),
@@ -215,7 +217,7 @@ impl Render for Arcade {
                             let x = index % cols;
                             let y = index / cols;
                             window.paint_quad(fill(
-                                gpui::Bounds::new(
+                                gpui_kit::Bounds::new(
                                     bounds.origin + point(px(x as f32 * 7.), px(y as f32 * 7.)),
                                     size(px(6.), px(6.)),
                                 ),
@@ -230,7 +232,7 @@ impl Render for Arcade {
                             if sprite.kind == "pacman" {
                                 let angle = sprite.dy.atan2(sprite.dx);
                                 let mouth = sprite.mouth * std::f32::consts::PI;
-                                let mut path = gpui::PathBuilder::fill();
+                                let mut path = gpui_kit::PathBuilder::fill();
                                 let center = bounds.origin + point(px(x), px(y));
                                 path.move_to(center);
                                 for i in 0..=32 {
@@ -255,7 +257,7 @@ impl Render for Arcade {
                                     for (ix, pixel) in row.bytes().enumerate() {
                                         if pixel == b'#' && !sprite.eyes.unwrap_or(false) {
                                             window.paint_quad(fill(
-                                                gpui::Bounds::new(
+                                                gpui_kit::Bounds::new(
                                                     bounds.origin
                                                         + point(
                                                             px(x - side / 2. + ix as f32 * unit),
@@ -418,9 +420,9 @@ impl Render for Arcade {
 
 #[cfg(test)]
 mod tests {
-    use gpui::AppContext;
-    #[gpui::test]
-    fn original_engines_support_both_games(cx: &mut gpui::TestAppContext) {
+    use gpui_kit::AppContext;
+    #[gpui_kit::test]
+    fn original_engines_support_both_games(cx: &mut gpui_kit::TestAppContext) {
         let view = cx.new(super::Arcade::new);
         view.update(cx, |a, _| {
             for index in [0usize, 1usize] {

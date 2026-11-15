@@ -1,6 +1,6 @@
 //! FileTypeIcon.tsx's Material Icon Theme lookup, from the same
 //! react-material-icon-theme 1.2.0 tables (assets/material-icons.json).
-use gpui::{AnyElement, img, prelude::*, px};
+use gpui_kit::{AnyElement, img, prelude::*, px};
 use serde::Deserialize;
 use std::{collections::HashMap, sync::OnceLock};
 
@@ -51,8 +51,8 @@ pub(crate) fn svg(asset: &str) -> Option<&'static [u8]> {
 }
 /// Colored, so drawn as an image rather than a monochrome SVG mask.
 /// A file's type icon as a one-colour shape in `color`, for a tile.
-pub(crate) fn file_type_glyph(name: &str, side: f32, color: gpui::Hsla) -> AnyElement {
-    gpui::svg()
+pub(crate) fn file_type_glyph(name: &str, side: f32, color: gpui_kit::Hsla) -> AnyElement {
+    gpui_kit::svg()
         .path(format!("mi/{}.svg", file_icon_name(name)))
         .size(px(side))
         .flex_shrink_0()

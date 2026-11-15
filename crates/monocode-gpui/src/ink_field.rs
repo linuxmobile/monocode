@@ -3,7 +3,7 @@
 //! the ink into a spiral, and letting go bursts it outward as a shockwave.
 //! Painted on the charts' 3px Bayer grid so it reads as the same halftone.
 use crate::{session_mark::SPINNER_ROWS, visuals::dither};
-use gpui::{
+use gpui_kit::{
     Bounds, Context, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels,
     Point, Render, Window, canvas, div, point, prelude::*, px, rgb, size,
 };
@@ -498,8 +498,10 @@ impl Render for InkField {
 mod tests {
     use super::*;
 
-    #[gpui::test]
-    fn first_paint_starts_the_clock_and_a_quiet_field_releases_it(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn first_paint_starts_the_clock_and_a_quiet_field_releases_it(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         use std::time::Duration;
 
         cx.update(|cx| cx.set_reduce_motion(false));
@@ -532,14 +534,14 @@ mod tests {
         cx.simulate_mouse_down(
             point(px(100.), px(100.)),
             MouseButton::Left,
-            gpui::Modifiers::default(),
+            gpui_kit::Modifiers::default(),
         );
         cx.run_until_parked();
         cx.update(|_, cx| assert!(crate::pulse::running(cx)));
     }
 
-    #[gpui::test]
-    fn reduced_motion_never_starts_the_ink_clock(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn reduced_motion_never_starts_the_ink_clock(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (_, cx) = cx.add_window_view(|_, cx| InkField::new(cx));
         cx.run_until_parked();

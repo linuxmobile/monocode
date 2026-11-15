@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{AnyElement, Asset, Image, ImageFormat, Window, div, img, prelude::*, px};
+use gpui_kit::{AnyElement, Asset, Image, ImageFormat, Window, div, img, prelude::*, px};
 use std::sync::Arc;
 
 struct Avatar;
@@ -49,7 +49,7 @@ pub(crate) fn image(
         img(image)
             .size(px(side))
             .rounded_full()
-            .object_fit(gpui::ObjectFit::Cover)
+            .object_fit(gpui_kit::ObjectFit::Cover)
             .into_any_element()
     } else {
         div()

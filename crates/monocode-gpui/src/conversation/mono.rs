@@ -1,15 +1,15 @@
 use super::*;
-use gpui::{App, EntityInputHandler};
+use gpui_kit::{App, EntityInputHandler};
 use monocode_core::mono::{Message, Mono};
 use std::path::PathBuf;
 #[derive(Default)]
 pub(super) struct ChatState {
     pub(super) pending: Vec<Message>,
-    queue_scroll: gpui::ScrollHandle,
+    queue_scroll: gpui_kit::ScrollHandle,
     queue_ids: Vec<String>,
-    queue_list_focus: Option<gpui::FocusHandle>,
-    queue_window: Option<gpui::AnyWindowHandle>,
-    queue_focus: std::collections::HashMap<String, ([gpui::FocusHandle; 2], [Subscription; 2])>,
+    queue_list_focus: Option<gpui_kit::FocusHandle>,
+    queue_window: Option<gpui_kit::AnyWindowHandle>,
+    queue_focus: std::collections::HashMap<String, ([gpui_kit::FocusHandle; 2], [Subscription; 2])>,
     pub(super) emoji: bool,
     pub(super) delivered: std::collections::HashSet<String>,
     pub(super) sending: Option<String>,
@@ -32,12 +32,12 @@ impl EventEmitter<QueueChanged> for Conversation {}
 impl EventEmitter<Submitted> for Conversation {}
 impl Conversation {
     #[cfg(test)]
-    pub(crate) fn queue_test_focus(&self, id: &str, index: usize) -> gpui::FocusHandle {
+    pub(crate) fn queue_test_focus(&self, id: &str, index: usize) -> gpui_kit::FocusHandle {
         self.mono_ui.queue_focus[id].0[index].clone()
     }
 
     #[cfg(test)]
-    pub(crate) fn queue_test_list_focus(&self) -> gpui::FocusHandle {
+    pub(crate) fn queue_test_list_focus(&self) -> gpui_kit::FocusHandle {
         self.mono_ui.queue_list_focus.as_ref().unwrap().clone()
     }
 
@@ -593,7 +593,7 @@ impl Conversation {
                 };
                 window.focus(&focus, cx);
             }
-            self.mono_ui.queue_scroll = gpui::ScrollHandle::new();
+            self.mono_ui.queue_scroll = gpui_kit::ScrollHandle::new();
             self.mono_ui.queue_ids.clone_from(&failed_ids);
         }
         if self.mono_ui.queue_window != Some(window.window_handle()) {
@@ -609,22 +609,23 @@ impl Conversation {
                     cx.focus_handle().tab_stop(true),
                     cx.focus_handle().tab_stop(true),
                 ];
-                let subscribe =
-                    |handle: &gpui::FocusHandle, cx: &mut Context<Self>, window: &mut Window| {
-                        let id = id.clone();
-                        cx.on_focus(handle, window, move |this, _, cx| {
-                            if let Some(index) = this
-                                .mono_ui
-                                .pending
-                                .iter()
-                                .filter(|m| m.internal && m.error.is_some())
-                                .position(|m| m.id == id)
-                            {
-                                this.mono_ui.queue_scroll.scroll_to_top_of_item(index);
-                                cx.notify();
-                            }
-                        })
-                    };
+                let subscribe = |handle: &gpui_kit::FocusHandle,
+                                 cx: &mut Context<Self>,
+                                 window: &mut Window| {
+                    let id = id.clone();
+                    cx.on_focus(handle, window, move |this, _, cx| {
+                        if let Some(index) = this
+                            .mono_ui
+                            .pending
+                            .iter()
+                            .filter(|m| m.internal && m.error.is_some())
+                            .position(|m| m.id == id)
+                        {
+                            this.mono_ui.queue_scroll.scroll_to_top_of_item(index);
+                            cx.notify();
+                        }
+                    })
+                };
                 let subscriptions = [
                     subscribe(&handles[0], cx, window),
                     subscribe(&handles[1], cx, window),
@@ -641,7 +642,7 @@ impl Conversation {
         let body = if !self.summary.has_messages {
             let greeting = div().flex().flex_col().items_center().justify_center().px_6().py_12()
                 .child(crate::monos::avatar::avatar(&mono.mascot, mono.color, status, 56., false))
-                .child(div().mt(px(-8.)).h(px(32.)).px(px(14.)).flex().items_center().rounded_full().border_1().border_color(content(0.14)).bg(content(0.06)).text_size(px(13.)).font_weight(gpui::FontWeight::SEMIBOLD).child(name))
+                .child(div().mt(px(-8.)).h(px(32.)).px(px(14.)).flex().items_center().rounded_full().border_1().border_color(content(0.14)).bg(content(0.06)).text_size(px(13.)).font_weight(gpui_kit::FontWeight::SEMIBOLD).child(name))
                 .child(div().mt_3().max_w(px(384.)).text_center().text_size(px(13.)).line_height(px(21.)).text_color(content(0.5)).child(if mono.projects.is_empty(){"Add the projects I should work on in my settings, or just ask me something.".into()}else{format!("I can see every session, note and folder in {}. Ask what’s going on, or hand me work.",mono.projects.iter().map(|p|std::path::Path::new(p).file_name().unwrap_or_default().to_string_lossy()).collect::<Vec<_>>().join(", "))}));
             div()
                 .flex_1()
@@ -700,7 +701,7 @@ impl Conversation {
                             .track_focus(&list_focus)
                             .tab_index(0)
                             .track_scroll(&self.mono_ui.queue_scroll)
-                            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                            .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                                 let scroll = &this.mono_ui.queue_scroll;
                                 let delta = match event.keystroke.key.as_str() {
                                     "up" => px(40.),
@@ -710,7 +711,7 @@ impl Conversation {
                                     _ => return,
                                 };
                                 let y = (scroll.offset().y + delta).max(-scroll.max_offset().y).min(px(0.));
-                                scroll.set_offset(gpui::point(scroll.offset().x, y));
+                                scroll.set_offset(gpui_kit::point(scroll.offset().x, y));
                                 cx.stop_propagation();
                                 cx.notify();
                             }))
@@ -1406,12 +1407,12 @@ impl Conversation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use monocode_core::{store::Store, transcript::Transcript};
     use serde_json::json;
     use std::sync::Mutex;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn long_reports_preserve_card_and_follow_up_positions(cx: &mut TestAppContext) {
         for report in [
             "x".repeat(monocode_core::transcript::ROW_BYTES + 1),

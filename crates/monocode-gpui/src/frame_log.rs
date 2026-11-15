@@ -10,8 +10,37 @@
 //! - `main`: main-thread CPU over the second, the number to keep low.
 //! - `views`: entity views rendered vs. cached ones reused.
 //! - `by`: the views whose own `notify` caused frames, with frame counts.
-//! - after `|`: counts the app adds with `gpui::frame_stats::count`.
-use gpui::App;
+//! - after `|`: counts the app adds with `frame_stats::count`.
+use gpui_kit::App;
+
+/// GPUI Fast has no frame-stats hook, so the log reports zero draw counters
+/// until a Fast-native measurement replaces this shim.
+mod frame_stats {
+    use std::time::Duration;
+
+    #[derive(Default)]
+    pub struct FrameStats {
+        pub frames: u32,
+        pub layout_frames: u32,
+        pub paint_frames: u32,
+        pub refresh_frames: u32,
+        pub draw_time: Duration,
+        pub max_draw: Duration,
+        pub views_rendered: usize,
+        pub views_reused: usize,
+        pub origins: Vec<(String, u32)>,
+        pub counters: Vec<(String, u32)>,
+    }
+
+    pub fn enable() {}
+    pub fn take() -> FrameStats {
+        FrameStats::default()
+    }
+    #[allow(dead_code)]
+    pub fn add(_name: &str, _value: u32) {}
+    #[allow(dead_code)]
+    pub fn count(_name: &str) {}
+}
 use std::{
     io::Write,
     time::{Duration, Instant},
@@ -24,14 +53,14 @@ pub(crate) fn start(cx: &mut App) {
     let Some(path) = std::env::var_os("MONOCODE_FRAME_LOG") else {
         return;
     };
-    gpui::frame_stats::enable();
+    frame_stats::enable();
     cx.spawn(async move |cx| {
         // The task runs on the main thread, so this is the thread to measure.
         let mut cpu = MainThreadCpu::new();
         let mut last = Instant::now();
         loop {
             cx.background_executor().timer(PERIOD).await;
-            let stats = gpui::frame_stats::take();
+            let stats = frame_stats::take();
             let now = Instant::now();
             let main = cpu.percent_since_last(now.duration_since(last));
             last = now;
@@ -51,7 +80,7 @@ pub(crate) fn start(cx: &mut App) {
     .detach();
 }
 
-fn format_line(stats: &gpui::frame_stats::FrameStats, main: Option<f64>) -> String {
+fn format_line(stats: &frame_stats::FrameStats, main: Option<f64>) -> String {
     let ms = |d: Duration| d.as_secs_f64() * 1000.;
     let average = ms(stats.draw_time) / f64::from(stats.frames.max(1));
     let by = stats

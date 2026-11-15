@@ -1,6 +1,6 @@
 //! Provider patches use the same virtualized native review as local changes.
 use crate::diff_view::DiffFile;
-use gpui::SharedString;
+use gpui_kit::SharedString;
 use monocode_core::{
     diff::{Block, Line, LineKind},
     inbox::Diff,

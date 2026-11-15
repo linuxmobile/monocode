@@ -2,7 +2,7 @@
 //! share the parent provider session, turn queue, or main transcript rows.
 use super::*;
 use crate::transcript::burst::{self as fx, Bubble, Halo};
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, Corners, Hsla, Pixels, Point, Render, Window, point, rgb, size,
 };
 use monocode_core::{
@@ -1061,7 +1061,7 @@ fn header_button(
     label: &'static str,
     glyph: &'static str,
     side: f32,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -1149,7 +1149,7 @@ impl Btw {
         }
     }
 
-    fn header(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn header(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let tabs: Vec<AnyElement> = self
             .threads
             .iter()
@@ -1273,7 +1273,7 @@ impl Btw {
     }
 
     /// `.btw-error`: the red "Couldn't finish" card with its Retry.
-    fn error_card(&self, running: bool, cx: &mut Context<Self>) -> Option<gpui::Div> {
+    fn error_card(&self, running: bool, cx: &mut Context<Self>) -> Option<gpui_kit::Div> {
         let thread_error = self
             .active()
             .filter(|thread| thread.status == "error")
@@ -1312,7 +1312,7 @@ impl Btw {
                             .child(
                                 div()
                                     .text_size(px(10.))
-                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                                     .text_color(red(0xfecaca, 0.7))
                                     .child("COULDN’T FINISH"),
                             )
@@ -1340,7 +1340,7 @@ impl Btw {
                                 .gap_1()
                                 .rounded_md()
                                 .text_size(px(11.))
-                                .font_weight(gpui::FontWeight::MEDIUM)
+                                .font_weight(gpui_kit::FontWeight::MEDIUM)
                                 .text_color(red(0xfee2e2, 0.8))
                                 .hover(|s| s.bg(red(0xfecaca, 0.1)).text_color(red(0xfef2f2, 1.)))
                                 .when(running, |d| d.opacity(0.5))
@@ -1355,7 +1355,12 @@ impl Btw {
 
     /// The side composer: the session composer's box with only its model
     /// picker and send button (Composer `compact` and `hideTopBar`).
-    fn composer_box(&self, running: bool, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
+    fn composer_box(
+        &self,
+        running: bool,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Div {
         let can_submit =
             !self.loading && !running && !self.input.read(cx).content.trim().is_empty();
         let (provider, model) = self
@@ -1484,7 +1489,7 @@ impl Render for Btw {
             .active()
             .is_some_and(|thread| thread.status == "running");
         let (body, rise) = self.body_motion(now);
-        let body_in = |d: gpui::Div| d.relative().top(px(rise)).opacity(body);
+        let body_in = |d: gpui_kit::Div| d.relative().top(px(rise)).opacity(body);
         let overlay = self.overlay.get();
         // `top: clamp(2.5rem, 18%, 12rem)` under BtwSheet's max width.
         let sheet = overlay.map(|o| {
@@ -1557,9 +1562,9 @@ impl Render for Btw {
                                     );
                                     // `.btw-sheet-glass`: no bottom border.
                                     window.paint_quad(
-                                        gpui::fill(clip, gpui::transparent_black())
+                                        gpui_kit::fill(clip, gpui_kit::transparent_black())
                                             .corner_radii(corners)
-                                            .border_widths(gpui::Edges {
+                                            .border_widths(gpui_kit::Edges {
                                                 top: px(1.),
                                                 right: px(1.),
                                                 bottom: px(0.),
@@ -1612,7 +1617,7 @@ impl Render for Btw {
                         .left_0()
                         .right_0()
                         .bottom_0()
-                        .top(gpui::relative(0.18))
+                        .top(gpui_kit::relative(0.18))
                         .mx_auto()
                         .w_full()
                         .max_w(px(SHEET_WIDTH))
@@ -1656,7 +1661,7 @@ fn paint_outline(bounds: Bounds<Pixels>, opacity: f32, window: &mut Window) {
     let mut border = content(0.12);
     border.a *= opacity;
     window.paint_quad(
-        gpui::fill(bounds, fill)
+        gpui_kit::fill(bounds, fill)
             .corner_radii(corners)
             .border_widths(px(1.))
             .border_color(border),
@@ -1681,7 +1686,7 @@ fn paint_question_burst(
         // `color-mix(in srgb, accent 70%, white)`.
         let rgb = accent.to_rgb();
         let tint = |v: f32| v * 0.7 + 0.3;
-        let mixed = gpui::Rgba {
+        let mixed = gpui_kit::Rgba {
             r: tint(rgb.r),
             g: tint(rgb.g),
             b: tint(rgb.b),
@@ -1701,7 +1706,7 @@ fn paint_question_burst(
         spread: 4.,
     }
     .paint(&bubble, t, glow, fx::mix(glow, 0.45), window);
-    window.with_content_mask(Some(gpui::ContentMask { bounds: away }), |window| {
+    window.with_content_mask(Some(gpui_kit::ContentMask { bounds: away }), |window| {
         fx::paint_sweep(
             &bubble,
             fx::progress(t, 140., 900.),
@@ -1723,7 +1728,7 @@ fn paint_question_burst(
     let (x0, y0) = (f32::from(away.origin.x), f32::from(away.origin.y));
     let (w, h) = (f32::from(away.size.width), f32::from(away.size.height));
     let mut font = window.text_style().font();
-    font.weight = gpui::FontWeight::BOLD;
+    font.weight = gpui_kit::FontWeight::BOLD;
     for i in 0..MARKS {
         let glyph = i % 4 != 3;
         let x = (((i as f32 + next()) / MARKS as f32) * 100.).clamp(5., 95.) / 100. * w;
@@ -1762,7 +1767,7 @@ fn paint_question_burst(
             let line = window.text_system().shape_line(
                 "?".into(),
                 px(font_size),
-                &[gpui::TextRun {
+                &[gpui_kit::TextRun {
                     len: 1,
                     font: font.clone(),
                     color: fx::mix(color, opacity),
@@ -1776,7 +1781,7 @@ fn paint_question_burst(
             let _ = line.paint(
                 origin,
                 px(font_size),
-                gpui::TextAlign::Left,
+                gpui_kit::TextAlign::Left,
                 None,
                 window,
                 cx,
@@ -1787,7 +1792,7 @@ fn paint_question_burst(
             fx::paint_orb(
                 center,
                 diameter,
-                (fx::mix(gpui::white(), opacity), fx::mix(color, opacity)),
+                (fx::mix(gpui_kit::white(), opacity), fx::mix(color, opacity)),
                 window,
             );
         }

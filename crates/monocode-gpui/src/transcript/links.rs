@@ -1,7 +1,7 @@
 //! AgentMarkdown's file-link actions, with browser actions for web links.
 use super::*;
 use crate::popover::{Menu, MenuAction, MenuEvent, MenuItem, menu_popover};
-use gpui::{AnyElement, Entity, Point, Subscription};
+use gpui_kit::{AnyElement, Entity, Point, Subscription};
 use monocode_core::files;
 use std::path::Path;
 

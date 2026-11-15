@@ -3,7 +3,7 @@
 //! session keeps its last tree, so an edit reparses and re-highlights only the
 //! lines it touched. Languages without a grammar here use the QuickJS path.
 use crate::editor_analysis::{Analysis, Change, Diagnostic, Edit, Fold, Token};
-use gpui::SharedString;
+use gpui_kit::SharedString;
 use std::{
     collections::HashMap,
     ops::Range,

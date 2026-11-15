@@ -1,6 +1,6 @@
 //! Session visuals are a bounded native component tree, with no browser surface.
 use crate::theme::{accent_color, content};
-use gpui::{
+use gpui_kit::{
     AnyElement, Bounds, Context, Div, EventEmitter, FontWeight, Hsla, IntoElement, MouseButton,
     PathBuilder, Pixels, Point, Render, Role, SharedString, Stateful, Window, canvas, div, fill,
     point, prelude::*, px, relative, size,
@@ -51,10 +51,10 @@ struct SliderDrag {
     step: f64,
 }
 struct InputSlot {
-    input: gpui::Entity<crate::input::Input>,
+    input: gpui_kit::Entity<crate::input::Input>,
     handler: String,
     source_value: String,
-    _subscription: gpui::Subscription,
+    _subscription: gpui_kit::Subscription,
 }
 struct SceneCache {
     revision: u64,
@@ -66,7 +66,7 @@ struct SceneCache {
 fn color(token: &ThemeColor) -> Hsla {
     // Semantic hues need darker variants when the interface uses dark ink.
     let light_surface = content(1.).l < 0.5;
-    let hue = |dark, light| gpui::rgb(if light_surface { light } else { dark }).into();
+    let hue = |dark, light| gpui_kit::rgb(if light_surface { light } else { dark }).into();
     // Series 1 is the user's accent. A later series of the same hue would be
     // indistinguishable, so it takes the first spare hue that differs.
     let series = |dark, light| {
@@ -132,8 +132,8 @@ fn button(id: impl Into<SharedString>) -> Stateful<Div> {
 }
 fn tab_button(id: impl Into<SharedString>, selected: bool) -> Stateful<Div> {
     let light = content(1.).l < 0.5;
-    let selected_fill: Hsla = gpui::rgb(if light { 0x000000 } else { 0xffffff }).into();
-    let selected_text: Hsla = gpui::rgb(if light { 0xffffff } else { 0x141414 }).into();
+    let selected_fill: Hsla = gpui_kit::rgb(if light { 0x000000 } else { 0xffffff }).into();
+    let selected_text: Hsla = gpui_kit::rgb(if light { 0xffffff } else { 0x141414 }).into();
     control(id)
         .text_color(if selected {
             selected_text
@@ -157,7 +157,7 @@ fn tab_button(id: impl Into<SharedString>, selected: bool) -> Stateful<Div> {
         })
 }
 
-fn activated(event: &gpui::KeyDownEvent) -> bool {
+fn activated(event: &gpui_kit::KeyDownEvent) -> bool {
     matches!(event.keystroke.key.as_str(), "enter" | "space" | " ")
 }
 
@@ -486,9 +486,9 @@ impl VisualView {
                     .role(Role::Switch)
                     .aria_label(label.clone())
                     .aria_toggled(if *value {
-                        gpui::Toggled::True
+                        gpui_kit::Toggled::True
                     } else {
-                        gpui::Toggled::False
+                        gpui_kit::Toggled::False
                     })
                     .focusable()
                     .tab_stop(true)
@@ -610,20 +610,22 @@ impl VisualView {
                             )
                             .on_mouse_down(
                                 MouseButton::Left,
-                                cx.listener(move |this, event: &gpui::MouseDownEvent, _, cx| {
-                                    this.slider_drag = Some(SliderDrag {
-                                        key: key.clone(),
-                                        handler: handler.clone(),
-                                        min,
-                                        max,
-                                        step,
-                                    });
-                                    this.slide(event.position.x, cx);
-                                    cx.stop_propagation();
-                                }),
+                                cx.listener(
+                                    move |this, event: &gpui_kit::MouseDownEvent, _, cx| {
+                                        this.slider_drag = Some(SliderDrag {
+                                            key: key.clone(),
+                                            handler: handler.clone(),
+                                            min,
+                                            max,
+                                            step,
+                                        });
+                                        this.slide(event.position.x, cx);
+                                        cx.stop_propagation();
+                                    },
+                                ),
                             )
                             .on_key_down(cx.listener(
-                                move |this, event: &gpui::KeyDownEvent, _, cx| {
+                                move |this, event: &gpui_kit::KeyDownEvent, _, cx| {
                                     let next = match event.keystroke.key.as_str() {
                                         "left" | "down" => current - step,
                                         "right" | "up" => current + step,
@@ -659,9 +661,9 @@ impl VisualView {
                             })
                             .aria_label(label.clone())
                             .aria_toggled(if i == *selected {
-                                gpui::Toggled::True
+                                gpui_kit::Toggled::True
                             } else {
-                                gpui::Toggled::False
+                                gpui_kit::Toggled::False
                             })
                             .child(label.clone())
                             .on_click(cx.listener(move |this, _, _, cx| {
@@ -908,7 +910,7 @@ impl VisualView {
                     .rounded_lg()
                     .border_1()
                     .border_color(content(0.08))
-                    .cursor(gpui::CursorStyle::OpenHand)
+                    .cursor(gpui_kit::CursorStyle::OpenHand)
                     .child(
                         canvas(
                             |_, _, _| {},
@@ -937,7 +939,7 @@ impl VisualView {
                                 let projection = cached.as_ref().unwrap().projection.clone();
                                 drop(cached);
                                 window.with_content_mask(
-                                    Some(gpui::ContentMask { bounds }),
+                                    Some(gpui_kit::ContentMask { bounds }),
                                     |window| {
                                         for surface in &projection.order {
                                             match surface {
@@ -977,13 +979,13 @@ impl VisualView {
                     )
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(move |this, event: &gpui::MouseDownEvent, _, cx| {
+                        cx.listener(move |this, event: &gpui_kit::MouseDownEvent, _, cx| {
                             this.scene_drag = Some((key.clone(), event.position));
                             cx.stop_propagation();
                         }),
                     )
-                    .on_scroll_wheel(cx.listener(
-                        move |this, event: &gpui::ScrollWheelEvent, _, cx| {
+                    .on_scroll(
+                        cx.listener(move |this, event: &gpui_kit::ScrollEvent, _, cx| {
                             // Modifier zoom leaves ordinary transcript scrolling available.
                             if event.modifiers.control || event.modifiers.platform {
                                 let orbit = this.orbits.entry(wheel_key.clone()).or_default();
@@ -993,23 +995,25 @@ impl VisualView {
                                 cx.notify();
                                 cx.stop_propagation();
                             }
+                        }),
+                    )
+                    .on_key_down(cx.listener(
+                        move |this, event: &gpui_kit::KeyDownEvent, _, cx| {
+                            let orbit = this.orbits.entry(keyboard_key.clone()).or_default();
+                            match event.keystroke.key.as_str() {
+                                "left" => orbit.yaw -= 0.12,
+                                "right" => orbit.yaw += 0.12,
+                                "up" => orbit.pitch = (orbit.pitch - 0.12).max(-1.45),
+                                "down" => orbit.pitch = (orbit.pitch + 0.12).min(1.45),
+                                "+" | "=" => orbit.zoom = (orbit.zoom / 1.2).max(0.15),
+                                "-" => orbit.zoom = (orbit.zoom * 1.2).min(8.),
+                                "0" => *orbit = scene::Orbit::default(),
+                                _ => return,
+                            }
+                            cx.notify();
+                            cx.stop_propagation();
                         },
-                    ))
-                    .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
-                        let orbit = this.orbits.entry(keyboard_key.clone()).or_default();
-                        match event.keystroke.key.as_str() {
-                            "left" => orbit.yaw -= 0.12,
-                            "right" => orbit.yaw += 0.12,
-                            "up" => orbit.pitch = (orbit.pitch - 0.12).max(-1.45),
-                            "down" => orbit.pitch = (orbit.pitch + 0.12).min(1.45),
-                            "+" | "=" => orbit.zoom = (orbit.zoom / 1.2).max(0.15),
-                            "-" => orbit.zoom = (orbit.zoom * 1.2).min(8.),
-                            "0" => *orbit = scene::Orbit::default(),
-                            _ => return,
-                        }
-                        cx.notify();
-                        cx.stop_propagation();
-                    })),
+                    )),
             )
             .child(
                 div()
@@ -1126,26 +1130,28 @@ impl Render for VisualView {
                     .text_color(content(0.5))
                     .child(caption.clone())
             }))
-            .on_mouse_move(cx.listener(|this, event: &gpui::MouseMoveEvent, _, cx| {
-                if !event.dragging() {
-                    this.slider_drag = None;
-                    this.scene_drag = None;
-                    return;
-                }
-                if this.slider_drag.is_some() {
-                    this.slide(event.position.x, cx);
-                    cx.stop_propagation();
-                }
-                if let Some((key, last)) = &mut this.scene_drag {
-                    let delta = event.position - *last;
-                    *last = event.position;
-                    let orbit = this.orbits.entry(key.clone()).or_default();
-                    orbit.yaw += delta.x.as_f32() * 0.01;
-                    orbit.pitch = (orbit.pitch + delta.y.as_f32() * 0.01).clamp(-1.45, 1.45);
-                    cx.notify();
-                    cx.stop_propagation();
-                }
-            }))
+            .on_mouse_move(
+                cx.listener(|this, event: &gpui_kit::MouseMoveEvent, _, cx| {
+                    if !event.dragging() {
+                        this.slider_drag = None;
+                        this.scene_drag = None;
+                        return;
+                    }
+                    if this.slider_drag.is_some() {
+                        this.slide(event.position.x, cx);
+                        cx.stop_propagation();
+                    }
+                    if let Some((key, last)) = &mut this.scene_drag {
+                        let delta = event.position - *last;
+                        *last = event.position;
+                        let orbit = this.orbits.entry(key.clone()).or_default();
+                        orbit.yaw += delta.x.as_f32() * 0.01;
+                        orbit.pitch = (orbit.pitch + delta.y.as_f32() * 0.01).clamp(-1.45, 1.45);
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                }),
+            )
             .on_mouse_up(
                 MouseButton::Left,
                 cx.listener(|this, _, _, _| {
@@ -1233,10 +1239,10 @@ fn paint_label(
     token: &ThemeColor,
     font_size: f32,
     window: &mut Window,
-    cx: &mut gpui::App,
+    cx: &mut gpui_kit::App,
 ) {
     let style = window.text_style();
-    let run = gpui::TextRun {
+    let run = gpui_kit::TextRun {
         len: text.len(),
         font: style.font(),
         color: color(token),
@@ -1253,7 +1259,7 @@ fn paint_label(
     let _ = line.paint(
         at - point(px(0.), line.ascent),
         line.ascent + line.descent,
-        gpui::TextAlign::Left,
+        gpui_kit::TextAlign::Left,
         None,
         window,
         cx,
@@ -1276,7 +1282,7 @@ fn drawing(width: f32, height: f32, shapes: Vec<Shape>) -> AnyElement {
                             px((bounds.size.width.as_f32() - width * scale) / 2.),
                             px(0.),
                         );
-                    window.with_content_mask(Some(gpui::ContentMask { bounds }), |window| {
+                    window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
                         for shape in &shapes {
                             match shape {
                                 Shape::Rect {

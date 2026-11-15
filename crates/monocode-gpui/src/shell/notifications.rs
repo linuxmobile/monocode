@@ -33,7 +33,7 @@ pub(super) struct State {
     linked_revisions: HashMap<String, i64>,
     linked_primed: bool,
     linked_started_at: u64,
-    linked_seen_writes: Option<gpui::Task<()>>,
+    linked_seen_writes: Option<gpui_kit::Task<()>>,
     pub(super) whats_new: Option<(Entity<WhatsNew>, Subscription, FocusHandle)>,
     permission: Permission,
     permission_probe: Option<Receiver<Permission>>,
@@ -43,7 +43,7 @@ pub(super) struct State {
     badge: usize,
     sounds_enabled: bool,
     sounds_enabled_at: u64,
-    poll: Option<gpui::Task<()>>,
+    poll: Option<gpui_kit::Task<()>>,
     /// How many notification mute and resume times had passed at the last poll.
     rule_times_passed: usize,
 }
@@ -992,7 +992,9 @@ impl Shell {
                 )
             });
         // Toasts remain actionable above dialogs, including Mono settings.
-        gpui::deferred(stack).with_priority(110).into_any_element()
+        gpui_kit::deferred(stack)
+            .with_priority(110)
+            .into_any_element()
     }
 
     pub(super) fn notice_modals(
@@ -1018,7 +1020,7 @@ impl Shell {
                     .justify_center()
                     .child(crate::modal::scrim("whats-new-scrim"))
                     .track_focus(&focus)
-                    .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                    .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                         if event.keystroke.key == "escape" {
                             this.notification_state.whats_new = None;
                             cx.notify();
@@ -1317,7 +1319,7 @@ impl Shell {
                 cx.spawn(async move |this, cx| {
                     let prompt = this.update_in(cx, |_, window, cx| {
                         window.prompt(
-                            gpui::PromptLevel::Warning,
+                            gpui_kit::PromptLevel::Warning,
                             "Delete this conversation permanently?",
                             Some("Its messages and saved settings will be removed."),
                             &["Delete", "Cancel"],
@@ -1351,9 +1353,9 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, VisualTestContext};
+    use gpui_kit::{TestAppContext, VisualTestContext};
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn error_cards_share_top_right_stack_and_dismiss_independently(cx: &mut TestAppContext) {
         let (window, _, _) = crate::shell::tests::window(cx);
         let visual = &mut VisualTestContext::from_window(window.into(), cx);
@@ -1393,7 +1395,7 @@ mod tests {
             px(12.)
         );
 
-        visual.simulate_resize(gpui::size(px(300.), px(800.)));
+        visual.simulate_resize(gpui_kit::size(px(300.), px(800.)));
         visual.run_until_parked();
         visual.refresh().unwrap();
         let file = visual.debug_bounds("file-action-error").unwrap();
@@ -1412,7 +1414,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn dismissing_installed_update_does_not_open_whats_new(cx: &mut TestAppContext) {
         let (window, _, _) = crate::shell::tests::window(cx);
         let visual = &mut VisualTestContext::from_window(window.into(), cx);
@@ -1442,12 +1444,12 @@ mod tests {
 #[cfg(test)]
 mod whats_new_tests {
     use super::*;
-    use gpui::{
-        ListOffset, Pixels, Point, ScrollDelta, ScrollWheelEvent, TestAppContext, TouchPhase,
+    use gpui_kit::{
+        ListOffset, Pixels, Point, ScrollDelta, ScrollEvent, TestAppContext, TouchPhase,
         VisualTestContext, point,
     };
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn wheel_over_whats_new_leaves_the_session_behind_it_in_place(cx: &mut TestAppContext) {
         let (window, _, session) = crate::shell::tests::window(cx);
         let visual = &mut VisualTestContext::from_window(window.into(), cx);
@@ -1489,11 +1491,12 @@ mod whats_new_tests {
             })
         };
         let wheel = |visual: &mut VisualTestContext, position: Point<Pixels>| {
-            visual.simulate_event(ScrollWheelEvent {
+            visual.simulate_event(ScrollEvent {
                 position,
                 delta: ScrollDelta::Pixels(point(px(0.), px(40.))),
                 modifiers: Default::default(),
                 touch_phase: TouchPhase::Moved,
+                source: gpui_kit::ScrollSource::Pointer,
             });
             visual.run_until_parked();
             visual.refresh().unwrap();

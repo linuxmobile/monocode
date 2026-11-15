@@ -14,7 +14,7 @@ use crate::{
     runtime::{Database, locked},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, ListAlignment,
     ListState, Pixels, Subscription, px,
 };
@@ -134,7 +134,7 @@ impl Inbox {
         if url.is_empty() {
             return;
         }
-        cx.write_to_clipboard(gpui::ClipboardItem::new_string(url.clone()));
+        cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(url.clone()));
         let press = self.copied_link.as_ref().map_or(0, |(_, press)| press + 1);
         self.copied_link = Some((url, press));
         cx.notify();

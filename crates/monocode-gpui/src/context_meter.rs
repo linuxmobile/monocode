@@ -1,12 +1,12 @@
 use crate::theme::*;
-use gpui::{Bounds, PathBuilder, canvas, div, fill, point, prelude::*, px, size};
+use gpui_kit::{Bounds, PathBuilder, canvas, div, fill, point, prelude::*, px, size};
 
 /// ContextMeter.tsx: 14px, 2px stroke, 25% track, clockwise from twelve.
 pub(crate) fn ring(ratio: f32) -> impl IntoElement {
     let color = if ratio >= 0.9 {
-        gpui::rgb(0xf87171).into()
+        gpui_kit::rgb(0xf87171).into()
     } else if ratio >= 0.75 {
-        gpui::rgb(0xfbbf24).into()
+        gpui_kit::rgb(0xfbbf24).into()
     } else {
         content(0.45)
     };
@@ -31,7 +31,7 @@ pub(crate) fn ring(ratio: f32) -> impl IntoElement {
                             path.line_to(p);
                         }
                     }
-                    let mut stroke: gpui::Hsla = color;
+                    let mut stroke: gpui_kit::Hsla = color;
                     stroke.a *= alpha;
                     if amount == 1. {
                         path.close();

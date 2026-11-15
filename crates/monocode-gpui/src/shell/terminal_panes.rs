@@ -65,7 +65,7 @@ impl Shell {
             ),
         };
         let answer = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             &message,
             None,
             &["Close", "Cancel"],
@@ -350,7 +350,7 @@ mod tests {
         shell::tests::window,
         workspace::Workspace,
     };
-    use gpui::{EntityId, Modifiers, TestAppContext, VisualTestContext, WindowHandle, point};
+    use gpui_kit::{EntityId, Modifiers, TestAppContext, VisualTestContext, WindowHandle, point};
 
     /// Opens the dock on session `b` and returns the visual context, the
     /// project and the dock's one shell.
@@ -426,7 +426,7 @@ mod tests {
         (window, visual, owner, pane)
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cmd_w_asks_before_closing_a_running_terminal_tab_or_split_pane(cx: &mut TestAppContext) {
         for split in [false, true] {
             let (window, mut visual, owner, pane) = title_terminal(cx, split);
@@ -468,7 +468,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cmd_w_closes_idle_terminal_tabs_and_split_panes_without_prompting(cx: &mut TestAppContext) {
         for split in [false, true] {
             let (window, mut visual, owner, pane) = title_terminal(cx, split);
@@ -485,7 +485,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn closing_title_tabs_asks_for_all_running_terminal_panes_before_changing_tabs(
         cx: &mut TestAppContext,
     ) {
@@ -534,7 +534,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn closing_a_chat_pane_keeps_its_running_terminal_without_prompting(cx: &mut TestAppContext) {
         let (window, mut visual, owner, pane) = title_terminal(cx, true);
         window
@@ -551,7 +551,7 @@ mod tests {
         assert!(!visual.has_pending_prompt());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_dock_tab_pulled_onto_a_pane_edge_splits_with_its_running_shell(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         let (mut visual, project, shell_id) = dock_with_one_terminal(window, b, cx);
@@ -598,7 +598,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_dock_tab_pulled_onto_the_title_strip_becomes_its_own_tab(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         let (mut visual, project, shell_id) = dock_with_one_terminal(window, b, cx);
@@ -624,7 +624,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn pulling_the_panels_last_terminal_out_leaves_a_fresh_one_behind(cx: &mut TestAppContext) {
         use crate::right_panel::RightTab;
         let (window, _, b) = window(cx);
@@ -660,7 +660,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cmd_shift_j_splits_a_title_bar_terminal_beside_the_chat(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         cx.update(|cx| {
@@ -694,7 +694,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn pane_sashes_snap_to_the_middle_and_even_out_on_double_click(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         cx.update(|cx| {
@@ -759,7 +759,7 @@ mod tests {
         assert!(boundary(&mut visual).0 < 0.45);
         // A double-click on the sash evens the panes back out.
         let sash = visual.debug_bounds("pane-sash-0").unwrap().center();
-        visual.simulate_event(gpui::MouseDownEvent {
+        visual.simulate_event(gpui_kit::MouseDownEvent {
             button: MouseButton::Left,
             position: sash,
             click_count: 2,
@@ -770,7 +770,7 @@ mod tests {
         assert_eq!(boundary(&mut visual), (0.5, false));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn split_header_buttons_split_a_terminal_pane_with_a_fresh_shell(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         cx.update(|cx| {
@@ -807,7 +807,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn title_bar_terminals_open_as_their_own_tabs(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         cx.update(|cx| {
@@ -881,7 +881,7 @@ mod tests {
         assert!(!p.terminal_in_panel);
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_dock_tab_released_elsewhere_stays_in_the_dock(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         let (mut visual, project, shell_id) = dock_with_one_terminal(window, b, cx);

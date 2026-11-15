@@ -54,7 +54,7 @@ impl Conversation {
         self.status = "Finish or cancel the current message edit to continue".into();
         cx.notify();
     }
-    fn can_prepare_edit(&self, cx: &gpui::App) -> bool {
+    fn can_prepare_edit(&self, cx: &gpui_kit::App) -> bool {
         self.history_ready()
             && !self.busy
             && !self.stopping
@@ -348,10 +348,10 @@ impl Conversation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use monocode_core::{store::Store, transcript::Transcript};
     use std::sync::Mutex;
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cancelled_recall_preserves_history_and_native_provider_binding(cx: &mut TestAppContext) {
         let mut store = Store::open(Path::new(":memory:")).unwrap();
         let mut session = store.create("codex", "/project").unwrap();
@@ -386,7 +386,7 @@ mod tests {
             );
         });
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn newer_composer_and_saved_draft_survive_interrupted_edit_recovery(cx: &mut TestAppContext) {
         let store = Store::open(Path::new(":memory:")).unwrap();
         let session = store.create("codex", "/project").unwrap();
@@ -412,7 +412,7 @@ mod tests {
             assert!(chat.follow_ups.state.paused);
         });
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn local_commands_and_cancel_never_remove_recalled_history(cx: &mut TestAppContext) {
         let mut store = Store::open(Path::new(":memory:")).unwrap();
         let mut session = store.create("codex", "/project").unwrap();
@@ -451,7 +451,7 @@ mod tests {
             );
         });
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn persisted_recovery_guard_preserves_a_new_composer_before_normal_send(
         cx: &mut TestAppContext,
     ) {

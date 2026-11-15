@@ -6,7 +6,7 @@ impl Monos {
         &mut self,
         id: &str,
         cx: &mut Context<Self>,
-    ) -> gpui::Task<Result<(), String>> {
+    ) -> gpui_kit::Task<Result<(), String>> {
         let root = self.root.clone();
         let id = id.to_owned();
         let target = id.clone();
@@ -115,7 +115,7 @@ impl Monos {
             .child(body)
             .into_any_element()
     }
-    pub(super) fn settings_page_header(title: &'static str) -> gpui::Div {
+    pub(super) fn settings_page_header(title: &'static str) -> gpui_kit::Div {
         div()
             .h(px(40.))
             .flex_shrink_0()
@@ -127,7 +127,7 @@ impl Monos {
             .border_b_1()
             .border_color(content(0.04))
             .text_size(px(13.))
-            .font_weight(gpui::FontWeight::MEDIUM)
+            .font_weight(gpui_kit::FontWeight::MEDIUM)
             .child(div().flex_1().min_w_0().child(title))
     }
     pub(super) fn bind_settings_blurs(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -220,7 +220,7 @@ impl Monos {
         cx: &mut Context<Self>,
     ) {
         let prompt = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             "Reset conversation?",
             Some("The chat will be cleared. Its soul, memory and habits stay."),
             &["Cancel", "Reset"],
@@ -251,7 +251,7 @@ impl Monos {
     }
     pub(super) fn delete_mono(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
         let prompt = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             "Delete mono?",
             Some("Its scheduled habits stop. Sessions and notes it created stay saved."),
             &["Cancel", "Delete"],

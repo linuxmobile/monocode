@@ -9,7 +9,7 @@ use crate::{
     project_tabs::{TabLabel, TabReveal, tab_button},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, FontFeatures,
     FontWeight, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, Pixels, Role, SharedString,
     Stateful, StyleRefinement, Subscription, WeakEntity, Window, div, prelude::*, px,
@@ -94,7 +94,7 @@ pub(crate) enum PanelEvent {
 }
 
 /// Tool headers share the open-file tab bar's height and bottom rule.
-pub(crate) fn pane_header(id: &'static str, label: &'static str) -> Stateful<gpui::Div> {
+pub(crate) fn pane_header(id: &'static str, label: &'static str) -> Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .debug_selector(move || id.into())
@@ -116,11 +116,11 @@ pub(crate) fn pane_header(id: &'static str, label: &'static str) -> Stateful<gpu
 
 /// GitChangesPanel's `IconAction`: a 20px square, ink at 55%.
 pub(crate) fn icon_action(
-    id: impl Into<gpui::ElementId>,
+    id: impl Into<gpui_kit::ElementId>,
     label: impl Into<SharedString>,
     path: &'static str,
     enabled: bool,
-) -> Stateful<gpui::Div> {
+) -> Stateful<gpui_kit::Div> {
     let id = id.into();
     let group: SharedString = format!("icon-action-{id:?}").into();
     div()
@@ -146,8 +146,12 @@ pub(crate) fn icon_action(
 }
 
 /// The `animate-spin` Loader.
-pub(crate) fn spinner(id: impl Into<gpui::ElementId>, path: &'static str, side: f32) -> AnyElement {
-    use gpui::{Transformation, percentage};
+pub(crate) fn spinner(
+    id: impl Into<gpui_kit::ElementId>,
+    path: &'static str,
+    side: f32,
+) -> AnyElement {
+    use gpui_kit::{Transformation, percentage};
     crate::pulse::looping(
         id,
         std::time::Duration::from_secs(1),
@@ -187,7 +191,7 @@ pub(crate) fn diff_stat_scale(available: f32, natural: f32) -> f32 {
 pub(crate) fn diff_stat(
     stats: Option<&monocode_core::scm::DiffStats>,
     width: f32,
-) -> Stateful<gpui::Div> {
+) -> Stateful<gpui_kit::Div> {
     let added = format_integer(stats.map_or(0, |s| s.additions.max(0)));
     let deleted = format_integer(stats.map_or(0, |s| s.deletions.max(0)));
     let scale = diff_stat_scale(width - 18., diff_stat_width(stats) - 18.);
@@ -213,12 +217,12 @@ pub(crate) fn diff_stat(
         .font_features(tabular())
         .child(
             div()
-                .text_color(gpui::rgb(DIFF_ADD))
+                .text_color(gpui_kit::rgb(DIFF_ADD))
                 .child(format!("+{added}")),
         )
         .child(
             div()
-                .text_color(gpui::rgb(DIFF_DEL))
+                .text_color(gpui_kit::rgb(DIFF_DEL))
                 .child(format!("-{deleted}")),
         )
 }

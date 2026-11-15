@@ -1,5 +1,5 @@
 use crate::{popover::AnchorSlot, theme::*};
-use gpui::{Role, SharedString, div, prelude::*, px};
+use gpui_kit::{Role, SharedString, div, prelude::*, px};
 use monocode_core::{
     agent::Settings,
     response::{Target, TransferKind},
@@ -49,7 +49,7 @@ pub(crate) fn button(
     label: impl Into<SharedString>,
     glyph: &'static str,
     active: bool,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id((action, turn))
         .role(Role::Button)
@@ -65,7 +65,9 @@ pub(crate) fn button(
         .text_color(content(if active { 0.7 } else { 0.4 }))
         .when(active, |d| d.bg(content(0.08)))
         .hover(|s| s.bg(content(0.08)).text_color(content(0.7)))
-        .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
+            cx.stop_propagation()
+        })
         .child(
             icon(glyph, 14.)
                 .text_color(content(if active { 0.7 } else { 0.4 }))

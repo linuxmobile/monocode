@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{Div, ElementId, Stateful};
+use gpui_kit::{Div, ElementId, Stateful};
 use serde_json::{Value, json};
 pub(crate) struct CardAction(pub Value);
 impl EventEmitter<CardAction> for crate::transcript::TranscriptView {}
@@ -72,12 +72,12 @@ fn choices(
                 .role(Role::Button)
                 .aria_label(label.clone())
                 .aria_toggled(if checked {
-                    gpui::Toggled::True
+                    gpui_kit::Toggled::True
                 } else {
-                    gpui::Toggled::False
+                    gpui_kit::Toggled::False
                 })
                 .flex()
-                .max_w(gpui::relative(0.8))
+                .max_w(gpui_kit::relative(0.8))
                 .min_w_0()
                 .items_center()
                 .gap_2p5()
@@ -155,7 +155,7 @@ pub(crate) fn launch(
         Some("stopped") => ("Stopped", "circle-x", content(0.45)),
         Some("unavailable") => ("Unavailable", "chatting", content(0.45)),
         Some(_) => ("Done", "check-circle", {
-            let mut c: gpui::Hsla = rgb(0x34d399).into();
+            let mut c: gpui_kit::Hsla = rgb(0x34d399).into();
             c.a = 0.9;
             c
         }),
@@ -165,13 +165,13 @@ pub(crate) fn launch(
     // each step repaints the transcript it sits in.
     let mark = if glyph == "loader-03" {
         crate::pulse::looping(
-            gpui::SharedString::from(format!("launch-loader-{id}")),
+            gpui_kit::SharedString::from(format!("launch-loader-{id}")),
             std::time::Duration::from_secs(1),
             crate::pulse::Rate::Half,
             move |turn| {
-                icon(glyph, 16.)
-                    .text_color(color)
-                    .with_transformation(gpui::Transformation::rotate(gpui::percentage(turn)))
+                icon(glyph, 16.).text_color(color).with_transformation(
+                    gpui_kit::Transformation::rotate(gpui_kit::percentage(turn)),
+                )
             },
         )
         .into_any_element()
@@ -299,7 +299,7 @@ pub(crate) fn render(
                 .items_center()
                 .gap_2()
                 .text_size(px(13.))
-                .font_weight(gpui::FontWeight::MEDIUM)
+                .font_weight(gpui_kit::FontWeight::MEDIUM)
                 .child(icon(glyph, 16.))
                 .child(title),
         )

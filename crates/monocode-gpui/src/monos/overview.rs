@@ -13,7 +13,7 @@ impl Monos {
 
 pub(crate) struct Overview {
     manager: WeakEntity<Monos>,
-    focus: gpui::FocusHandle,
+    focus: gpui_kit::FocusHandle,
     top_inset: f32,
     original_chrome: bool,
     stack: PanelStack,
@@ -72,7 +72,7 @@ fn layer(id: String, pose: Pose, interactive: bool, body: AnyElement) -> AnyElem
         .debug_selector(move || id.clone())
         .absolute()
         .top_0()
-        .left(gpui::relative(pose.x))
+        .left(gpui_kit::relative(pose.x))
         .w_full()
         .h_full()
         .opacity(pose.opacity)
@@ -87,7 +87,7 @@ fn layer(id: String, pose: Pose, interactive: bool, body: AnyElement) -> AnyElem
 }
 
 impl Focusable for Overview {
-    fn focus_handle(&self, _: &App) -> gpui::FocusHandle {
+    fn focus_handle(&self, _: &App) -> gpui_kit::FocusHandle {
         self.focus.clone()
     }
 }

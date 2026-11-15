@@ -1,5 +1,5 @@
 use super::*;
-use gpui::TestAppContext;
+use gpui_kit::TestAppContext;
 
 fn document(source: &str) -> VisualDocument {
     VisualDocument {
@@ -18,7 +18,7 @@ fn first_text(node: &Option<Node>) -> &str {
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn native_button_preserves_state_across_frames(cx: &mut TestAppContext) {
     let window = cx.update(|cx| {
         cx.open_window(Default::default(), |_, cx| {
@@ -39,7 +39,7 @@ fn native_button_preserves_state_across_frames(cx: &mut TestAppContext) {
         })
         .unwrap()
     });
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     visual.run_until_parked();
     assert!(visual.debug_bounds("visual-expand").is_none());
     for expected in ["1", "2"] {
@@ -56,7 +56,7 @@ fn native_button_preserves_state_across_frames(cx: &mut TestAppContext) {
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn native_tabs_render_and_rebind_selection_across_clicks(cx: &mut TestAppContext) {
     let window = cx.update(|cx| {
         cx.open_window(Default::default(), |_, cx| {
@@ -77,7 +77,7 @@ fn native_tabs_render_and_rebind_selection_across_clicks(cx: &mut TestAppContext
         })
         .unwrap()
     });
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     visual.run_until_parked();
     for (selected, selector) in [
         (1, "visual-tab-root/1-1"),
@@ -106,7 +106,7 @@ fn native_tabs_render_and_rebind_selection_across_clicks(cx: &mut TestAppContext
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn slider_drag_rebinds_callbacks_after_each_native_update(cx: &mut TestAppContext) {
     let window = cx.update(|cx| {
         cx.open_window(Default::default(), |_, cx| {
@@ -127,10 +127,10 @@ fn slider_drag_rebinds_callbacks_after_each_native_update(cx: &mut TestAppContex
         })
         .unwrap()
     });
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     visual.run_until_parked();
     let track = visual.debug_bounds("visual-slider-root/1").unwrap();
-    visual.simulate_event(gpui::MouseDownEvent {
+    visual.simulate_event(gpui_kit::MouseDownEvent {
         position: point(track.left() + track.size.width * 0.25, track.center().y),
         button: MouseButton::Left,
         modifiers: Default::default(),
@@ -138,7 +138,7 @@ fn slider_drag_rebinds_callbacks_after_each_native_update(cx: &mut TestAppContex
         first_mouse: false,
     });
     visual.run_until_parked();
-    visual.simulate_event(gpui::MouseMoveEvent {
+    visual.simulate_event(gpui_kit::MouseMoveEvent {
         position: point(track.left() + track.size.width * 0.75, track.center().y),
         pressed_button: Some(MouseButton::Left),
         modifiers: Default::default(),
@@ -152,7 +152,7 @@ fn slider_drag_rebinds_callbacks_after_each_native_update(cx: &mut TestAppContex
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn failed_handler_is_contained(cx: &mut TestAppContext) {
     let window = cx.update(|cx| {
         cx.open_window(Default::default(), |_, cx| {
@@ -172,7 +172,7 @@ fn failed_handler_is_contained(cx: &mut TestAppContext) {
         })
         .unwrap()
     });
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     visual.run_until_parked();
     let fail = visual.debug_bounds("visual-button-root/1").unwrap();
     visual.simulate_click(fail.center(), Default::default());
@@ -185,7 +185,7 @@ fn failed_handler_is_contained(cx: &mut TestAppContext) {
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn native_input_and_selection_keep_working_after_state_updates(cx: &mut TestAppContext) {
     cx.update(crate::input::bind);
     let window=cx.update(|cx|cx.open_window(Default::default(),|_,cx|cx.new(|cx|VisualView::new(document(r#"
@@ -196,7 +196,7 @@ fn native_input_and_selection_keep_working_after_state_updates(cx: &mut TestAppC
             visual.select('Mode',['First','Second'],state.selected,value=>{state.selected=value;})
         ]);
     "#),cx))).unwrap());
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     visual.run_until_parked();
     let field = visual.debug_bounds("visual-input-root/1").unwrap();
     visual.simulate_click(field.center(), Default::default());
@@ -236,7 +236,7 @@ fn native_input_and_selection_keep_working_after_state_updates(cx: &mut TestAppC
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn native_scene_orbits_and_reuses_static_projection(cx: &mut TestAppContext) {
     let window = cx.update(|cx| {
         cx.open_window(Default::default(), |_, cx| {
@@ -253,7 +253,7 @@ fn native_scene_orbits_and_reuses_static_projection(cx: &mut TestAppContext) {
         })
         .unwrap()
     });
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     visual.run_until_parked();
     let first = window
         .update(visual, |view, _, _| {
@@ -282,14 +282,14 @@ fn native_scene_orbits_and_reuses_static_projection(cx: &mut TestAppContext) {
         "Static repaints should reuse projected geometry"
     );
     let bounds = visual.debug_bounds("visual-scene-root").unwrap();
-    visual.simulate_event(gpui::MouseDownEvent {
+    visual.simulate_event(gpui_kit::MouseDownEvent {
         position: bounds.center(),
         button: MouseButton::Left,
         modifiers: Default::default(),
         click_count: 1,
         first_mouse: false,
     });
-    visual.simulate_event(gpui::MouseMoveEvent {
+    visual.simulate_event(gpui_kit::MouseMoveEvent {
         position: bounds.center() + point(px(60.), px(25.)),
         pressed_button: Some(MouseButton::Left),
         modifiers: Default::default(),
@@ -311,11 +311,11 @@ fn native_scene_orbits_and_reuses_static_projection(cx: &mut TestAppContext) {
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn tall_visual_uses_full_height_and_wheel_scrolls_the_conversation(cx: &mut TestAppContext) {
     struct Conversation {
-        view: gpui::Entity<VisualView>,
-        scroll: gpui::ScrollHandle,
+        view: gpui_kit::Entity<VisualView>,
+        scroll: gpui_kit::ScrollHandle,
     }
     impl Render for Conversation {
         fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
@@ -343,12 +343,12 @@ fn tall_visual_uses_full_height_and_wheel_scrolls_the_conversation(cx: &mut Test
             });
             cx.new(|_| Conversation {
                 view,
-                scroll: gpui::ScrollHandle::new(),
+                scroll: gpui_kit::ScrollHandle::new(),
             })
         })
         .unwrap()
     });
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     visual.simulate_window_resize(window.into(), size(px(800.), px(500.)));
     visual.run_until_parked();
     let content = visual.debug_bounds("visual-content").unwrap();
@@ -363,11 +363,12 @@ fn tall_visual_uses_full_height_and_wheel_scrolls_the_conversation(cx: &mut Test
         })
         .unwrap();
     let viewport = visual.debug_bounds("visual-test-conversation").unwrap();
-    visual.simulate_event(gpui::ScrollWheelEvent {
+    visual.simulate_event(gpui_kit::ScrollEvent {
         position: viewport.center(),
-        delta: gpui::ScrollDelta::Pixels(point(px(0.), px(-180.))),
+        delta: gpui_kit::ScrollDelta::Pixels(point(px(0.), px(-180.))),
         modifiers: Default::default(),
-        touch_phase: gpui::TouchPhase::Moved,
+        touch_phase: gpui_kit::TouchPhase::Moved,
+        source: gpui_kit::ScrollSource::Pointer,
     });
     visual.run_until_parked();
     window
@@ -384,7 +385,7 @@ fn tall_visual_uses_full_height_and_wheel_scrolls_the_conversation(cx: &mut Test
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn width_changes_emit_row_remeasure_events(cx: &mut TestAppContext) {
     let window = cx.update(|cx| {
         cx.open_window(Default::default(), |_, cx| {
@@ -400,7 +401,7 @@ fn width_changes_emit_row_remeasure_events(cx: &mut TestAppContext) {
             event_count.set(event_count.get() + 1)
         })
     });
-    let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+    let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
     visual.run_until_parked();
     count.set(0);
     visual.simulate_window_resize(window.into(), size(px(300.), px(700.)));

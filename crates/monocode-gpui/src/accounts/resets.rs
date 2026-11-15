@@ -209,9 +209,9 @@ mod tests {
         assert!(rows(None).is_empty());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn banked_claims_are_serialized_per_account_and_refresh_the_right_cache(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),
@@ -307,9 +307,9 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn banked_claim_errors_preserve_credits_and_invalidated_replies_stay_discarded(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),

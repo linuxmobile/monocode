@@ -6,7 +6,7 @@ use crate::{
     settings::{ACCENTS, PALETTES, swatch},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Context, EventEmitter, FocusHandle, Focusable, MouseButton, MouseDownEvent,
     MouseMoveEvent, Role, Window, div, prelude::*, px, rgb,
 };
@@ -127,14 +127,14 @@ impl ThemeDialog {
         cx.emit(Event::Changed(self.appearance.clone()));
         cx.notify();
     }
-    fn heading(text: &'static str) -> gpui::Div {
+    fn heading(text: &'static str) -> gpui_kit::Div {
         div()
             .text_size(px(13.))
             .line_height(px(19.5))
-            .font_weight(gpui::FontWeight::MEDIUM)
+            .font_weight(gpui_kit::FontWeight::MEDIUM)
             .child(text)
     }
-    fn section() -> gpui::Div {
+    fn section() -> gpui_kit::Div {
         div()
             .flex_shrink_0()
             .flex()
@@ -197,7 +197,7 @@ impl ThemeDialog {
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         // As Appearance's preset picker: the preset's
                                         // dark surface sets the window tint too.
-                                        let surface: gpui::Hsla =
+                                        let surface: gpui_kit::Hsla =
                                             rgb(crate::settings::palette(id, false).surface).into();
                                         this.change(cx, |theme| {
                                             theme.workspace_theme = id.into();
@@ -271,7 +271,7 @@ impl ThemeDialog {
             )
             .into_any_element()
     }
-    fn slide(&mut self, slider: Slider, x: gpui::Pixels, cx: &mut Context<Self>) {
+    fn slide(&mut self, slider: Slider, x: gpui_kit::Pixels, cx: &mut Context<Self>) {
         let ix = Slider::ALL.iter().position(|s| *s == slider).unwrap_or(0);
         let Some(bounds) = self.tracks[ix].get() else {
             return;
@@ -348,7 +348,7 @@ impl ThemeDialog {
                                     },
                                 ))
                                 .on_key_down(cx.listener(
-                                    move |this, event: &gpui::KeyDownEvent, _, cx| {
+                                    move |this, event: &gpui_kit::KeyDownEvent, _, cx| {
                                         let old = slider.get(&this.shown());
                                         let next = match event.keystroke.key.as_str() {
                                             "left" | "down" => old.saturating_sub(1),
@@ -396,7 +396,7 @@ impl Render for ThemeDialog {
             .flex_col()
             .text_color(content(1.))
             .child(self.bounds.layout_probe())
-            .on_key_down(cx.listener(|_, event: &gpui::KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(|_, event: &gpui_kit::KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     cx.emit(Event::Close);
                     window.prevent_default();
@@ -426,7 +426,7 @@ impl Render for ThemeDialog {
                                 div()
                                     .text_size(px(16.))
                                     .line_height(px(20.))
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                                     .child("Theme Colors"),
                             )
                             .child(

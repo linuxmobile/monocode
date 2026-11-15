@@ -1,6 +1,6 @@
 //! Pending approval/question cards and request-level announcement bookkeeping.
 use crate::theme::*;
-use gpui::{Context, EventEmitter, Role, div, prelude::*, px};
+use gpui_kit::{Context, EventEmitter, Role, div, prelude::*, px};
 use monocode_core::agent::Decision;
 use std::{
     collections::{HashMap, HashSet},
@@ -159,7 +159,7 @@ impl ApprovalNotices {
     }
 }
 impl Render for ApprovalNotices {
-    fn render(&mut self, _: &mut gpui::Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut gpui_kit::Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
@@ -206,7 +206,7 @@ impl Render for ApprovalNotices {
                                                     .flex_1()
                                                     .truncate()
                                                     .text_size(px(13.))
-                                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                                                     .child(session.title.clone()),
                                             )
                                             .child(
@@ -215,10 +215,10 @@ impl Render for ApprovalNotices {
                                                     .items_center()
                                                     .gap_1()
                                                     .text_size(px(11.))
-                                                    .text_color(gpui::rgb(0xffb900))
+                                                    .text_color(gpui_kit::rgb(0xffb900))
                                                     .child(
                                                         icon("circle-alert", 14.)
-                                                            .text_color(gpui::rgb(0xffb900)),
+                                                            .text_color(gpui_kit::rgb(0xffb900)),
                                                     )
                                                     .child(if input.kind == InputKind::Question {
                                                         "Question"

@@ -7,7 +7,7 @@ use crate::{
     input::{self, Input},
     runtime::{Database, locked},
 };
-use gpui::{
+use gpui_kit::{
     App, Context, Entity, EventEmitter, Focusable, Global, Subscription, Task, Window, prelude::*,
 };
 use monocode_core::{
@@ -146,7 +146,7 @@ struct Editor {
     id: Option<String>,
     input: Entity<Input>,
     surface: Surface,
-    previous_focus: Option<gpui::FocusHandle>,
+    previous_focus: Option<gpui_kit::FocusHandle>,
     _submit: Subscription,
     _changed: Subscription,
 }
@@ -183,10 +183,10 @@ pub(crate) struct Accounts {
     pub mask_emails: bool,
     pub show_remaining: bool,
     revealed: std::collections::HashSet<(Kind, String)>,
-    dialog_focus: gpui::FocusHandle,
+    dialog_focus: gpui_kit::FocusHandle,
     dialog_presented: bool,
-    previous_focus: Option<gpui::FocusHandle>,
-    picker_focus: gpui::FocusHandle,
+    previous_focus: Option<gpui_kit::FocusHandle>,
+    picker_focus: gpui_kit::FocusHandle,
     picker: Option<Picker>,
     _clock: Task<()>,
 }
@@ -265,7 +265,12 @@ impl Accounts {
         window.focus(&self.picker_focus, cx);
         cx.notify();
     }
-    fn picker_key(&mut self, event: &gpui::KeyDownEvent, _: &mut Window, cx: &mut Context<Self>) {
+    fn picker_key(
+        &mut self,
+        event: &gpui_kit::KeyDownEvent,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let Some(picker) = &mut self.picker else {
             return;
         };
@@ -784,7 +789,7 @@ impl Accounts {
         if self.working || account.is_default() {
             return;
         }
-        let answer=window.prompt(gpui::PromptLevel::Warning,&format!("Remove “{}”?",account.label),Some("Its stored credentials will be deleted and any running turns for this account will stop. Existing conversations stay in history, but cannot continue until you switch accounts."),&["Remove account","Cancel"],cx);
+        let answer=window.prompt(gpui_kit::PromptLevel::Warning,&format!("Remove “{}”?",account.label),Some("Its stored credentials will be deleted and any running turns for this account will stop. Existing conversations stay in history, but cannot continue until you switch accounts."),&["Remove account","Cancel"],cx);
         cx.spawn_in(window, async move |this, cx| {
             if !matches!(answer.await, Ok(0)) {
                 return;

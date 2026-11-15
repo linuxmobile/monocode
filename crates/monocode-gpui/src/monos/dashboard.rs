@@ -8,7 +8,7 @@ use crate::visuals::dither::{
     Align, CELL, Grid, Label, Motion, glow, hoverable, inked, pointer, readout,
 };
 use chrono::{DateTime, Datelike, Duration as Days, Local, NaiveDate};
-use gpui::{Bounds, Div, FontWeight, Hsla, canvas, point, size};
+use gpui_kit::{Bounds, Div, FontWeight, Hsla, canvas, point, size};
 use monocode_core::contributions::{self, Contribution, Kind};
 use monocode_core::time::{now_ms, relative};
 use std::collections::HashSet;

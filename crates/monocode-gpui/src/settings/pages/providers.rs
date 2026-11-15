@@ -5,7 +5,7 @@ use crate::{
     },
     theme::*,
 };
-use gpui::{AnyElement, Context, SharedString, div, prelude::*, px};
+use gpui_kit::{AnyElement, Context, SharedString, div, prelude::*, px};
 use monocode_core::provider::Kind;
 impl SettingsView {
     pub(super) fn providers_page(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {

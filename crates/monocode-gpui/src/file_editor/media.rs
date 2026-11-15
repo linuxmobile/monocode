@@ -2,9 +2,9 @@
 //! as HTML; playback is paused when its tab leaves the visible workspace.
 use super::*;
 use crate::popover::{Anchor, AnchorSlot, Menu, MenuAction, MenuEvent, menu_popover};
-use gpui::{
+use gpui_kit::{
     Bounds, ClipboardEntry, ClipboardItem, ExternalPaths, ImageSource, MouseButton, Point,
-    RenderImage, ScrollHandle, ScrollWheelEvent, canvas, fill, point, size,
+    RenderImage, ScrollEvent, ScrollHandle, canvas, fill, point, size,
 };
 
 pub(super) fn prepare_document(doc: Document) -> Result<Document, String> {
@@ -27,13 +27,13 @@ pub(super) struct MediaPreview {
     zoom: Option<f32>,
     bounds: AnchorSlot,
     scroll: ScrollHandle,
-    pointer: Option<Point<gpui::Pixels>>,
+    pointer: Option<Point<gpui_kit::Pixels>>,
     visible: bool,
     copied: bool,
     modified: Option<std::time::SystemTime>,
     duration: Option<f64>,
     failed: bool,
-    menu: Option<(Point<gpui::Pixels>, Entity<Menu>, Subscription)>,
+    menu: Option<(Point<gpui_kit::Pixels>, Entity<Menu>, Subscription)>,
     _poll: Option<Task<()>>,
     _source: Option<Arc<document::TemporaryMedia>>,
 }
@@ -168,7 +168,7 @@ impl MediaPreview {
     fn zoom_at(
         &mut self,
         value: Option<f32>,
-        anchor: Option<Point<gpui::Pixels>>,
+        anchor: Option<Point<gpui_kit::Pixels>>,
         cx: &mut Context<Self>,
     ) {
         let old_scale = self.scale();
@@ -224,7 +224,12 @@ impl MediaPreview {
         .detach();
         cx.notify();
     }
-    fn image_menu(&mut self, at: Point<gpui::Pixels>, window: &mut Window, cx: &mut Context<Self>) {
+    fn image_menu(
+        &mut self,
+        at: Point<gpui_kit::Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let menu = cx.new(|cx| {
             Menu::new(
                 "Image actions",
@@ -242,7 +247,7 @@ impl MediaPreview {
         });
         self.menu = Some((at, menu, sub));
     }
-    pub(super) fn zoom_key(&mut self, e: &gpui::KeyDownEvent, cx: &mut Context<Self>) {
+    pub(super) fn zoom_key(&mut self, e: &gpui_kit::KeyDownEvent, cx: &mut Context<Self>) {
         if self.image.is_none()
             || (!e.keystroke.modifiers.platform && !e.keystroke.modifiers.control)
         {
@@ -256,7 +261,7 @@ impl MediaPreview {
         }
         cx.stop_propagation();
     }
-    fn wheel(&mut self, e: &ScrollWheelEvent, _: &mut Window, cx: &mut Context<Self>) {
+    fn wheel(&mut self, e: &ScrollEvent, _: &mut Window, cx: &mut Context<Self>) {
         if e.modifiers.control || e.modifiers.platform {
             let delta = e.delta.pixel_delta(px(16.)).y.as_f32();
             self.zoom_at(
@@ -270,7 +275,7 @@ impl MediaPreview {
         }
     }
 }
-impl gpui::Render for MediaPreview {
+impl gpui_kit::Render for MediaPreview {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let is_image = self.image.is_some();
         let body = if self.image.is_some() {
@@ -295,15 +300,15 @@ impl gpui::Render for MediaPreview {
                 .min_w_0()
                 .overflow_scroll()
                 .track_scroll(&self.scroll)
-                .on_scroll_wheel(cx.listener(Self::wheel))
-                .on_pinch(cx.listener(|this, e: &gpui::PinchEvent, _, cx| {
+                .on_scroll(cx.listener(Self::wheel))
+                .on_pinch(cx.listener(|this, e: &gpui_kit::PinchEvent, _, cx| {
                     this.zoom_at(Some(this.scale() * (1. + e.delta)), Some(e.position), cx);
                     cx.stop_propagation();
                 }))
-                .on_mouse_move(cx.listener(|this, e: &gpui::MouseMoveEvent, _, _| {
+                .on_mouse_move(cx.listener(|this, e: &gpui_kit::MouseMoveEvent, _, _| {
                     this.pointer = Some(e.position)
                 }))
-                .on_key_down(cx.listener(|this, e: &gpui::KeyDownEvent, _, cx| {
+                .on_key_down(cx.listener(|this, e: &gpui_kit::KeyDownEvent, _, cx| {
                     if !e.keystroke.modifiers.platform && !e.keystroke.modifiers.control {
                         return;
                     }
@@ -337,7 +342,7 @@ impl gpui::Render for MediaPreview {
                                                     ),
                                                 size(px(tile), px(tile)),
                                             ),
-                                            gpui::rgba(0x8080801a),
+                                            gpui_kit::rgba(0x8080801a),
                                         ));
                                     }
                                 }
@@ -366,7 +371,7 @@ impl gpui::Render for MediaPreview {
                                 .object_fit(ObjectFit::Contain)
                                 .on_mouse_down(
                                     MouseButton::Left,
-                                    cx.listener(|this, e: &gpui::MouseDownEvent, _, cx| {
+                                    cx.listener(|this, e: &gpui_kit::MouseDownEvent, _, cx| {
                                         this.zoom_at(
                                             if this.zoom.is_none() { Some(1.) } else { None },
                                             Some(e.position),
@@ -376,7 +381,7 @@ impl gpui::Render for MediaPreview {
                                 )
                                 .on_mouse_down(
                                     MouseButton::Right,
-                                    cx.listener(|this, e: &gpui::MouseDownEvent, w, cx| {
+                                    cx.listener(|this, e: &gpui_kit::MouseDownEvent, w, cx| {
                                         this.image_menu(e.position, w, cx)
                                     }),
                                 ),
@@ -567,8 +572,8 @@ impl gpui::Render for MediaPreview {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, WindowBounds, WindowOptions};
-    #[gpui::test]
+    use gpui_kit::{TestAppContext, WindowBounds, WindowOptions};
+    #[gpui_kit::test]
     fn image_zoom_clamps_preserves_the_pointer_and_fits_after_panning(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(

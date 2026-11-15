@@ -2,7 +2,7 @@ use crate::{
     popover::{Anchor, AnchorSlot, Side, popover},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     App, Context, FocusHandle, FontWeight, KeyBinding, Role, Window, actions, div, prelude::*, px,
     rgb,
 };
@@ -48,8 +48,8 @@ pub(crate) struct UsageFooter {
     session: Option<i64>,
     show_accounts: bool,
     confirm_reset: Option<String>,
-    _accounts_observation: Option<gpui::Subscription>,
-    _account_events: Option<gpui::Subscription>,
+    _accounts_observation: Option<gpui_kit::Subscription>,
+    _account_events: Option<gpui_kit::Subscription>,
     cache: [CachedUsage; Kind::ALL.len()],
     anchor: AnchorSlot,
     trigger: FocusHandle,
@@ -60,7 +60,7 @@ pub(crate) struct UsageFooter {
     /// UsageFooter's `footer` variant: the classic layout's bordered strip.
     classic: bool,
     show_remaining: bool,
-    _clock: gpui::Task<()>,
+    _clock: gpui_kit::Task<()>,
 }
 impl UsageFooter {
     pub(crate) fn context(
@@ -295,7 +295,7 @@ impl UsageFooter {
                 }))
     }
     /// React's AccountSwitchRow, above the sign-in panel.
-    fn account_row(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn account_row(&self, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         let label = crate::accounts::get(cx)
             .and_then(|center| {
                 center
@@ -334,7 +334,7 @@ impl UsageFooter {
             .on_click(cx.listener(|this, _, window, cx| this.open_accounts(window, cx)))
             .into_any_element()
     }
-    fn details(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn details(&self, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         if self.show_accounts
             && let Some(center) = crate::accounts::get(cx)
         {
@@ -492,7 +492,7 @@ impl UsageFooter {
                             .rounded_lg()
                             .px(px(10.))
                             .py_2()
-                            .bg(gpui::rgba(0xfbbf241a))
+                            .bg(gpui_kit::rgba(0xfbbf241a))
                             .text_size(px(10.))
                             .line_height(px(16.))
                             .text_color(rgb(0xfcd34d))
@@ -581,7 +581,7 @@ impl UsageFooter {
             .into_any()
     }
     /// The active account under the title: "Default account Pro · email ›".
-    fn account_line(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn account_line(&self, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         let kind = self.kind;
         let id = self.key.profile.id.clone();
         let center = crate::accounts::get(cx);
@@ -618,7 +618,7 @@ impl UsageFooter {
             .hover(|s| s.bg(content(0.1)))
             .child(
                 div()
-                    .max_w(gpui::relative(0.6))
+                    .max_w(gpui_kit::relative(0.6))
                     .flex_shrink_0()
                     .truncate()
                     .child(label),
@@ -645,7 +645,7 @@ impl UsageFooter {
         }
         cx.notify();
     }
-    fn window_card(&self, w: &usage::Window, now: i64) -> gpui::Div {
+    fn window_card(&self, w: &usage::Window, now: i64) -> gpui_kit::Div {
         let used = w.used_percent.clamp(0., 100.);
         let shown = self.display_percent(used);
         let label = match w.minutes {
@@ -698,7 +698,7 @@ impl UsageFooter {
                     .child(
                         div()
                             .h_full()
-                            .w(gpui::relative(shown as f32 / 100.))
+                            .w(gpui_kit::relative(shown as f32 / 100.))
                             .rounded_full()
                             .bg(usage_color(used)),
                     ),
@@ -724,7 +724,7 @@ impl UsageFooter {
                     .child(div().truncate().child(w.reset_label(now))),
             )
     }
-    fn suggestion(&self, cx: &mut Context<Self>) -> Option<gpui::AnyElement> {
+    fn suggestion(&self, cx: &mut Context<Self>) -> Option<gpui_kit::AnyElement> {
         let center = crate::accounts::get(cx)?;
         let account = center
             .read(cx)
@@ -910,7 +910,7 @@ impl Render for UsageFooter {
                                 .child(
                                     div()
                                         .h_full()
-                                        .w(gpui::relative(percent as f32 / 100.))
+                                        .w(gpui_kit::relative(percent as f32 / 100.))
                                         .rounded_full()
                                         .bg(usage_color(percent)),
                                 ),
@@ -972,9 +972,9 @@ impl Render for UsageFooter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[gpui::test]
+    #[gpui_kit::test]
     fn details_open_with_keyboard_escape_restores_focus_and_provider_caches_stay_separate(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         cx.update(bind);
         let window = cx.update(|cx| {

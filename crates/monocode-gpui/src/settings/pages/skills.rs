@@ -6,7 +6,7 @@ use crate::{
     },
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, ClipboardItem, Context, Focusable, Role, SharedString, div, prelude::*, px,
 };
 impl SettingsView {
@@ -537,7 +537,7 @@ impl SettingsView {
             .flex()
             .when(!split, |d| d.flex_col())
             .child(
-                gpui::canvas(
+                gpui_kit::canvas(
                     move |bounds, window, _| {
                         let split = bounds.size.width >= px(768.);
                         let changed = surface
@@ -622,7 +622,7 @@ impl SettingsView {
                                     .flex_1()
                                     .text_size(px(16.))
                                     .line_height(px(24.))
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                                     .child(skill.name),
                             )
                             .child(
@@ -678,7 +678,7 @@ impl SettingsView {
                                 .id("skill-read-error")
                                 .role(Role::Alert)
                                 .text_size(px(12.))
-                                .text_color(gpui::rgb(0xf87171))
+                                .text_color(gpui_kit::rgb(0xf87171))
                                 .child(error.clone())
                                 .into_any_element()
                         } else if let Some(document) = document {

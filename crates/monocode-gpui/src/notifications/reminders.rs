@@ -4,7 +4,7 @@ use crate::{
     theme::*,
 };
 use chrono::{Local, TimeZone};
-use gpui::{Context, Entity, EventEmitter, Role, Subscription, Window, div, prelude::*, px};
+use gpui_kit::{Context, Entity, EventEmitter, Role, Subscription, Window, div, prelude::*, px};
 use monocode_core::session_groups::{reminder_at, reminder_presets};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -152,7 +152,7 @@ impl Render for View {
                                 div()
                                     .truncate()
                                     .text_size(px(13.))
-                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                                     .child(reminder.title.clone()),
                             )
                             .child(
@@ -260,12 +260,12 @@ impl Render for View {
                             .border_color(content(0.1))
                             .px_3()
                             .py(px(10.))
-                            .child(icon("clock", 14.).text_color(gpui::rgb(0xffb900)))
+                            .child(icon("clock", 14.).text_color(gpui_kit::rgb(0xffb900)))
                             .child(
                                 div()
                                     .flex_1()
                                     .text_size(px(12.))
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                                     .child("Due reminders"),
                             )
                             .child(

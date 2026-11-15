@@ -1,6 +1,6 @@
 //! Compact project tool tabs shared by the rounded and expanded layouts.
 use crate::{right_panel::RightTab, theme::*};
-use gpui::{App, MouseButton, Role, Stateful, Window, div, prelude::*, px};
+use gpui_kit::{App, MouseButton, Role, Stateful, Window, div, prelude::*, px};
 use std::time::Instant;
 
 const TAB_TEXT_SIZE: f32 = 12.;
@@ -78,7 +78,7 @@ pub(crate) fn tab_button(
     dot: bool,
     open: f32,
     window: &mut Window,
-) -> Stateful<gpui::Div> {
+) -> Stateful<gpui_kit::Div> {
     let label = label.into();
     let count_width = if label.count > 0 {
         (label_width(&label.count.to_string(), window) + 8.).max(16.) + 6.
@@ -171,10 +171,10 @@ pub(crate) fn tab_button(
                                         .px(px(4.))
                                         .rounded(px(4.))
                                         .bg(accent_color())
-                                        .text_color(gpui::white())
+                                        .text_color(gpui_kit::white())
                                         .text_size(px(10.))
                                         .line_height(px(16.))
-                                        .font_weight(gpui::FontWeight::MEDIUM)
+                                        .font_weight(gpui_kit::FontWeight::MEDIUM)
                                         .font_features(crate::right_panel::tabular())
                                         .text_center()
                                         .child(label.count.to_string()),
@@ -187,11 +187,11 @@ pub(crate) fn tab_button(
 
 fn label_width(label: &str, window: &mut Window) -> f32 {
     let mut font = window.text_style().font();
-    font.weight = gpui::FontWeight::NORMAL;
-    let run = gpui::TextRun {
+    font.weight = gpui_kit::FontWeight::NORMAL;
+    let run = gpui_kit::TextRun {
         len: label.len(),
         font,
-        color: gpui::Hsla::default(),
+        color: gpui_kit::Hsla::default(),
         background_color: None,
         underline: None,
         strikethrough: None,

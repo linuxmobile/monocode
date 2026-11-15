@@ -1,6 +1,6 @@
 use super::*;
 use crate::explorer::DraggedFile;
-use gpui::ExternalPaths;
+use gpui_kit::ExternalPaths;
 
 impl Conversation {
     /// Like the session drop region, accepts files over the transcript as well
@@ -9,7 +9,7 @@ impl Conversation {
         &mut self,
         id: &'static str,
         cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         if !cx.has_active_drag() {
             self.file_drag = false;
         }
@@ -19,12 +19,12 @@ impl Conversation {
             .relative()
             .child(self.completion.read(cx).container_probe())
             .on_drag_move::<ExternalPaths>(cx.listener(
-                |this, event: &gpui::DragMoveEvent<ExternalPaths>, _, cx| {
+                |this, event: &gpui_kit::DragMoveEvent<ExternalPaths>, _, cx| {
                     this.set_file_drag(event.bounds.contains(&event.event.position), cx);
                 },
             ))
             .on_drag_move::<DraggedFile>(cx.listener(
-                |this, event: &gpui::DragMoveEvent<DraggedFile>, _, cx| {
+                |this, event: &gpui_kit::DragMoveEvent<DraggedFile>, _, cx| {
                     this.set_file_drag(event.bounds.contains(&event.event.position), cx);
                 },
             ))
@@ -34,7 +34,7 @@ impl Conversation {
                 MouseButton::Left,
                 cx.listener(|this, _, _, cx| this.set_file_drag(false, cx)),
             )
-            .capture_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
+            .capture_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" && this.file_drag {
                     cx.stop_active_drag(window);
                     this.set_file_drag(false, cx);

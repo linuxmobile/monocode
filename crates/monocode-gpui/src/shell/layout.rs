@@ -10,7 +10,7 @@ use crate::{
     theme::*,
     workspace::TitleTab,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, CursorStyle, Entity, MouseButton, MouseDownEvent, Role, StyleRefinement,
     Window, div, prelude::*, px,
 };
@@ -22,7 +22,7 @@ const CARD_RADIUS: f32 = 10.;
 // final mask includes its background, border and children at the outer radius.
 // A mask inside the frame only covers its inset content rectangle.
 fn card_corner_mask(begin: bool) -> impl IntoElement {
-    gpui::canvas(
+    gpui_kit::canvas(
         |_, _, _| {},
         move |bounds, _, window, _| {
             let r = px(CARD_RADIUS)
@@ -41,30 +41,30 @@ fn card_corner_mask(begin: bool) -> impl IntoElement {
                 let vertices = [
                     (
                         bounds.origin,
-                        gpui::point(bounds.left() + r, bounds.top()),
-                        gpui::point(bounds.left(), bounds.top() + r),
+                        gpui_kit::point(bounds.left() + r, bounds.top()),
+                        gpui_kit::point(bounds.left(), bounds.top() + r),
                     ),
                     (
-                        gpui::point(bounds.right(), bounds.top()),
-                        gpui::point(bounds.right(), bounds.top() + r),
-                        gpui::point(bounds.right() - r, bounds.top()),
+                        gpui_kit::point(bounds.right(), bounds.top()),
+                        gpui_kit::point(bounds.right(), bounds.top() + r),
+                        gpui_kit::point(bounds.right() - r, bounds.top()),
                     ),
                     (
-                        gpui::point(bounds.right(), bounds.bottom()),
-                        gpui::point(bounds.right() - r, bounds.bottom()),
-                        gpui::point(bounds.right(), bounds.bottom() - r),
+                        gpui_kit::point(bounds.right(), bounds.bottom()),
+                        gpui_kit::point(bounds.right() - r, bounds.bottom()),
+                        gpui_kit::point(bounds.right(), bounds.bottom() - r),
                     ),
                     (
-                        gpui::point(bounds.left(), bounds.bottom()),
-                        gpui::point(bounds.left(), bounds.bottom() - r),
-                        gpui::point(bounds.left() + r, bounds.bottom()),
+                        gpui_kit::point(bounds.left(), bounds.bottom()),
+                        gpui_kit::point(bounds.left(), bounds.bottom() - r),
+                        gpui_kit::point(bounds.left() + r, bounds.bottom()),
                     ),
                 ];
                 for (corner, start, end) in vertices {
-                    let mut path = gpui::PathBuilder::fill();
+                    let mut path = gpui_kit::PathBuilder::fill();
                     path.move_to(corner);
                     path.line_to(start);
-                    path.arc_to(gpui::point(r, r), px(0.), false, false, end);
+                    path.arc_to(gpui_kit::point(r, r), px(0.), false, false, end);
                     path.close();
                     if let Ok(path) = path.build() {
                         window.paint_path(path, outside);
@@ -80,7 +80,7 @@ fn card_corner_mask(begin: bool) -> impl IntoElement {
 }
 
 /// The right panel toggle: chrome_button's 24px square.
-fn panel_button(enabled: bool, dot: bool) -> gpui::Stateful<gpui::Div> {
+fn panel_button(enabled: bool, dot: bool) -> gpui_kit::Stateful<gpui_kit::Div> {
     let id = "toggle-right-panel";
     div()
         .id(id)
@@ -123,7 +123,7 @@ fn panel_button(enabled: bool, dot: bool) -> gpui::Stateful<gpui::Div> {
 }
 
 impl Shell {
-    pub(super) fn classic_titlebar_spans_window(&self, cx: &gpui::App) -> bool {
+    pub(super) fn classic_titlebar_spans_window(&self, cx: &gpui_kit::App) -> bool {
         false
             && self.workspace.classic_layout
             && !self.workspace.project_rail_open
@@ -483,7 +483,7 @@ impl Shell {
         }
     }
     /// Classic: the corner's buttons, `pr-3` from the edge.
-    pub(super) fn corner_room(&self, cx: &gpui::App) -> f32 {
+    pub(super) fn corner_room(&self, cx: &gpui_kit::App) -> f32 {
         // Client-drawn window controls hold the corner's right end.
         let controls = self.window_controls;
         if self.workspace.classic_layout && !self.mono_active(cx) {
@@ -692,7 +692,7 @@ impl Shell {
         full: f32,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) -> gpui::Div {
+    ) -> gpui_kit::Div {
         if let Some(search) = self.app_search.as_ref().filter(|s| !s.panel) {
             return div()
                 .flex_1()
@@ -763,7 +763,7 @@ impl Shell {
             })
     }
     /// The usage chips with the terminal controls at the far end.
-    fn footer_row(&mut self, cx: &mut Context<Self>) -> gpui::Div {
+    fn footer_row(&mut self, cx: &mut Context<Self>) -> gpui_kit::Div {
         let height = if self.workspace.boxy_layout() {
             28.
         } else {
@@ -850,7 +850,7 @@ impl Shell {
         let width = 420f32.min(viewport.width.as_f32() - 24.);
         let height = (self.resources.read(cx).measured_height().unwrap_or(240.) + 2.)
             .min(viewport.height.as_f32() - 32.);
-        let anchor = Anchor::Point(gpui::point(
+        let anchor = Anchor::Point(gpui_kit::point(
             px((viewport.width.as_f32() - width) / 2.),
             px((viewport.height.as_f32() - height) / 2.),
         ));
@@ -881,7 +881,7 @@ impl Shell {
 mod tests {
     use super::*;
     use crate::{monos::Monos, shell::tests::window};
-    use gpui::{TestAppContext, WindowHandle};
+    use gpui_kit::{TestAppContext, WindowHandle};
     use std::time::{Duration, Instant};
 
     fn mixed_window(cx: &mut TestAppContext) -> (WindowHandle<Shell>, Entity<Monos>, String, i64) {
@@ -901,7 +901,7 @@ mod tests {
         (window, manager, id, session)
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn project_tabs_abbreviate_then_become_icons_without_losing_header_controls(
         cx: &mut TestAppContext,
     ) {
@@ -920,7 +920,7 @@ mod tests {
                 });
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         for boxy in [false, true] {
             let selectors = if boxy {
@@ -986,13 +986,13 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn right_sidebar_width_and_visibility_follow_both_tab_types_and_layouts(
         cx: &mut TestAppContext,
     ) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, manager, mono, session) = mixed_window(cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         for classic in [false, true] {
             window
                 .update(visual, |shell, _, cx| {
@@ -1023,7 +1023,7 @@ mod tests {
             // Both halves of the transparent grab area must receive presses,
             // including the half outside the panel's clipped contents.
             for x in [bounds.left() + px(0.5), bounds.right() - px(0.5)] {
-                let point = gpui::point(x, bounds.center().y);
+                let point = gpui_kit::point(x, bounds.center().y);
                 visual.simulate_mouse_down(point, MouseButton::Left, Default::default());
                 window
                     .update(visual, |shell, _, _| assert!(shell.right_resize.is_some()))
@@ -1032,7 +1032,7 @@ mod tests {
                 visual.run_until_parked();
             }
             let handle = visual.debug_bounds("right-panel-resize").unwrap().center();
-            let end = handle - gpui::point(px(30.), px(0.));
+            let end = handle - gpui_kit::point(px(30.), px(0.));
             visual.simulate_mouse_down(handle, MouseButton::Left, Default::default());
             visual.simulate_mouse_move(end, MouseButton::Left, Default::default());
             visual.simulate_mouse_up(end, MouseButton::Left, Default::default());
@@ -1041,7 +1041,7 @@ mod tests {
                 .update(visual, |shell, _, _| shell.workspace.right_panel_width)
                 .unwrap();
             let handle = visual.debug_bounds("right-panel-resize").unwrap().center();
-            let end = handle + gpui::point(px(30.), px(0.));
+            let end = handle + gpui_kit::point(px(30.), px(0.));
             visual.simulate_mouse_down(handle, MouseButton::Left, Default::default());
             visual.simulate_mouse_move(end, MouseButton::Left, Default::default());
             // The pointer is now over a Mono detail layer that occludes mouse
@@ -1052,7 +1052,7 @@ mod tests {
                 })
                 .unwrap();
             visual.simulate_mouse_up(
-                end + gpui::point(px(20.), px(0.)),
+                end + gpui_kit::point(px(20.), px(0.)),
                 MouseButton::Left,
                 Default::default(),
             );
@@ -1110,7 +1110,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn switching_tabs_keeps_the_same_sidebar_spring_and_clipped_contents(cx: &mut TestAppContext) {
         let (window, manager, mono, session) = mixed_window(cx);
         cx.update(|cx| cx.set_reduce_motion(false));
@@ -1143,7 +1143,7 @@ mod tests {
                 w.draw(cx).clear(cx);
             })
             .unwrap();
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             let frame = visual.debug_bounds("right-panel-frame").unwrap();
             let content = visual.debug_bounds("right-panel-content").unwrap();
             let width = window
@@ -1182,7 +1182,7 @@ mod tests {
         window
             .update(cx, |shell, _, _| assert!(shell.right_slide.is_none()))
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         assert_eq!(
             visual.debug_bounds("right-panel-frame").unwrap().size.width,
             px(window

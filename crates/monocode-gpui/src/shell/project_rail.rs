@@ -5,7 +5,7 @@ use crate::{
     right_panel::{DIFF_ADD, DIFF_DEL, format_integer, tabular},
     workspace,
 };
-use gpui::{ListAlignment, ListState, list};
+use gpui_kit::{ListAlignment, ListState, list};
 use monocode_core::scm::DiffStats;
 
 const ICON_RAIL_WIDTH: f32 = 48.;
@@ -220,7 +220,7 @@ impl Shell {
                                     cx.notify();
                                 }),
                             )
-                            .on_click(cx.listener(|this, event: &gpui::ClickEvent, _, cx| {
+                            .on_click(cx.listener(|this, event: &gpui_kit::ClickEvent, _, cx| {
                                 if event.click_count() == 2 {
                                     this.workspace.project_rail_width = 220.;
                                     this.fit_sidebar(cx);
@@ -446,7 +446,7 @@ impl Shell {
                 d.child(
                     icon_button("rail-new-project-group", "New project group", "folder-tree")
                         .size(px(20.))
-                        .on_click(cx.listener(|this, e: &gpui::ClickEvent, w, cx| {
+                        .on_click(cx.listener(|this, e: &gpui_kit::ClickEvent, w, cx| {
                             let id = this.create_project_rail_group(None, cx);
                             this.open_menu(
                                 MenuTarget::ProjectRailGroup(id),
@@ -721,7 +721,7 @@ impl Shell {
                     .justify_center()
                     .hover(|s| s.bg(content(0.1)))
                     .child(picker_mark)
-                    .on_click(cx.listener(|this, e: &gpui::ClickEvent, w, cx| {
+                    .on_click(cx.listener(|this, e: &gpui_kit::ClickEvent, w, cx| {
                         if this.menu_open(&MenuTarget::CompactProjectPicker) {
                             this.close_menu(cx);
                         } else {
@@ -984,7 +984,7 @@ impl Shell {
                                 )
                                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                                 .on_click(cx.listener(
-                                    move |this, e: &gpui::ClickEvent, w, cx| {
+                                    move |this, e: &gpui_kit::ClickEvent, w, cx| {
                                         cx.stop_propagation();
                                         this.open_menu(
                                             MenuTarget::ProjectRailGroup(options.clone()),
@@ -1033,7 +1033,7 @@ impl Shell {
             )
             .into_any();
         if dragging {
-            gpui::deferred(row).with_priority(1).into_any()
+            gpui_kit::deferred(row).with_priority(1).into_any()
         } else {
             row
         }
@@ -1291,7 +1291,7 @@ impl Shell {
                                         cx.stop_propagation()
                                     })
                                     .on_click(cx.listener(
-                                        move |this, e: &gpui::ClickEvent, window, cx| {
+                                        move |this, e: &gpui_kit::ClickEvent, window, cx| {
                                             cx.stop_propagation();
                                             this.open_menu(
                                                 MenuTarget::Project {
@@ -1339,7 +1339,7 @@ impl Shell {
             )
             .into_any_element();
         if raised {
-            gpui::deferred(row).with_priority(1).into_any()
+            gpui_kit::deferred(row).with_priority(1).into_any()
         } else {
             row
         }
@@ -1757,9 +1757,9 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{EntityInputHandler, TestAppContext, VisualTestContext, size};
+    use gpui_kit::{EntityInputHandler, TestAppContext, VisualTestContext, size};
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn original_layout_keeps_project_icons_when_sessions_are_hidden(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, _) = super::super::tests::window(cx);
@@ -1776,7 +1776,7 @@ mod tests {
         assert_eq!(sessions.left(), projects.right());
         assert_eq!(main.left(), sessions.right());
         let grip = visual.debug_bounds("project-rail-resize").unwrap().center();
-        let end = grip + gpui::point(px(28.), px(0.));
+        let end = grip + gpui_kit::point(px(28.), px(0.));
         visual.simulate_mouse_down(grip, MouseButton::Left, Default::default());
         visual.simulate_mouse_move(end, MouseButton::Left, Default::default());
         visual.simulate_mouse_up(end, MouseButton::Left, Default::default());
@@ -1844,7 +1844,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn original_project_rail_reorders_groups_and_projects(cx: &mut TestAppContext) {
         cx.update(crate::shell::bind_keys);
         cx.update(|cx| cx.set_reduce_motion(true));
@@ -1985,7 +1985,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn project_rail_virtualizes_projects_without_loading_their_sessions(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, _) = super::super::tests::window(cx);
@@ -2011,7 +2011,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn project_rail_and_transcript_stay_cached_during_independent_updates(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, active) = super::super::tests::window(cx);
@@ -2094,7 +2094,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn new_boxy_style_is_independent_of_the_navigation_layout(cx: &mut TestAppContext) {
         let (window, _, active) = super::super::tests::window(cx);
         window

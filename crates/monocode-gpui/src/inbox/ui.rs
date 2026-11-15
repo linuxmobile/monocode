@@ -1,6 +1,6 @@
 use super::*;
 use crate::popover::{Align, Anchor, popover};
-use gpui::{
+use gpui_kit::{
     Animation, AnimationExt, AnyElement, ClipboardItem, CursorStyle, Div, FontWeight, Hsla,
     MouseButton, Pixels, Role, SharedString, Stateful, Window, canvas, div, list, prelude::*, px,
     rgb,
@@ -80,7 +80,7 @@ fn icon_action_with(
         .child(glyph)
         .child(label.to_owned())
 }
-fn action_icon(name: &'static str, ink: Hsla) -> gpui::Svg {
+fn action_icon(name: &'static str, ink: Hsla) -> gpui_kit::Svg {
     icon(name, 14.).text_color(ink)
 }
 pub(crate) fn relative_time(iso: &str) -> String {
@@ -230,7 +230,7 @@ fn message(text: impl Into<SharedString>) -> Div {
 fn error(text: impl Into<SharedString>) -> Div {
     message(text).text_color(rgb(0xf87171))
 }
-fn provider_mark(provider: &str) -> gpui::Svg {
+fn provider_mark(provider: &str) -> gpui_kit::Svg {
     let (path, color) = match provider {
         "linear" => ("inbox-linear", content(0.8)),
         "jira" => ("inbox-jira", rgb(0x2684ff).into()),
@@ -662,7 +662,7 @@ impl Inbox {
                     .cursor(CursorStyle::ResizeLeftRight)
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+                        cx.listener(|this, event: &gpui_kit::MouseDownEvent, _, cx| {
                             this.resize_start =
                                 Some((f32::from(event.position.x), this.state.list_width));
                             cx.stop_propagation();
@@ -2810,7 +2810,7 @@ impl Inbox {
     }
 }
 
-impl gpui::Render for Inbox {
+impl gpui_kit::Render for Inbox {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if self.focus_comment {
             self.focus_comment = false;
@@ -2827,7 +2827,7 @@ impl gpui::Render for Inbox {
             .size_full()
             .flex()
             .flex_col()
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
                     if this.connect_provider.is_some() && !this.connecting {
                         this.connect_provider = None;
@@ -2850,7 +2850,7 @@ impl gpui::Render for Inbox {
                 }
             }))
             .on_mouse_move(
-                cx.listener(|this, event: &gpui::MouseMoveEvent, window, cx| {
+                cx.listener(|this, event: &gpui_kit::MouseMoveEvent, window, cx| {
                     if let Some((start, width)) = this.resize_start {
                         let max = (f32::from(window.viewport_size().width) * 0.5).clamp(240., 420.);
                         this.state.list_width =
@@ -2907,7 +2907,7 @@ impl gpui::Render for Inbox {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{
+    use gpui_kit::{
         AssetSource, Bounds, Render, TestAppContext, WindowBounds, WindowHandle, WindowOptions,
         point, size,
     };
@@ -2958,7 +2958,7 @@ mod tests {
         cx.refresh().unwrap();
         cx.run_until_parked();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn the_inbox_opens_scoped_to_its_project_and_labels_projects_by_appearance(
         cx: &mut TestAppContext,
     ) {
@@ -2985,7 +2985,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn switching_projects_drops_the_previous_projects_selection_and_detail(
         cx: &mut TestAppContext,
     ) {
@@ -3039,7 +3039,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn long_discussion_materializes_only_viewport_comments_and_reply_focus_reaches_composer(
         cx: &mut TestAppContext,
     ) {
@@ -3095,7 +3095,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn expanding_comment_invalidates_its_height_and_preserves_timeline_order(
         cx: &mut TestAppContext,
     ) {
@@ -3140,7 +3140,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn linear_team_filters_hide_cached_issues_before_refresh(cx: &mut TestAppContext) {
         let window = fixture(cx);
         window
@@ -3183,7 +3183,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn arriving_comment_preserves_the_readers_item_and_offset(cx: &mut TestAppContext) {
         let window = fixture(cx);
         window

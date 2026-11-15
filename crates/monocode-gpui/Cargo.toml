@@ -13,8 +13,7 @@ log = "0.4"
 pulldown-cmark = "0.13.5"
 mermaid-rs-renderer = { version = "0.3.1", default-features = false }
 syntect = { version = "5.3", default-features = false, features = ["default-fancy"] }
-gpui = { package = "gpui-pre", version = "=0.3.9", default-features = false }
-gpui_platform = { package = "gpui-pre-platform", version = "=0.3.9", default-features = false, features = ["font-kit", "runtime_shaders", "x11", "wayland"] }
+gpui-kit = { version = "0.9.1", features = ["gpui-fast"] }
 unicode-segmentation = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 async-channel = "2"
@@ -51,7 +50,7 @@ tree-sitter-zig = "1.1"
 
 [dev-dependencies]
 rusqlite.workspace = true
-gpui = { package = "gpui-pre", version = "=0.3.9", default-features = false, features = ["test-support"] }
+gpui-kit = { version = "0.9.1", features = ["gpui-fast", "test-support"] }
 
 # Experimental native builds resolve separately from the production Tauri app.
 [workspace]
@@ -68,11 +67,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.40.2", features = ["bundled", "hooks"], default-features = false }
 
-# Exclude the unused screen-capture dependency from all native platforms.
-# Keep the Linux renderer's alpha and font-matching fixes.
+# Screen capture stays out of the native app: the optional zed-scap
+# dependency resolves to a local stub with no implementation.
 [patch.crates-io]
-gpui-pre = { path = "../../vendor/gpui-pre" }
-gpui-pre-linux = { path = "../../vendor/gpui-pre-linux" }
+zed-scap = { path = "../../vendor/zed-scap-stub" }
 
 [profile.native-dev]
 inherits = "dev"

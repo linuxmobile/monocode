@@ -1,6 +1,6 @@
 use super::*;
 use crate::theme::*;
-use gpui::{AnyElement, FontWeight, Role, SharedString, div, px};
+use gpui_kit::{AnyElement, FontWeight, Role, SharedString, div, px};
 
 impl Accounts {
     pub(crate) fn has_modal_auth(&self) -> bool {
@@ -137,8 +137,8 @@ impl Accounts {
                             move |delta| {
                                 icon("refresh-cw", 14.)
                                     .text_color(button_text)
-                                    .with_transformation(gpui::Transformation::rotate(
-                                        gpui::percentage(delta),
+                                    .with_transformation(gpui_kit::Transformation::rotate(
+                                        gpui_kit::percentage(delta),
                                     ))
                             },
                         ))
@@ -152,12 +152,16 @@ impl Accounts {
                             this.begin_footer_auth(kind, &click_id, cx);
                         }
                     }))
-                    .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
-                        if !disabled && matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                            this.begin_footer_auth(kind, &keyboard_id, cx);
-                            cx.stop_propagation();
-                        }
-                    })),
+                    .on_key_down(cx.listener(
+                        move |this, event: &gpui_kit::KeyDownEvent, _, cx| {
+                            if !disabled
+                                && matches!(event.keystroke.key.as_str(), "enter" | "space")
+                            {
+                                this.begin_footer_auth(kind, &keyboard_id, cx);
+                                cx.stop_propagation();
+                            }
+                        },
+                    )),
             )
             // The CLI cannot see a closed browser tab; let the user give up
             // on a waiting sign-in (from any surface) and start again.
@@ -188,7 +192,7 @@ impl Accounts {
                     .max_w(px(240.))
                     .text_size(px(10.))
                     .line_height(px(16.))
-                    .text_color(gpui::rgb(0xf87171))
+                    .text_color(gpui_kit::rgb(0xf87171))
                     .text_center()
                     .child(error)
             }))
@@ -200,8 +204,8 @@ impl Accounts {
 mod tests {
     use super::*;
 
-    #[gpui::test]
-    fn settings_add_signin_stays_inline_after_completion(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn settings_add_signin_stays_inline_after_completion(cx: &mut gpui_kit::TestAppContext) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),
         ));
@@ -226,8 +230,8 @@ mod tests {
             let _ = cx;
         });
     }
-    #[gpui::test]
-    fn footer_signin_never_opens_a_modal_or_steals_window_focus(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn footer_signin_never_opens_a_modal_or_steals_window_focus(cx: &mut gpui_kit::TestAppContext) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),
         ));
@@ -293,8 +297,10 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
-    fn returning_to_the_app_resets_a_sign_in_the_browser_abandoned(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn returning_to_the_app_resets_a_sign_in_the_browser_abandoned(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),
         ));

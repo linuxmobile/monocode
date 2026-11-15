@@ -2,7 +2,7 @@
 //! folders and deletion, and the grouped list they shape.
 use super::*;
 use chrono::{Local, NaiveDateTime, TimeZone};
-use gpui::EventEmitter;
+use gpui_kit::EventEmitter;
 use monocode_core::{
     session_groups::{
         Entry, Groups, build_list, format_reminder, navigation_ids, parse_github_work_item,
@@ -45,10 +45,10 @@ const FOLDER_COLORS: [(f32, f32, f32); 9] = [
     (175., 0.55, 0.48),
     (25., 0.85, 0.58),
 ];
-fn folder_color(ix: usize) -> Option<gpui::Hsla> {
+fn folder_color(ix: usize) -> Option<gpui_kit::Hsla> {
     FOLDER_COLORS
         .get(ix)
-        .map(|&(h, s, l)| gpui::hsla(h / 360., s, l, 1.))
+        .map(|&(h, s, l)| gpui_kit::hsla(h / 360., s, l, 1.))
 }
 /// Sidebar.tsx's REMINDERS_COLOR, amber-500.
 const REMINDERS_COLOR: u32 = 0xf59e0b;
@@ -378,7 +378,7 @@ impl Shell {
     pub(super) fn select_sidebar_session(
         &mut self,
         id: i64,
-        modifiers: gpui::Modifiers,
+        modifiers: gpui_kit::Modifiers,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -1032,7 +1032,7 @@ impl Shell {
                     .rounded_md()
                     .when(active, |d| d.bg(content(0.1)))
                     .when(approval, |d| {
-                        d.bg(gpui::Hsla::from(rgb(0xfbbf24)).opacity(0.1))
+                        d.bg(gpui_kit::Hsla::from(rgb(0xfbbf24)).opacity(0.1))
                     })
                     .child(input)
                     .into_any_element()
@@ -1120,7 +1120,7 @@ impl Shell {
                 .cursor_pointer()
                 .when(compact, |d| {
                     d.border_b_1()
-                        .border_color(gpui::transparent_black())
+                        .border_color(gpui_kit::transparent_black())
                         .hover(|s| s.border_color(rgb(ACCENT)))
                 })
                 .when(!compact, |d| d.hover(|s| s.underline()))
@@ -1149,7 +1149,7 @@ impl Shell {
             String,
             String,
             &'static str,
-            Option<gpui::Hsla>,
+            Option<gpui_kit::Hsla>,
             bool,
             &Vec<i64>,
         ) = match entry {
@@ -1206,7 +1206,7 @@ impl Shell {
         key: &str,
         name: String,
         glyph: &'static str,
-        color: Option<gpui::Hsla>,
+        color: Option<gpui_kit::Hsla>,
         expanded: bool,
         sessions: &[i64],
         cx: &mut Context<Self>,
@@ -1379,7 +1379,7 @@ impl Shell {
         key: &str,
         name: String,
         glyph: &'static str,
-        color: Option<gpui::Hsla>,
+        color: Option<gpui_kit::Hsla>,
         expanded: bool,
         sessions: &[i64],
         cx: &mut Context<Self>,
@@ -1560,7 +1560,7 @@ impl Shell {
             .into_any_element()
     }
 
-    fn classic_group_fill(&self, entry: &Entry) -> gpui::Hsla {
+    fn classic_group_fill(&self, entry: &Entry) -> gpui_kit::Hsla {
         let color = match entry {
             Entry::Reminders { .. } => Some(rgb(REMINDERS_COLOR).into()),
             Entry::Folder { id, .. } => self.project_groups().folder(id).and_then(|folder| {
@@ -1889,7 +1889,7 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, VisualTestContext, WindowHandle};
+    use gpui_kit::{TestAppContext, VisualTestContext, WindowHandle};
 
     fn setup(cx: &mut TestAppContext) -> (WindowHandle<Shell>, i64, i64) {
         cx.update(|cx| {
@@ -1914,7 +1914,7 @@ mod tests {
         (window, a, b)
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn expanded_folders_use_compact_connected_rows_and_keep_operator_children(
         cx: &mut TestAppContext,
     ) {
@@ -2036,7 +2036,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sidebar_header_controls_share_the_trailing_alignment(cx: &mut TestAppContext) {
         let (window, _, _) = setup(cx);
         // The header's plus appears once this project has a Mono. The empty
@@ -2069,7 +2069,7 @@ mod tests {
         assert!(search.right() <= options.left());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn session_actions_are_enabled_and_bulk_selection_shapes_the_menu(cx: &mut TestAppContext) {
         let (window, a, b) = setup(cx);
         window
@@ -2082,7 +2082,7 @@ mod tests {
                 }
                 shell.select_sidebar_session(
                     a,
-                    gpui::Modifiers {
+                    gpui_kit::Modifiers {
                         platform: true,
                         ..Default::default()
                     },
@@ -2091,7 +2091,7 @@ mod tests {
                 );
                 shell.select_sidebar_session(
                     b,
-                    gpui::Modifiers {
+                    gpui_kit::Modifiers {
                         shift: true,
                         ..Default::default()
                     },
@@ -2126,7 +2126,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn folders_rename_move_collapse_color_and_ungroup_with_saved_state(cx: &mut TestAppContext) {
         let (window, a, b) = setup(cx);
         window
@@ -2207,7 +2207,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn session_rename_accepts_enter_and_escape_cancels(cx: &mut TestAppContext) {
         let (window, a, _) = setup(cx);
         window
@@ -2252,7 +2252,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn editing_a_link_keeps_the_update_button_inside_the_dialog(cx: &mut TestAppContext) {
         let (window, a, _) = setup(cx);
         window
@@ -2282,7 +2282,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn links_and_reminders_validate_persist_and_clear_when_due_session_opens(
         cx: &mut TestAppContext,
     ) {
@@ -2370,7 +2370,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn dragging_sessions_creates_a_folder_and_moves_into_an_existing_one(cx: &mut TestAppContext) {
         let (window, a, b) = setup(cx);
         let visual = &mut VisualTestContext::from_window(window.into(), cx);
@@ -2426,7 +2426,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn delete_closes_the_session_and_cleans_up_folders_and_reminders(cx: &mut TestAppContext) {
         let (window, a, b) = setup(cx);
         window
@@ -2466,7 +2466,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn folder_headers_reorder_and_the_color_menu_updates_the_saved_folder(cx: &mut TestAppContext) {
         let (window, a, b) = setup(cx);
         window
@@ -2522,7 +2522,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn f2_renames_the_active_session_and_the_focused_folder(cx: &mut TestAppContext) {
         let (window, a, _) = setup(cx);
         window

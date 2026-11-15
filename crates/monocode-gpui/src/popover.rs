@@ -2,7 +2,7 @@
 // placement math in src/shared/lib/popover.ts, and the row/keyboard model of
 // src/features/files/ui/ExplorerMenu.tsx.
 use crate::theme::*;
-use gpui::{
+use gpui_kit::{
     AnyElement, AnyView, App, Bounds, BoxShadow, Context, Corners, DispatchPhase, Display, Element,
     ElementId, Entity, EventEmitter, FocusHandle, Focusable, GlobalElementId, Hsla,
     InspectorElementId, KeyBinding, LayoutId, MouseDownEvent, Pixels, Point,
@@ -441,7 +441,7 @@ impl RenderOnce for Popover {
     }
 }
 impl Popover {
-    fn render_at(self, enter: f32, viewport: gpui::Size<Pixels>) -> impl IntoElement {
+    fn render_at(self, enter: f32, viewport: gpui_kit::Size<Pixels>) -> impl IntoElement {
         let (viewport_width, viewport_height) = (viewport.width, viewport.height);
         let radius = if self.modal_classic.is_some() {
             16.
@@ -543,7 +543,7 @@ pub(crate) fn paint_glass(
 
     let quad = {
         let _ = (light, tint);
-        gpui::fill(bounds, opaque)
+        gpui_kit::fill(bounds, opaque)
     };
     window.paint_quad(quad.corner_radii(corners));
 }
@@ -555,7 +555,7 @@ pub(crate) fn paint_surface(bounds: Bounds<Pixels>, window: &mut Window) {
     window.paint_drop_shadows(bounds, corners, &shadow());
     paint_glass(bounds, corners, tint(), window);
     window.paint_quad(
-        gpui::fill(bounds, gpui::transparent_black())
+        gpui_kit::fill(bounds, gpui_kit::transparent_black())
             .corner_radii(corners)
             .border_widths(px(1.))
             .border_color(content(0.1)),
@@ -1333,10 +1333,10 @@ impl Menu {
             })
             .when_some(action.icon_artwork, |d, path| {
                 d.child(
-                    gpui::img(path)
+                    gpui_kit::img(path)
                         .size(px(icon_size))
                         .flex_shrink_0()
-                        .object_fit(gpui::ObjectFit::Contain),
+                        .object_fit(gpui_kit::ObjectFit::Contain),
                 )
             })
             .when_some(action.image, |d, provider| {
@@ -1456,7 +1456,8 @@ impl Menu {
             .min_w_0()
             .truncate()
             .when(style == MenuStyle::Access, |d| {
-                d.font_weight(gpui::FontWeight::MEDIUM).line_height(px(20.))
+                d.font_weight(gpui_kit::FontWeight::MEDIUM)
+                    .line_height(px(20.))
             })
             .when(style == MenuStyle::Composer, |d| d.line_height(px(19.5)))
             .when(style == MenuStyle::Recent, |d| d.line_height(px(16.)))
@@ -1505,11 +1506,11 @@ impl Menu {
                             .px(px(6.))
                             .py(px(2.))
                             .rounded_full()
-                            .bg(gpui::hsla(0.82, 1., 0.83, 0.1))
+                            .bg(gpui_kit::hsla(0.82, 1., 0.83, 0.1))
                             .text_size(px(9.))
                             .line_height(px(9.))
-                            .font_weight(gpui::FontWeight::MEDIUM)
-                            .text_color(gpui::hsla(0.81, 1., 0.9, 0.55))
+                            .font_weight(gpui_kit::FontWeight::MEDIUM)
+                            .text_color(gpui_kit::hsla(0.81, 1., 0.9, 0.55))
                             .child(badge.clone()),
                     )
                     .into_any(),
@@ -1536,7 +1537,7 @@ impl Render for Menu {
                     .pb_1()
                     .text_size(px(10.))
                     .line_height(px(15.))
-                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                     .text_color(content(0.4))
                     .child(text.to_uppercase())
                     .into_any(),
@@ -1649,21 +1650,23 @@ impl Render for Menu {
                 cx.stop_propagation();
             }))
             // Space activates a focused menu, but remains text in its fields.
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
-                if event.keystroke.key != "space" || !this.focus.is_focused(window) {
-                    return;
-                }
-                match (this.submenu, this.sub_active) {
-                    (Some(_), Some(sub)) => this.pick_sub(sub, window, cx),
-                    _ => {
-                        if let Some(ix) = this.active {
-                            this.pick(ix, window, cx);
+            .on_key_down(
+                cx.listener(|this, event: &gpui_kit::KeyDownEvent, window, cx| {
+                    if event.keystroke.key != "space" || !this.focus.is_focused(window) {
+                        return;
+                    }
+                    match (this.submenu, this.sub_active) {
+                        (Some(_), Some(sub)) => this.pick_sub(sub, window, cx),
+                        _ => {
+                            if let Some(ix) = this.active {
+                                this.pick(ix, window, cx);
+                            }
                         }
                     }
-                }
-                window.prevent_default();
-                cx.stop_propagation();
-            }))
+                    window.prevent_default();
+                    cx.stop_propagation();
+                }),
+            )
             .on_action(cx.listener(|this, _: &SelectNext, _, cx| this.step(1, cx)))
             .on_action(cx.listener(|this, _: &SelectPrevious, _, cx| this.step(-1, cx)))
             .on_action(cx.listener(|this, _: &Confirm, window, cx| {
@@ -1813,7 +1816,14 @@ mod tests {
                     .height(100.)
                     .padding(8.)
                     .track(self.card.clone())
-                    .child(div().size(px(20.)).bg(rgb(0x19734b)))
+                    .child(
+                        div()
+                            .size(px(20.))
+                            .bg(rgb(0x19734b))
+                            .debug_selector(|| "motion-marker".into()),
+                    )
+                    // The real deferred path: Fast composites it into layer
+                    // frames, so bounds (not quads) observe the paint.
                     .render_at(self.progress, window.viewport_size()),
             )
         }
@@ -1836,8 +1846,10 @@ mod tests {
         }
     }
 
-    #[gpui::test]
-    fn a_max_width_card_hugs_short_content_and_caps_long_content(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn a_max_width_card_hugs_short_content_and_caps_long_content(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         let card = AnchorSlot::default();
         let window = cx.update(|cx| {
             cx.open_window(Default::default(), |_, cx| {
@@ -1861,8 +1873,8 @@ mod tests {
         assert_eq!(card.get().unwrap().size.width, px(300.));
     }
 
-    #[gpui::test]
-    fn painted_card_and_content_move_and_fade_together(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn painted_card_and_content_move_together(cx: &mut gpui_kit::TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(Default::default(), |_, cx| {
                 cx.new(|_| MotionHost {
@@ -1874,6 +1886,13 @@ mod tests {
             })
             .unwrap()
         });
+        // Fast composites deferred overlays (and overflow-hidden subtrees)
+        // into layer frames that `painted_quads` does not expose — its only
+        // scene accessor is bench-gated and pixels need a headless renderer
+        // the unit-test harness does not provide. Assert the same invariants
+        // through painted bounds instead: the card slot tracks placement and
+        // the content marker keeps its inset through the entrance.
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         for side in [Side::Top, Side::Bottom, Side::Left, Side::Right] {
             for flip in [false, true] {
                 for progress in [0.25, 0.75, 1.] {
@@ -1896,31 +1915,21 @@ mod tests {
                         })
                         .unwrap();
                     cx.refresh().unwrap();
+                    cx.run_until_parked();
+                    let card = window
+                        .update(cx, |host, _, _| host.card.get().unwrap())
+                        .unwrap();
+                    let marker = visual
+                        .debug_bounds("motion-marker")
+                        .expect("the content paints with the card");
+                    assert_eq!(
+                        marker.origin - card.origin,
+                        point(px(9.), px(9.)),
+                        "content must keep its inset throughout the entrance"
+                    );
                     window
                         .update(cx, |host, window, _| {
-                            let quads = window.painted_quads();
-                            let border = quads
-                                .iter()
-                                .find(|q| q.border_color == content(0.1).opacity(progress))
-                                .expect("the card border fades with the content");
-                            let marker_color =
-                                gpui::Background::from(rgb(0x19734b)).opacity(progress);
-                            let marker = quads
-                                .iter()
-                                .find(|q| q.background == marker_color)
-                                .expect("the content uses the card's opacity");
-                            let origin = |q: &gpui::Quad| {
-                                point(
-                                    px(q.bounds.left().0 / window.scale_factor()),
-                                    px(q.bounds.top().0 / window.scale_factor()),
-                                )
-                            };
-                            assert_eq!(
-                                origin(marker) - origin(border),
-                                point(px(9.), px(9.)),
-                                "content must keep its inset throughout the entrance"
-                            );
-                            assert_eq!(origin(border), host.card.get().unwrap().origin);
+                            assert_eq!(card.origin, host.card.get().unwrap().origin);
                             let viewport = window.viewport_size();
                             let p = place(
                                 Rect::from_bounds(Bounds::new(host.anchor, size(px(0.), px(0.)))),
@@ -1936,7 +1945,7 @@ mod tests {
                                 f32::from(viewport.height) - p.bottom.unwrap() - 100.
                             });
                             assert_eq!(
-                                origin(border),
+                                card.origin,
                                 point(px(p.left).round(), px(top).round())
                                     + entrance_offset(p.side, progress),
                                 "the visible frame and its hit region must move together"
@@ -1960,8 +1969,8 @@ mod tests {
         }
     }
 
-    #[gpui::test]
-    fn menus_and_picker_flyouts_keep_the_same_card_edge_gap(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn menus_and_picker_flyouts_keep_the_same_card_edge_gap(cx: &mut gpui_kit::TestAppContext) {
         // Compare the resting gap; entrance motion deliberately starts child
         // cards a little closer to the parent before settling into this gap.
         cx.update(|cx| cx.set_reduce_motion(true));

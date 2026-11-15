@@ -1,7 +1,7 @@
 //! CSS filter blur for account identities. Each paint stage needs its own layer:
 //! GPUI batches a layer's quads before its glyphs regardless of insertion order.
 use crate::theme::*;
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, Element, ElementId, GlobalElementId, InspectorElementId, IntoElement,
     LayoutId, Pixels, Window, div, prelude::*,
 };
@@ -63,7 +63,7 @@ impl Element for Masked {
     ) {
         window.paint_layer(bounds, |window| self.child.paint(window, cx));
 
-        let quad = gpui::fill(bounds, pane_fill());
+        let quad = gpui_kit::fill(bounds, pane_fill());
         window.paint_layer(bounds, |window| window.paint_quad(quad));
     }
 }

@@ -2,7 +2,9 @@
 //! attention mark, for sidebar rows and title tabs.
 use crate::pulse::{self, Rate};
 use crate::theme::*;
-use gpui::{AnyElement, Context, ElementId, Hsla, Render, Role, Window, div, prelude::*, px, rgb};
+use gpui_kit::{
+    AnyElement, Context, ElementId, Hsla, Render, Role, Window, div, prelude::*, px, rgb,
+};
 use std::f32::consts::TAU;
 use std::time::Duration;
 
@@ -19,7 +21,7 @@ pub(crate) fn spinner(id: impl Into<ElementId>, rate: Rate) -> pulse::Looping {
 /// TerminalSpinner's 12px 3×3 grid at `fraction` of its period: a soft wave
 /// washes from the top-left corner to the bottom-right, and dots off the
 /// center diagonal peak dimmer.
-pub(crate) fn spinner_at(fraction: f32) -> gpui::Div {
+pub(crate) fn spinner_at(fraction: f32) -> gpui_kit::Div {
     let phase = fraction * TAU;
     div()
         .size(px(12.))
@@ -136,8 +138,8 @@ impl Render for SessionMark {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
-    #[gpui::test]
+    use gpui_kit::TestAppContext;
+    #[gpui_kit::test]
     fn working_mark_spins_on_the_shared_clock_and_stops_after_completion(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(false));
         let (mark, cx) = cx.add_window_view(|_, _| SessionMark::new("codex".into()));

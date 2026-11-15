@@ -264,11 +264,11 @@ impl Conversation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use monocode_core::store::Store;
     use std::{path::PathBuf, sync::Mutex};
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn visualize_command_preserves_rejected_drafts_and_starts_an_explicit_turn(
         cx: &mut TestAppContext,
     ) {
@@ -288,7 +288,7 @@ mod tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         window
             .update(visual, |view, _, cx| {
                 for text in ["/visualizer", "Explain /visualize", "> /visualize"] {

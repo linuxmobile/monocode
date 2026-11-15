@@ -95,7 +95,7 @@ impl Shell {
             n => format!("Its {n} saved conversations will be deleted. "),
         } + "The folder on disk stays put, and opening it again brings the project back empty.";
         let prompt = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             &format!("Delete “{}”?", self.project_label(&path)),
             Some(&detail),
             &["Delete", "Cancel"],
@@ -135,7 +135,7 @@ impl Shell {
     ) {
         let title = self.session_metadata(id, cx).display_title();
         let prompt = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             &format!("Delete “{title}”?"),
             Some("This conversation and its saved settings will be removed permanently."),
             &["Delete", "Cancel"],

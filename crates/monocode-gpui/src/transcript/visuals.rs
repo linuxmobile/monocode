@@ -9,9 +9,9 @@ const RETAINED_VISUALS: usize = 8;
 
 pub(super) struct CachedVisual {
     document: Arc<VisualDocument>,
-    view: gpui::Entity<VisualView>,
+    view: gpui_kit::Entity<VisualView>,
     touched: Instant,
-    _changes: gpui::Subscription,
+    _changes: gpui_kit::Subscription,
 }
 
 /// Collects the visual ids an answer places with `![caption](visual:id)`.
@@ -33,7 +33,7 @@ impl TranscriptView {
         message: usize,
         document: Arc<VisualDocument>,
         cx: &mut Context<Self>,
-    ) -> gpui::Entity<VisualView> {
+    ) -> gpui_kit::Entity<VisualView> {
         let unchanged = self.visuals.get(&message).is_some_and(|cached| {
             cached.document.id == document.id
                 && cached.document.title == document.title
@@ -78,7 +78,7 @@ impl TranscriptView {
         message: usize,
         document: Arc<VisualDocument>,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         let view = self.visual_view(message, document, cx);
         view.update(cx, |view, cx| view.set_inline(None, cx));
         div()
@@ -130,7 +130,7 @@ impl TranscriptView {
         id: &str,
         caption: &str,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         let Some((message, document)) = self.published(id) else {
             return div()
                 .text_size(px(13.))
@@ -175,7 +175,7 @@ impl TranscriptView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
     fn row(role: &str, text: String) -> Row {
         Row {
@@ -194,7 +194,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn visuals_remain_visible_when_work_is_folded_and_history_is_reloaded(cx: &mut TestAppContext) {
         let view = cx.new(|_| TranscriptView::new());
         let doc = document("plot-1");
@@ -226,7 +226,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn malformed_visuals_show_a_readable_error_without_exposing_the_payload(
         cx: &mut TestAppContext,
     ) {
@@ -239,7 +239,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn retained_script_heaps_are_bounded_and_charged_to_history_cache(cx: &mut TestAppContext) {
         let view = cx.new(|_| TranscriptView::new());
         view.update(cx, |view, cx| {

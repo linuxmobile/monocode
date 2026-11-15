@@ -1,6 +1,6 @@
 //! ComposerRunner's original physics, using the shared project pixel art.
 use crate::{popover::AnchorSlot, transcript::TranscriptView};
-use gpui::{Context, Entity, Render, Window, canvas, div, point, prelude::*, px, size};
+use gpui_kit::{Context, Entity, Render, Window, canvas, div, point, prelude::*, px, size};
 use serde::Deserialize;
 use std::time::Instant;
 /// Matches the shared pulse clock's 30fps tick.
@@ -80,8 +80,8 @@ impl Runner {
 impl Runner {
     /// The strip above the composer the runner plays in. Mounted cached, so
     /// the conversation's own re-renders don't step the physics again.
-    pub fn placement() -> gpui::StyleRefinement {
-        gpui::StyleRefinement::default()
+    pub fn placement() -> gpui_kit::StyleRefinement {
+        gpui_kit::StyleRefinement::default()
             .absolute()
             .left_0()
             .right_0()
@@ -131,7 +131,7 @@ impl Render for Runner {
             crate::pulse::request(crate::pulse::Rate::Smooth, window, cx);
         }
         let frame = self.frame.clone();
-        let color: gpui::Hsla = gpui::rgb(self.color).into();
+        let color: gpui_kit::Hsla = gpui_kit::rgb(self.color).into();
         // Conversation places the cached view; see `Runner::placement`.
         div().size_full().child(self.anchor.probe()).child(
             canvas(
@@ -171,8 +171,8 @@ impl Render for Runner {
                                 if px_y >= 64. {
                                     continue;
                                 }
-                                window.paint_quad(gpui::fill(
-                                    gpui::Bounds::new(
+                                window.paint_quad(gpui_kit::fill(
+                                    gpui_kit::Bounds::new(
                                         bounds.origin + point(px(px_x), px(px_y)),
                                         size(px(unit), px(unit.min(64. - px_y))),
                                     ),

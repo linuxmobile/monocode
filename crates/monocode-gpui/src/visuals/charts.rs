@@ -8,7 +8,7 @@ use super::{
     },
 };
 use crate::theme::content;
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, FontWeight, Hsla, IntoElement, Pixels, SharedString, Window, canvas,
     div, point, prelude::*, px,
 };
@@ -91,7 +91,7 @@ pub(super) fn chart(
                 canvas(
                     |_, _, _| {},
                     move |bounds, _, window, cx| {
-                        window.with_content_mask(Some(gpui::ContentMask { bounds }), |window| {
+                        window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
                             cartesian(kind, &series, &labels, bounds, motion, window, cx)
                         })
                     },
@@ -156,10 +156,10 @@ fn cartesian(
     // Grid lines and ticks.
     for (tick, label) in ticks.iter().zip(&tick_labels) {
         let y = y_of(*tick).round();
-        window.paint_quad(gpui::fill(
+        window.paint_quad(gpui_kit::fill(
             Bounds::new(
                 origin + point(px(0.), px(y)),
-                gpui::size(px(plot_w), px(1.)),
+                gpui_kit::size(px(plot_w), px(1.)),
             ),
             content(0.07),
         ));
@@ -220,10 +220,10 @@ fn cartesian(
         let hovered = hover.map(|(x, _)| ((x / band) as usize).min(count - 1));
         if let Some(i) = hovered {
             // A soft column behind the hovered category.
-            window.paint_quad(gpui::fill(
+            window.paint_quad(gpui_kit::fill(
                 Bounds::new(
                     origin + point(px(band * i as f32), px(0.)),
-                    gpui::size(px(band), px(plot_h)),
+                    gpui_kit::size(px(band), px(plot_h)),
                 ),
                 content(0.04),
             ));
@@ -985,7 +985,7 @@ pub(super) fn progress(
                     window,
                     Bounds::new(
                         grid.origin,
-                        gpui::size(px(head as f32 * CELL), px(3. * CELL)),
+                        gpui_kit::size(px(head as f32 * CELL), px(3. * CELL)),
                     ),
                     tint,
                     0.3,

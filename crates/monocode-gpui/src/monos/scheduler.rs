@@ -196,7 +196,7 @@ fn grouped_habits(
         later.into_iter().map(|item| item.2).collect(),
     ]
 }
-fn section(title: &'static str) -> gpui::Div {
+fn section(title: &'static str) -> gpui_kit::Div {
     div()
         .w_full()
         .min_w_0()
@@ -213,12 +213,12 @@ fn section(title: &'static str) -> gpui::Div {
             div()
                 .px_2()
                 .text_size(px(11.))
-                .font_weight(gpui::FontWeight::MEDIUM)
+                .font_weight(gpui_kit::FontWeight::MEDIUM)
                 .text_color(content(0.4))
                 .child(title),
         )
 }
-fn property(label: &'static str, value: impl IntoElement) -> gpui::Div {
+fn property(label: &'static str, value: impl IntoElement) -> gpui_kit::Div {
     div()
         .w_full()
         .min_w_0()
@@ -244,7 +244,7 @@ fn property(label: &'static str, value: impl IntoElement) -> gpui::Div {
         )
 }
 /// Fixed controls must never be compressed by a large, scrollable draft.
-fn habit_field(field: Entity<Input>) -> gpui::Div {
+fn habit_field(field: Entity<Input>) -> gpui_kit::Div {
     div()
         .px_2()
         .py_1()
@@ -260,7 +260,7 @@ fn habit_icon_button(
     id: SharedString,
     label: &'static str,
     glyph: &'static str,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -452,7 +452,7 @@ impl Monos {
             .child(self.habit_actions(h, false, cx).pr_2())
             .into_any_element()
     }
-    fn habit_actions(&self, h: &Habit, page: bool, cx: &mut Context<Self>) -> gpui::Div {
+    fn habit_actions(&self, h: &Habit, page: bool, cx: &mut Context<Self>) -> gpui_kit::Div {
         let busy = self.habit_busy(h);
         let running = self.habit_running_since(h).is_some();
         let run = h.id.clone();
@@ -935,7 +935,7 @@ impl Monos {
                                 habit_field(name)
                                     .h(px(32.))
                                     .py_1p5()
-                                    .font_weight(gpui::FontWeight::MEDIUM),
+                                    .font_weight(gpui_kit::FontWeight::MEDIUM),
                             ),
                     )
                     .child(
@@ -1027,7 +1027,7 @@ impl Monos {
             .child(div().min_w_0().truncate().child(selected))
             .child(icon("chevron-down", 12.))
             .on_key_down(
-                cx.listener(move |this, event: &gpui::KeyDownEvent, window, cx| {
+                cx.listener(move |this, event: &gpui_kit::KeyDownEvent, window, cx| {
                     if matches!(
                         event.keystroke.key.as_str(),
                         "enter" | "space" | "down" | "up"

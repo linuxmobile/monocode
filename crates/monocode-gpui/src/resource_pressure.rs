@@ -1,7 +1,7 @@
 // ResourcePressureNotice.tsx: a footer chip while the machine is under
 // pressure, opening the running work MonoCode owns so it can be stopped.
 use crate::{popover::AnchorSlot, right_panel::spinner, theme::*};
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, EventEmitter, FocusHandle, FontWeight, Role, ScrollHandle, SharedString,
     Task, Window, div, prelude::*, px, rgb,
 };
@@ -283,7 +283,7 @@ impl ResourceMonitor {
             .flex_col()
             .text_color(content(1.))
             .child(self.bounds.layout_probe())
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     this.close(window, cx);
                     window.prevent_default();
@@ -720,19 +720,21 @@ impl Render for ResourceMonitor {
                     .child(icon("circle-alert", 14.).text_color(rgb(AMBER)))
                     .child("High usage")
                     .on_click(cx.listener(|this, _, window, cx| this.open(window, cx)))
-                    .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                            this.open(window, cx);
-                            cx.stop_propagation();
-                        }
-                    })),
+                    .on_key_down(cx.listener(
+                        |this, event: &gpui_kit::KeyDownEvent, window, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                this.open(window, cx);
+                                cx.stop_propagation();
+                            }
+                        },
+                    )),
             )
         })
     }
 }
 
-fn red(alpha: f32) -> gpui::Hsla {
-    let mut color: gpui::Hsla = rgb(RED).into();
+fn red(alpha: f32) -> gpui_kit::Hsla {
+    let mut color: gpui_kit::Hsla = rgb(RED).into();
     color.a = alpha;
     color
 }
@@ -817,8 +819,8 @@ mod tests {
         assert_eq!(format_memory(3 * 1024 * 1024 * 1024 / 2), "1.5 GB");
     }
 
-    #[gpui::test]
-    fn chip_opens_running_work_and_escape_restores_focus(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn chip_opens_running_work_and_escape_restores_focus(cx: &mut gpui_kit::TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(Default::default(), |_, cx| cx.new(ResourceMonitor::new))
                 .unwrap()

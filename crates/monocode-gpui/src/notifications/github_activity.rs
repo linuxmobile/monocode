@@ -1,6 +1,6 @@
 //! Read-only GitHub polling for linked session notifications. No GitHub calls
 //! occur until the shell invokes poll; acknowledgment persistence stays in shell.
-use gpui::{Context, EventEmitter};
+use gpui_kit::{Context, EventEmitter};
 use monocode_core::{
     session_groups::WorkItem,
     store::{Session, Store},

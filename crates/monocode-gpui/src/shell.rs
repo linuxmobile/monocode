@@ -72,7 +72,7 @@ use crate::{
     usage_footer::UsageFooter,
     workspace::{DockSide, TitleTab, VisitHistory, Workspace, project_name},
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, BoxShadow, ClipboardItem, Context, CursorStyle, DispatchPhase, Entity,
     FocusHandle, Focusable, FontWeight, KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, PathPromptOptions, Pixels, Point, Role, ScrollHandle, SharedString,
@@ -155,7 +155,7 @@ enum ChromeKind {
     Tabs,
 }
 struct Chrome {
-    owner: gpui::WeakEntity<Shell>,
+    owner: gpui_kit::WeakEntity<Shell>,
     kind: ChromeKind,
     renders: usize,
 }
@@ -186,7 +186,7 @@ impl Render for Chrome {
 }
 
 /// `Tab: Activate 1–8` with the slot, or `Tab: Activate Last` with -1.
-#[derive(Clone, Debug, PartialEq, gpui::Action)]
+#[derive(Clone, Debug, PartialEq, gpui_kit::Action)]
 #[action(namespace = workspace, no_json)]
 pub(crate) struct ActivateTab(pub isize);
 
@@ -200,68 +200,67 @@ pub(crate) fn bind_keys(cx: &mut App) {
     // these: GPUI ranks an unscoped binding above every context.
     let context = Some("Workspace");
     cx.bind_keys([
-        KeyBinding::new(&format!("{modifier}-n"), NewCodex, context),
-        KeyBinding::new(&format!("{modifier}-t"), NewCodex, context),
-        KeyBinding::new(&format!("{modifier}-shift-n"), NewClaude, context),
-        KeyBinding::new(&format!("{modifier}-o"), OpenProject, context),
-        KeyBinding::new(&format!("{modifier}-p"), GoToFile, context),
-        KeyBinding::new(&format!("{modifier}-shift-p"), OpenCommandPalette, context),
-        KeyBinding::new(&format!("{modifier}-,"), OpenSettings, context),
-        KeyBinding::new(&format!("{modifier}-w"), CloseTab, context),
-        KeyBinding::new(&format!("{modifier}-shift-w"), CloseAllTabs, context),
-        KeyBinding::new(
-            &format!("{modifier}-shift-a"),
+        KeyBinding::new(Box::leak(format!("{modifier}-n").into_boxed_str()), NewCodex, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-t").into_boxed_str()), NewCodex, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-n").into_boxed_str()), NewClaude, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-o").into_boxed_str()), OpenProject, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-p").into_boxed_str()), GoToFile, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-p").into_boxed_str()), OpenCommandPalette, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-,").into_boxed_str()), OpenSettings, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-w").into_boxed_str()), CloseTab, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-w").into_boxed_str()), CloseAllTabs, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-a").into_boxed_str()),
             ArchiveSession,
             Some("Session > (Composer || TranscriptSelection) && !CodeEditor && !Completion && !PopoverMenu && !Prompt"),
         ),
-        KeyBinding::new(&format!("{modifier}-["), VisitBack, context),
-        KeyBinding::new(&format!("{modifier}-]"), VisitForward, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-[").into_boxed_str()), VisitBack, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-]").into_boxed_str()), VisitForward, context),
         KeyBinding::new("escape", DismissMenu, context),
-        KeyBinding::new(&format!("{modifier}-b"), ToggleSidebar, context),
-        KeyBinding::new(&format!("{modifier}-k"), FocusSearch, context),
-        KeyBinding::new(&format!("{modifier}-shift-f"), SearchFiles, context),
-        KeyBinding::new(&format!("{modifier}-alt-t"), CloseOtherTabs, context),
-        KeyBinding::new(&format!("{modifier}-shift-]"), NextTab, context),
-        KeyBinding::new(&format!("{modifier}-}}"), NextTab, context),
-        KeyBinding::new(&format!("{modifier}-shift-["), PreviousTab, context),
-        KeyBinding::new(&format!("{modifier}-{{"), PreviousTab, context),
-        KeyBinding::new(&format!("{modifier}-1"), ActivateTab(0), context),
-        KeyBinding::new(&format!("{modifier}-2"), ActivateTab(1), context),
-        KeyBinding::new(&format!("{modifier}-3"), ActivateTab(2), context),
-        KeyBinding::new(&format!("{modifier}-4"), ActivateTab(3), context),
-        KeyBinding::new(&format!("{modifier}-5"), ActivateTab(4), context),
-        KeyBinding::new(&format!("{modifier}-6"), ActivateTab(5), context),
-        KeyBinding::new(&format!("{modifier}-7"), ActivateTab(6), context),
-        KeyBinding::new(&format!("{modifier}-8"), ActivateTab(7), context),
-        KeyBinding::new(&format!("{modifier}-9"), ActivateTab(-1), context),
-        KeyBinding::new(&format!("{modifier}-shift-up"), PreviousSession, context),
-        KeyBinding::new(&format!("{modifier}-shift-down"), NextSession, context),
-        KeyBinding::new(&format!("{modifier}-up"), PreviousSessionInTab, context),
-        KeyBinding::new(&format!("{modifier}-down"), NextSessionInTab, context),
-        KeyBinding::new(&format!("{modifier}-shift-left"), PreviousProject, context),
-        KeyBinding::new(&format!("{modifier}-shift-right"), NextProject, context),
-        KeyBinding::new(&format!("{modifier}-alt-shift-left"), MoveProjectBack, context),
-        KeyBinding::new(&format!("{modifier}-alt-shift-right"), MoveProjectForward, context),
-        KeyBinding::new(&format!("{modifier}-."), SwitchModel, context),
-        KeyBinding::new(&format!("{modifier}-shift-b"), ToggleRightPanel, context),
-        KeyBinding::new(&format!("{modifier}-d"), SplitRight, context),
-        KeyBinding::new(&format!("{modifier}-j"), ToggleTerminal, context),
-        KeyBinding::new(&format!("{modifier}-shift-j"), SplitTerminal, context),
-        KeyBinding::new(&format!("{modifier}-`"), NewTerminal, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-b").into_boxed_str()), ToggleSidebar, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-k").into_boxed_str()), FocusSearch, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-f").into_boxed_str()), SearchFiles, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-alt-t").into_boxed_str()), CloseOtherTabs, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-]").into_boxed_str()), NextTab, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-}}").into_boxed_str()), NextTab, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-[").into_boxed_str()), PreviousTab, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-{{").into_boxed_str()), PreviousTab, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-1").into_boxed_str()), ActivateTab(0), context),
+        KeyBinding::new(Box::leak(format!("{modifier}-2").into_boxed_str()), ActivateTab(1), context),
+        KeyBinding::new(Box::leak(format!("{modifier}-3").into_boxed_str()), ActivateTab(2), context),
+        KeyBinding::new(Box::leak(format!("{modifier}-4").into_boxed_str()), ActivateTab(3), context),
+        KeyBinding::new(Box::leak(format!("{modifier}-5").into_boxed_str()), ActivateTab(4), context),
+        KeyBinding::new(Box::leak(format!("{modifier}-6").into_boxed_str()), ActivateTab(5), context),
+        KeyBinding::new(Box::leak(format!("{modifier}-7").into_boxed_str()), ActivateTab(6), context),
+        KeyBinding::new(Box::leak(format!("{modifier}-8").into_boxed_str()), ActivateTab(7), context),
+        KeyBinding::new(Box::leak(format!("{modifier}-9").into_boxed_str()), ActivateTab(-1), context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-up").into_boxed_str()), PreviousSession, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-down").into_boxed_str()), NextSession, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-up").into_boxed_str()), PreviousSessionInTab, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-down").into_boxed_str()), NextSessionInTab, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-left").into_boxed_str()), PreviousProject, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-right").into_boxed_str()), NextProject, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-alt-shift-left").into_boxed_str()), MoveProjectBack, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-alt-shift-right").into_boxed_str()), MoveProjectForward, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-.").into_boxed_str()), SwitchModel, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-b").into_boxed_str()), ToggleRightPanel, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-d").into_boxed_str()), SplitRight, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-j").into_boxed_str()), ToggleTerminal, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-j").into_boxed_str()), SplitTerminal, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-`").into_boxed_str()), NewTerminal, context),
         // Switch between the original two-sidebar layout and the new layout.
-        KeyBinding::new(&format!("{modifier}-shift-l"), ToggleLayout, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-l").into_boxed_str()), ToggleLayout, context),
         // Switch the Focused layout between its rounded and boxy workspace.
-        KeyBinding::new(&format!("{modifier}-alt-l"), ToggleWorkspaceStyle, context),
-        KeyBinding::new(&format!("{modifier}-shift-d"), SplitDown, context),
-        KeyBinding::new(&format!("{modifier}-="), ZoomIn, context),
-        KeyBinding::new(&format!("{modifier}-+"), ZoomIn, context),
-        KeyBinding::new(&format!("{modifier}--"), ZoomOut, context),
-        KeyBinding::new(&format!("{modifier}-0"), ResetZoom, context),
-        KeyBinding::new(&format!("{modifier}-shift-r"), Reload, context),
-        KeyBinding::new(&format!("{modifier}-alt-left"), FocusPaneLeft, context),
-        KeyBinding::new(&format!("{modifier}-alt-right"), FocusPaneRight, context),
-        KeyBinding::new(&format!("{modifier}-alt-up"), FocusPaneUp, context),
-        KeyBinding::new(&format!("{modifier}-alt-down"), FocusPaneDown, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-alt-l").into_boxed_str()), ToggleWorkspaceStyle, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-d").into_boxed_str()), SplitDown, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-=").into_boxed_str()), ZoomIn, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-+").into_boxed_str()), ZoomIn, context),
+        KeyBinding::new(Box::leak(format!("{modifier}--").into_boxed_str()), ZoomOut, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-0").into_boxed_str()), ResetZoom, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-shift-r").into_boxed_str()), Reload, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-alt-left").into_boxed_str()), FocusPaneLeft, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-alt-right").into_boxed_str()), FocusPaneRight, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-alt-up").into_boxed_str()), FocusPaneUp, context),
+        KeyBinding::new(Box::leak(format!("{modifier}-alt-down").into_boxed_str()), FocusPaneDown, context),
         KeyBinding::new("ctrl-tab", NextTab, context),
         KeyBinding::new("ctrl-shift-tab", PreviousTab, context),
         KeyBinding::new("tab", FocusNext, context),
@@ -285,7 +284,7 @@ pub(crate) fn corner_controls_width(_window: &Window) -> f32 {
 /// Client-decorated Linux windows also need explicit native drag requests.
 /// Windows hit-tests the drag area as the caption, which drags, snaps and
 /// maximizes on double-click natively.
-pub(crate) fn titlebar_drag_area() -> gpui::Div {
+pub(crate) fn titlebar_drag_area() -> gpui_kit::Div {
     let bounds = AnchorSlot::default();
     div()
         .relative()
@@ -297,7 +296,7 @@ pub(crate) fn titlebar_drag_area() -> gpui::Div {
                 || (true
                     && matches!(
                         window.window_decorations(),
-                        gpui::Decorations::Client { .. }
+                        gpui_kit::Decorations::Client { .. }
                     )))
                 && bounds.get().is_some_and(|b| b.contains(&event.position))
             {
@@ -584,7 +583,7 @@ pub(crate) struct Shell {
     /// The collapsed inset sidebar peeking out over the workspace.
     sidebar_peek: Option<sidebar_peek::SidebarPeek>,
     peek_animating: bool,
-    peek_close: Option<gpui::Task<()>>,
+    peek_close: Option<gpui_kit::Task<()>>,
     peek_toggle_bounds: AnchorSlot,
     /// useTrafficLightsVisible: fullscreen hides the native buttons, so the
     /// title bar takes their room back.
@@ -602,7 +601,7 @@ pub(crate) struct Shell {
     remote_project_picker: Option<remote_projects::Open>,
     remote_refreshing: bool,
     remote_marks: HashMap<i64, (bool, bool)>,
-    _remote_clock: gpui::Task<()>,
+    _remote_clock: gpui_kit::Task<()>,
     sessions: HashMap<i64, Entity<Conversation>>,
     /// Lightweight history index; only opened or previewed chats own GPUI entities.
     session_summaries: HashMap<i64, Session>,
@@ -615,7 +614,7 @@ pub(crate) struct Shell {
     live_marks: HashMap<i64, Entity<SessionMark>>,
     live_agents_expanded: bool,
     /// Repaints the live agents card when one of its elapsed times changes.
-    live_tick: Option<gpui::Task<()>>,
+    live_tick: Option<gpui_kit::Task<()>>,
     /// Milliseconds until the next elapsed label in the live agents card changes.
     live_next_change: u64,
     busy_sessions: HashSet<i64>,
@@ -635,9 +634,9 @@ pub(crate) struct Shell {
     actions_anchor: AnchorSlot,
     new_tab_anchor: AnchorSlot,
     /// The dock terminal each action last ran in, by project and action id.
-    action_terminals: HashMap<(String, String), gpui::WeakEntity<Terminal>>,
+    action_terminals: HashMap<(String, String), gpui_kit::WeakEntity<Terminal>>,
     deleting: HashSet<i64>,
-    group_writes: Option<gpui::Task<()>>,
+    group_writes: Option<gpui_kit::Task<()>>,
     selected_sessions: HashSet<i64>,
     selection_anchor: Option<i64>,
     context_selection: bool,
@@ -650,7 +649,7 @@ pub(crate) struct Shell {
     filter_anchor: AnchorSlot,
     folder_picker: Option<session_folders::Open>,
     pending_folder: Option<(i64, AnchorSlot)>,
-    _session_clock: gpui::Task<()>,
+    _session_clock: gpui_kit::Task<()>,
     notes: Option<Entity<Notes>>,
     /// The sidebar's Notes count; `None` until the store has answered.
     note_count: Option<usize>,
@@ -683,8 +682,8 @@ pub(crate) struct Shell {
     title_tab_selection: (Option<TitleTab>, Option<TitleTab>, std::time::Instant),
     session_hover: Option<i64>,
     session_preview: Option<SessionPreview>,
-    preview_close: Option<gpui::Task<()>>,
-    preview_open: Option<gpui::Task<()>>,
+    preview_close: Option<gpui_kit::Task<()>>,
+    preview_open: Option<gpui_kit::Task<()>>,
     sidebar_last_scroll: Option<std::time::Instant>,
     window_observed: bool,
     shortcuts: Option<shortcuts::Shortcuts>,
@@ -707,7 +706,7 @@ pub(crate) struct Shell {
     /// focus a new session in a tab or project the user has already left.
     navigation_revision: u64,
     pending_project_blanks: HashSet<String>,
-    new_tab_task: Option<gpui::Task<()>>,
+    new_tab_task: Option<gpui_kit::Task<()>>,
     worktree_focus: HashMap<String, crate::worktree_switcher::WorktreeFocus>,
     session_worktrees: HashMap<i64, Option<String>>,
     session_details: HashMap<i64, monocode_core::store::MobileSessionMetadata>,
@@ -727,7 +726,7 @@ pub(crate) struct Shell {
     space_anchor: AnchorSlot,
     error: Option<String>,
     tab_scroll: ScrollHandle,
-    tab_scroll_task: Option<gpui::Task<()>>,
+    tab_scroll_task: Option<gpui_kit::Task<()>>,
     resize: Option<(Pixels, f32)>,
     pub(crate) git: Entity<crate::git_status::ProjectGit>,
     pub(crate) right_panel: Option<Entity<RightPanel>>,
@@ -760,13 +759,13 @@ pub(crate) struct Shell {
     dock_resize: Option<(f32, f32)>,
     dock_hover: Option<usize>,
     /// Tab animations for the dock's terminals, with each tab's last title.
-    dock_tab_motion: crate::tab_motion::TabMotion<gpui::EntityId, SharedString>,
+    dock_tab_motion: crate::tab_motion::TabMotion<gpui_kit::EntityId, SharedString>,
     dock_drag: Option<terminal_dock::DockTabDrag>,
     /// The right panel's drawn width this frame, 0 while it is hidden.
     right_drawn: f32,
     /// Classic: the corner tab opening out and the one folding away.
     corner_reveal: Option<crate::project_tabs::TabReveal>,
-    dock_shifts: HashMap<gpui::EntityId, TabShift>,
+    dock_shifts: HashMap<gpui_kit::EntityId, TabShift>,
     dock_skip_click: bool,
     dock_tab_scroll: ScrollHandle,
     move_terminal_anchor: AnchorSlot,
@@ -1897,11 +1896,11 @@ impl Shell {
     /// noticed it so layout never runs against a viewport that changes mid-draw.
     fn sync_ui_scale(&self, window: &mut Window, cx: &mut Context<Self>) {
         let zoom = self.workspace.preferences.ui_scale.clamp(50, 200) as f32 / 100.;
-        if (window.content_zoom() - zoom).abs() < f32::EPSILON {
+        if (f32::from(window.rem_size()) - 16. * zoom).abs() < f32::EPSILON {
             return;
         }
-        window.defer(cx, move |window, cx| {
-            window.set_content_zoom(zoom, cx);
+        window.defer(cx, move |window, _| {
+            window.set_rem_size(gpui_kit::px(16. * zoom));
         });
     }
     /// The native stand-in for the web app's Reload: restart the process.
@@ -1918,7 +1917,7 @@ impl Shell {
             "Running agents and terminals will stop."
         };
         let answer = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             "Reload Monocode Native?",
             Some(detail),
             &["Reload", "Cancel"],
@@ -1945,7 +1944,7 @@ impl Shell {
         }
         self.quit_prompted = true;
         let answer = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             "Quit with unsaved file edits?",
             Some("Save your files before quitting to keep your changes."),
             &["Quit Without Saving", "Cancel"],
@@ -2460,10 +2459,10 @@ impl Shell {
                 .id(("pane", id as usize))
                 .debug_selector(move || format!("pane-{id}"))
                 .absolute()
-                .left(gpui::relative(rect.x))
-                .top(gpui::relative(rect.y))
-                .w(gpui::relative(rect.w))
-                .h(gpui::relative(rect.h))
+                .left(gpui_kit::relative(rect.x))
+                .top(gpui_kit::relative(rect.y))
+                .w(gpui_kit::relative(rect.w))
+                .h(gpui_kit::relative(rect.h))
                 .overflow_hidden()
                 .flex()
                 .flex_col()
@@ -2557,16 +2556,16 @@ impl Shell {
                     .absolute()
                     .map(|d| {
                         if row {
-                            d.left(gpui::relative(g.x + sash.boundary * g.w))
-                                .top(gpui::relative(g.y))
-                                .h(gpui::relative(g.h))
+                            d.left(gpui_kit::relative(g.x + sash.boundary * g.w))
+                                .top(gpui_kit::relative(g.y))
+                                .h(gpui_kit::relative(g.h))
                                 .ml(px(-5.5))
                                 .w(px(12.))
                                 .cursor(CursorStyle::ResizeLeftRight)
                         } else {
-                            d.top(gpui::relative(g.y + sash.boundary * g.h))
-                                .left(gpui::relative(g.x))
-                                .w(gpui::relative(g.w))
+                            d.top(gpui_kit::relative(g.y + sash.boundary * g.h))
+                                .left(gpui_kit::relative(g.x))
+                                .w(gpui_kit::relative(g.w))
                                 .mt(px(-5.5))
                                 .h(px(12.))
                                 .cursor(CursorStyle::ResizeUpDown)
@@ -2652,7 +2651,8 @@ impl Shell {
                 .left_0()
                 .size_full()
                 .when_some(review_ratio, |d, ratio| {
-                    d.left(gpui::relative(1. - ratio)).w(gpui::relative(ratio))
+                    d.left(gpui_kit::relative(1. - ratio))
+                        .w(gpui_kit::relative(ratio))
                 })
                 .child(wash)
                 .child(line)
@@ -2790,7 +2790,7 @@ impl Shell {
                     .relative()
                     .h_full()
                     .flex_shrink_0()
-                    .w(gpui::relative(ratio))
+                    .w(gpui_kit::relative(ratio))
                     .overflow_hidden()
                     .when(moving, |d| d.opacity(0.4))
                     .when(!chat_hidden, |d| {
@@ -2840,7 +2840,7 @@ impl Shell {
                         .absolute()
                         .top_0()
                         .bottom_0()
-                        .left(gpui::relative(1. - ratio))
+                        .left(gpui_kit::relative(1. - ratio))
                         .ml(px(-5.5))
                         .w(px(12.))
                         .cursor(CursorStyle::ResizeLeftRight)
@@ -3167,7 +3167,7 @@ impl Shell {
                 return;
             };
             let answer = window.prompt(
-                gpui::PromptLevel::Warning,
+                gpui_kit::PromptLevel::Warning,
                 &format!("\"{process}\" is still running in {label}. Stop it and close the panel?"),
                 None,
                 &["Stop", "Cancel"],
@@ -3189,7 +3189,7 @@ impl Shell {
             return;
         };
         let answer = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             &format!("\"{process}\" is still running in {label}. Close this terminal anyway?"),
             None,
             &["Close", "Cancel"],
@@ -4049,7 +4049,7 @@ impl Shell {
         let bounds = window.inner_window_bounds();
         // X11 can report Windowed bounds while tracking fullscreen separately.
         let bounds = if window.is_fullscreen() {
-            gpui::WindowBounds::Fullscreen(bounds.get_bounds())
+            gpui_kit::WindowBounds::Fullscreen(bounds.get_bounds())
         } else {
             bounds
         };
@@ -4650,7 +4650,7 @@ impl Shell {
     }
     /// The traffic lights, sidebar toggle and visit arrows, spanning the
     /// open sidebar so the arrows sit at its edge.
-    fn navigation(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn navigation(&self, cx: &mut Context<Self>) -> gpui_kit::Div {
         div()
             .w(px(self.navigation_width()))
             .h(px(TITLE_BAR_HEIGHT))
@@ -4710,7 +4710,7 @@ impl Shell {
     }
     /// The classic layout's settings fill the project rail, so its toggle
     /// steps aside. Its slot stays, so nothing beside it moves.
-    fn sidebar_toggle(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+    fn sidebar_toggle(&self, cx: &mut Context<Self>) -> gpui_kit::Stateful<gpui_kit::Div> {
         if self.settings.is_some() && self.workspace.classic_layout {
             return div()
                 .id("toggle-sidebar")
@@ -4806,7 +4806,7 @@ impl Shell {
         &self,
         id: &'static str,
         cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         div()
             .id(id)
             .debug_selector(move || id.into())
@@ -4829,7 +4829,7 @@ impl Shell {
                     cx.notify();
                 }),
             )
-            .on_click(cx.listener(|this, event: &gpui::ClickEvent, _, cx| {
+            .on_click(cx.listener(|this, event: &gpui_kit::ClickEvent, _, cx| {
                 if event.click_count() == 2 {
                     this.right_resize = None;
                     this.workspace.right_panel_width = crate::right_panel::WIDTH_DEFAULT;
@@ -5077,9 +5077,9 @@ impl Shell {
                                     TOGGLE_RIGHT_PANEL_LABEL
                                 })
                                 .aria_toggled(if panel_active {
-                                    gpui::Toggled::True
+                                    gpui_kit::Toggled::True
                                 } else {
-                                    gpui::Toggled::False
+                                    gpui_kit::Toggled::False
                                 })
                                 .group("toggle-right-panel")
                                 .cursor_pointer()
@@ -5187,7 +5187,7 @@ impl Shell {
                 .into_any_element()
         })
     }
-    fn file_search_button(&self, cx: &Context<Self>) -> gpui::Stateful<gpui::Div> {
+    fn file_search_button(&self, cx: &Context<Self>) -> gpui_kit::Stateful<gpui_kit::Div> {
         let label = "Search files (Ctrl+P)";
         icon_button("titlebar-file-search", label, "search")
             .debug_selector(|| "titlebar-file-search".into())
@@ -6070,7 +6070,7 @@ impl Shell {
             rails::Rail::Agents(summary) => (
                 "share",
                 // fuchsia-200/90
-                gpui::Hsla::from(rgb(0xf5d0fe)).opacity(0.9),
+                gpui_kit::Hsla::from(rgb(0xf5d0fe)).opacity(0.9),
                 format!(
                     "Orchestrator, {} {}",
                     summary.tasks.len(),
@@ -6084,7 +6084,7 @@ impl Shell {
             rails::Rail::Started(children) => (
                 "cursor-magic",
                 // sky-200/90
-                gpui::Hsla::from(rgb(0xbae6fd)).opacity(0.9),
+                gpui_kit::Hsla::from(rgb(0xbae6fd)).opacity(0.9),
                 format!(
                     "Operator, started {} {}",
                     children.len(),
@@ -6326,7 +6326,7 @@ impl Shell {
                             div()
                                 .flex_shrink_0()
                                 .min_w_0()
-                                .max_w(gpui::relative(0.5))
+                                .max_w(gpui_kit::relative(0.5))
                                 .flex()
                                 .items_center()
                                 .gap_1p5()
@@ -6398,7 +6398,7 @@ impl Shell {
                 this.hover_session(id, anchor.clone(), *hovered, compact, window, cx);
             }))
             .on_click(
-                cx.listener(move |this, event: &gpui::ClickEvent, window, cx| {
+                cx.listener(move |this, event: &gpui_kit::ClickEvent, window, cx| {
                     if std::mem::take(&mut this.skip_session_click) {
                         return;
                     }
@@ -8183,7 +8183,7 @@ impl Shell {
                         this.open_title_tab(&TitleTab::Session(id), window, cx);
                     }));
                 let element = if dragging {
-                    gpui::deferred(tab).with_priority(1).into_any()
+                    gpui_kit::deferred(tab).with_priority(1).into_any()
                 } else {
                     tab.into_any()
                 };
@@ -8200,7 +8200,9 @@ impl Shell {
                         .app_title_tab(*view, tab_width(tab), cx)
                         .left(shifts[ix]);
                     Some(if dragged.as_ref() == Some(tab) {
-                        gpui::deferred(element).with_priority(1).into_any_element()
+                        gpui_kit::deferred(element)
+                            .with_priority(1)
+                            .into_any_element()
                     } else {
                         element.into_any_element()
                     })
@@ -8208,7 +8210,9 @@ impl Shell {
                 TitleTab::Search => {
                     let element = self.search_title_tab(tab_width(tab), cx).left(shifts[ix]);
                     Some(if dragged.as_ref() == Some(tab) {
-                        gpui::deferred(element).with_priority(1).into_any_element()
+                        gpui_kit::deferred(element)
+                            .with_priority(1)
+                            .into_any_element()
                     } else {
                         element.into_any_element()
                     })
@@ -8246,7 +8250,7 @@ impl Shell {
                         )
                         .child(element);
                     Some(if dragging {
-                        gpui::deferred(element).with_priority(1).into_any()
+                        gpui_kit::deferred(element).with_priority(1).into_any()
                     } else {
                         element.into_any()
                     })
@@ -8395,24 +8399,24 @@ impl Shell {
 /// Highlight only the existing hairline; its parent keeps the wider, transparent
 /// grab area centered on that line. The wash brightens the underlying border.
 /// A sash resting on a snap spot: a 2px accent line over its border.
-fn sash_snap_line(vertical: bool) -> gpui::Div {
+fn sash_snap_line(vertical: bool) -> gpui_kit::Div {
     div().absolute().bg(accent_color()).rounded_full().map(|d| {
         if vertical {
             d.top_0()
                 .h_full()
-                .left(gpui::relative(0.5))
+                .left(gpui_kit::relative(0.5))
                 .ml(px(-1.))
                 .w(px(2.))
         } else {
             d.left_0()
                 .w_full()
-                .top(gpui::relative(0.5))
+                .top(gpui_kit::relative(0.5))
                 .mt(px(-1.))
                 .h(px(2.))
         }
     })
 }
-fn resize_border(vertical: bool, dragging: bool) -> gpui::Div {
+fn resize_border(vertical: bool, dragging: bool) -> gpui_kit::Div {
     div()
         .absolute()
         .bg(content(0.12))
@@ -8422,13 +8426,13 @@ fn resize_border(vertical: bool, dragging: bool) -> gpui::Div {
             if vertical {
                 d.top_0()
                     .h_full()
-                    .left(gpui::relative(0.5))
+                    .left(gpui_kit::relative(0.5))
                     .ml(px(-0.5))
                     .w(px(1.))
             } else {
                 d.left_0()
                     .w_full()
-                    .top(gpui::relative(0.5))
+                    .top(gpui_kit::relative(0.5))
                     .mt(px(-0.5))
                     .h(px(1.))
             }
@@ -8534,7 +8538,7 @@ impl Render for Shell {
         {
             let client = matches!(
                 window.window_decorations(),
-                gpui::Decorations::Client { .. }
+                gpui_kit::Decorations::Client { .. }
             );
             if self.client_decorations != client {
                 self.client_decorations = client;
@@ -8554,7 +8558,7 @@ impl Render for Shell {
         let p = &self.workspace.preferences;
         let system_light = matches!(
             cx.window_appearance(),
-            gpui::WindowAppearance::Light | gpui::WindowAppearance::VibrantLight
+            gpui_kit::WindowAppearance::Light | gpui_kit::WindowAppearance::VibrantLight
         );
         let project = &self.workspace.project;
         let animate = !cx.reduce_motion()
@@ -8821,7 +8825,7 @@ impl Render for Shell {
             .on_action(|_: &About, window, cx| {
                 let detail = format!("Version {}", crate::notifications::updater::version());
                 drop(window.prompt(
-                    gpui::PromptLevel::Info,
+                    gpui_kit::PromptLevel::Info,
                     "Monocode Native",
                     Some(&detail),
                     &["OK"],
@@ -9225,14 +9229,14 @@ impl Render for Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{EntityInputHandler, TestAppContext, WindowHandle};
+    use gpui_kit::{EntityInputHandler, TestAppContext, WindowHandle};
     use monocode_core::store::Store;
-    #[gpui::test]
+    #[gpui_kit::test]
     fn window_state_is_saved_on_resize_and_restored_with_the_workspace(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.refresh().unwrap();
         cx.run_until_parked();
-        let dimensions = gpui::size(px(1440.), px(900.));
+        let dimensions = gpui_kit::size(px(1440.), px(900.));
         cx.simulate_window_resize(window.into(), dimensions);
         cx.run_until_parked();
         window
@@ -9244,18 +9248,18 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn window_state_preserves_fullscreen_when_backend_bounds_report_windowed(
         cx: &mut TestAppContext,
     ) {
         let (window, _, _) = window(cx);
-        let normal_size = gpui::size(px(1440.), px(900.));
+        let normal_size = gpui_kit::size(px(1440.), px(900.));
         cx.simulate_window_resize(window.into(), normal_size);
         cx.run_until_parked();
         window
             .update(cx, |_, window, _| window.toggle_fullscreen())
             .unwrap();
-        cx.simulate_window_resize(window.into(), gpui::size(px(1920.), px(1080.)));
+        cx.simulate_window_resize(window.into(), gpui_kit::size(px(1920.), px(1080.)));
         cx.run_until_parked();
         window
             .update(cx, |shell, window, cx| {
@@ -9263,18 +9267,18 @@ mod tests {
                 assert!(window.is_fullscreen());
                 assert!(matches!(
                     window.inner_window_bounds(),
-                    gpui::WindowBounds::Windowed(_)
+                    gpui_kit::WindowBounds::Windowed(_)
                 ));
                 let saved = locked(&shell.store).unwrap().ui_state().unwrap().unwrap();
                 assert_eq!(*shell.latest_state.lock().unwrap(), saved);
                 let restored = Workspace::restore(Some(&saved), &[], "/work/monocode");
                 let bounds = restored.window.bounds(cx);
-                assert!(matches!(bounds, gpui::WindowBounds::Fullscreen(_)));
+                assert!(matches!(bounds, gpui_kit::WindowBounds::Fullscreen(_)));
                 assert_eq!(bounds.get_bounds().size, normal_size);
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn hovering_archive_preserves_history_and_does_not_select_the_row(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9288,7 +9292,7 @@ mod tests {
             })
             .unwrap();
         cx.refresh().unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let row = visual.debug_bounds("sidebar-session-1").unwrap();
         visual.simulate_mouse_move(row.center(), None, Default::default());
         visual.run_until_parked();
@@ -9331,7 +9335,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn working_marks_animate_independently_and_completed_replies_clear_when_seen(
         cx: &mut TestAppContext,
     ) {
@@ -9380,7 +9384,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn hover_preview_waits_and_never_materializes_a_conversation(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         let (id, count) = window
@@ -9397,8 +9401,8 @@ mod tests {
                 shell.session_summaries.insert(id, summary);
                 let anchor = AnchorSlot::default();
                 anchor.set(Some(Bounds::new(
-                    window.mouse_position() - gpui::point(px(5.), px(5.)),
-                    gpui::size(px(20.), px(20.)),
+                    window.mouse_position() - gpui_kit::point(px(5.), px(5.)),
+                    gpui_kit::size(px(20.), px(20.)),
                 )));
                 let count = shell.sessions.len();
                 shell.hover_session(id, anchor, true, true, window, cx);
@@ -9422,7 +9426,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sidebar_rows_have_a_gap_and_preview_survives_crossing_into_the_card(
         cx: &mut TestAppContext,
     ) {
@@ -9438,7 +9442,7 @@ mod tests {
             })
             .unwrap();
         cx.refresh().unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let first = visual
             .debug_bounds(Box::leak(format!("sidebar-session-{b}").into_boxed_str()))
             .unwrap();
@@ -9459,7 +9463,7 @@ mod tests {
             cx.run_until_parked();
             cx.refresh().unwrap();
         };
-        move_to(first.origin + gpui::point(px(20.), px(16.)), cx);
+        move_to(first.origin + gpui_kit::point(px(20.), px(16.)), cx);
         cx.executor()
             .advance_clock(std::time::Duration::from_millis(130));
         cx.run_until_parked();
@@ -9479,7 +9483,7 @@ mod tests {
             .unwrap();
         // The close timer lets the pointer cross the 8px gap into the preview.
         move_to(
-            gpui::point(first.right() + px(4.), first.top() + px(16.)),
+            gpui_kit::point(first.right() + px(4.), first.top() + px(16.)),
             cx,
         );
         move_to(surface.center(), cx);
@@ -9492,7 +9496,7 @@ mod tests {
                 );
             })
             .unwrap();
-        move_to(second.origin + gpui::point(px(20.), px(16.)), cx);
+        move_to(second.origin + gpui_kit::point(px(20.), px(16.)), cx);
         cx.executor()
             .advance_clock(std::time::Duration::from_millis(130));
         cx.run_until_parked();
@@ -9510,11 +9514,11 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn high_usage_chip_opens_running_work_and_escape_closes_it(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.update(crate::popover::bind);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("resource-pressure-chip").is_none());
         window
@@ -9540,7 +9544,7 @@ mod tests {
         assert!(visual.debug_bounds("resource-dialog").is_none());
         assert!(visual.debug_bounds("resource-pressure-chip").is_some());
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn usage_footer_follows_active_tabs_and_provider_changes(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9566,18 +9570,18 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn context_menu_click_does_not_activate_the_tab_beneath_it(cx: &mut TestAppContext) {
         let (window, a, b) = same_project_window(cx);
         window
             .update(cx, |shell, w, cx| {
                 shell.open(a, w, cx);
-                let anchor = Anchor::Point(gpui::point(px(600.), px(5.)));
+                let anchor = Anchor::Point(gpui_kit::point(px(600.), px(5.)));
                 shell.open_menu(MenuTarget::Tab(b), anchor, w, cx);
             })
             .unwrap();
         cx.refresh().unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         // The first action overlaps the tab strip. Pin it without selecting it.
         let pin = visual.debug_bounds("menu-action-pin").unwrap();
         visual.simulate_click(pin.center(), Default::default());
@@ -9591,7 +9595,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_close_all_stays_in_the_selected_project(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9620,7 +9624,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_new_and_split_requests_do_not_undo_project_navigation(
         cx: &mut TestAppContext,
     ) {
@@ -9648,7 +9652,7 @@ mod tests {
                 .unwrap();
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_closing_an_inactive_tab_keeps_notes_and_focus(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9661,7 +9665,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_closing_an_inactive_split_pane_keeps_notes(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9684,7 +9688,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_pending_project_blanks_are_not_duplicated(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         window
@@ -9710,7 +9714,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_close_all_shortcut_keeps_the_project(cx: &mut TestAppContext) {
         let (window, a, _) = window(cx);
         cx.update(bind_keys);
@@ -9730,7 +9734,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn bulk_close_shortcuts_keep_pinned_tabs(cx: &mut TestAppContext) {
         let modifier = "ctrl";
         for keys in ["shift-w", "alt-t"] {
@@ -9753,7 +9757,7 @@ mod tests {
                 .unwrap();
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_close_stays_in_project_and_keeps_running_drafts(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9785,7 +9789,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_opening_a_conversation_replaces_the_blank_tab(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9805,7 +9809,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_close_prefers_right_then_left_in_the_same_project(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9839,7 +9843,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_project_switches_remember_the_last_focused_tab(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9869,7 +9873,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_lifecycle_closing_a_file_only_tab_restores_the_project_chat(cx: &mut TestAppContext) {
         let (window, a, b) = window(cx);
         window
@@ -9905,7 +9909,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn projects_without_tabs_land_on_one_reusable_blank_session(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         let blank = |shell: &Shell, cx: &App| {
@@ -9944,7 +9948,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn header_menu_switches_projects_from_its_picker_flyout(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.update(|cx| {
@@ -9970,7 +9974,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn project_appearance_menu_edits_and_background_dialog_persist_per_project(
         cx: &mut TestAppContext,
     ) {
@@ -9995,7 +9999,7 @@ mod tests {
         cx.simulate_keystrokes(window.into(), "space");
         cx.simulate_input(window.into(), "Studio");
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let flyout = window
             .update(visual, |shell, _, cx| {
                 shell
@@ -10023,7 +10027,7 @@ mod tests {
         assert_eq!(name.left(), controls.left());
         assert_eq!(logo.left() - controls.left(), px(2.));
         assert_eq!(logo.top() - name.bottom(), px(8.));
-        assert_eq!(logo.size, gpui::size(px(36.), px(36.)));
+        assert_eq!(logo.size, gpui_kit::size(px(36.), px(36.)));
         let background = visual.debug_bounds("menu-action-background").unwrap();
         assert_eq!(background.left() - flyout.left(), px(9.));
         assert_eq!(flyout.right() - background.right(), px(9.));
@@ -10063,7 +10067,7 @@ mod tests {
                         path: "/work/monocode".into(),
                         rail: false,
                     },
-                    Anchor::Point(gpui::point(px(300.), px(60.))),
+                    Anchor::Point(gpui_kit::point(px(300.), px(60.))),
                     w,
                     cx,
                 );
@@ -10101,13 +10105,13 @@ mod tests {
             .unwrap();
         // Modal.tsx + ProjectBackgroundDialog.tsx: match the React box metrics.
         assert_eq!(dialog.size.width, px(418.));
-        assert_eq!(preview.size, gpui::size(px(386.), px(162.)));
+        assert_eq!(preview.size, gpui_kit::size(px(386.), px(162.)));
         assert_eq!(preview.left() - dialog.left(), px(16.));
         assert_eq!(preview.top() - header.bottom(), px(16.));
         assert_eq!(change.top() - preview.bottom(), px(8.));
         assert_eq!(change.size.height, px(32.));
         assert_eq!(effect.size.height, px(57.5));
-        assert_eq!(scope_control.size, gpui::size(px(176.), px(32.)));
+        assert_eq!(scope_control.size, gpui_kit::size(px(176.), px(32.)));
         for (before, after) in [
             (effect, scope),
             (scope, empty_row),
@@ -10131,7 +10135,7 @@ mod tests {
             })
             .unwrap();
         let effect_trigger = visual.debug_bounds("project-background-effect").unwrap();
-        assert_eq!(effect_trigger.size, gpui::size(px(144.), px(36.)));
+        assert_eq!(effect_trigger.size, gpui_kit::size(px(144.), px(36.)));
         assert_eq!(effect_trigger.right(), preview.right());
         visual.simulate_click(effect_trigger.center(), Default::default());
         visual.run_until_parked();
@@ -10190,7 +10194,7 @@ mod tests {
             .unwrap();
         visual.run_until_parked();
         assert!(visual.debug_bounds("project-chat-background").is_none());
-        visual.simulate_resize(gpui::size(px(820.), px(520.)));
+        visual.simulate_resize(gpui_kit::size(px(820.), px(520.)));
         window
             .update(visual, |shell, w, cx| {
                 shell.open_background_dialog("/work/monocode".into(), w, cx);
@@ -10203,7 +10207,7 @@ mod tests {
         assert!(compact.bottom() <= px(504.));
         assert!(body.bottom() <= compact.bottom());
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn theme_colors_dialog_saves_a_project_theme_and_can_return_to_app_colors(
         cx: &mut TestAppContext,
     ) {
@@ -10230,22 +10234,22 @@ mod tests {
         // The modal centers itself once its height is measured.
         cx.refresh().unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let dialog = visual.debug_bounds("project-theme-dialog").unwrap();
         assert!(dialog.top() >= px(16.));
         let harbor = visual.debug_bounds("project-theme-palette-harbor").unwrap();
-        visual.simulate_click(harbor.center(), gpui::Modifiers::none());
+        visual.simulate_click(harbor.center(), gpui_kit::Modifiers::none());
         let red = visual.debug_bounds("project-theme-accent-4").unwrap();
-        visual.simulate_click(red.center(), gpui::Modifiers::none());
+        visual.simulate_click(red.center(), gpui_kit::Modifiers::none());
         visual.run_until_parked();
         let saved = theme(visual).expect("the first pick gives the project its colors");
         assert_eq!(saved.workspace_theme, "harbor");
         assert_eq!(saved.accent_color.as_deref(), Some("#ef4444"));
-        assert_eq!(crate::theme::accent_color(), gpui::rgb(0xef4444).into());
+        assert_eq!(crate::theme::accent_color(), gpui_kit::rgb(0xef4444).into());
         let reset = visual
             .debug_bounds("project-settings-Use app colors")
             .unwrap();
-        visual.simulate_click(reset.center(), gpui::Modifiers::none());
+        visual.simulate_click(reset.center(), gpui_kit::Modifiers::none());
         visual.run_until_parked();
         assert_eq!(theme(visual), None);
         visual.simulate_keystrokes("escape");
@@ -10256,7 +10260,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn backgrounds_survive_tab_and_notes_switches_until_the_tab_closes(cx: &mut TestAppContext) {
         use monocode_core::project_appearance::{Background, Effect, ProjectAppearance};
         let (window, a, b) = window(cx);
@@ -10374,7 +10378,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sidebar_shortcut_keeps_working_after_hiding_focused_search(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.update(|cx| {
@@ -10397,7 +10401,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn right_panel_shortcut_keeps_working_after_hiding_focused_history(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.update(|cx| {
@@ -10428,7 +10432,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn layout_shortcut_toggles_from_the_focused_composer(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.update(|cx| {
@@ -10453,7 +10457,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn title_tabs_draw_their_own_session_marks(cx: &mut TestAppContext) {
         let (window, a, _) = window(cx);
         window
@@ -10477,7 +10481,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn switching_layout_with_working_session_marks_keeps_cached_paint_valid(
         cx: &mut TestAppContext,
     ) {
@@ -10554,7 +10558,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn titlebar_panel_buttons_keep_window_bounds_for_single_and_double_clicks(
         cx: &mut TestAppContext,
     ) {
@@ -10563,7 +10567,7 @@ mod tests {
         window
             .update(cx, |shell, w, cx| shell.focus_active(w, cx))
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let original = window.update(cx, |_, w, _| w.window_bounds()).unwrap();
         for selector in ["toggle-sidebar", "toggle-right-panel"] {
             for click_count in [1, 2, 1, 2] {
@@ -10585,7 +10589,7 @@ mod tests {
                     first_mouse: false,
                     modifiers: Default::default(),
                 });
-                cx.simulate_event(gpui::MouseUpEvent {
+                cx.simulate_event(gpui_kit::MouseUpEvent {
                     position,
                     button: MouseButton::Left,
                     click_count,
@@ -10606,7 +10610,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn panel_tab_switches_and_animated_reversals_keep_shortcuts_live(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.update(|cx| {
@@ -10627,7 +10631,7 @@ mod tests {
                 );
             })
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         for width in [
             crate::right_panel::WIDTH_MIN,
@@ -10649,7 +10653,7 @@ mod tests {
         }
         let handle = cx.debug_bounds("titlebar-right-panel-resize").unwrap();
         let start = handle.center();
-        let end = start - gpui::point(px(40.), px(0.));
+        let end = start - gpui_kit::point(px(40.), px(0.));
         cx.simulate_event(MouseDownEvent {
             position: start,
             button: MouseButton::Left,
@@ -10658,7 +10662,7 @@ mod tests {
             modifiers: Default::default(),
         });
         cx.simulate_mouse_move(end, Some(MouseButton::Left), Default::default());
-        cx.simulate_event(gpui::MouseUpEvent {
+        cx.simulate_event(gpui_kit::MouseUpEvent {
             position: end,
             button: MouseButton::Left,
             click_count: 1,
@@ -10718,7 +10722,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn monos_and_session_title_tabs_share_width_spacing_and_scroll_slots(cx: &mut TestAppContext) {
         let (window, a, b) = same_project_window(cx);
         cx.update(|cx| cx.set_reduce_motion(true));
@@ -10729,7 +10733,7 @@ mod tests {
                 manager.read(cx).active.clone().unwrap()
             })
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         let mono = cx
             .debug_bounds(Box::leak(format!("mono-title-tab-{mono}").into_boxed_str()))
@@ -10752,10 +10756,10 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn crowded_tabs_fit_and_hold_the_new_tab_button_still_while_one_opens(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         window
             .update(cx, |shell, _, cx| {
                 shell.workspace.preferences.tab_animations = true;
@@ -10765,7 +10769,7 @@ mod tests {
             })
             .unwrap();
         // Tab motion runs on the wall clock, as the window's frames do.
-        let settle = |cx: &mut gpui::VisualTestContext| {
+        let settle = |cx: &mut gpui_kit::VisualTestContext| {
             std::thread::sleep(crate::tab_motion::DURATION + std::time::Duration::from_millis(20));
             window
                 .update(cx, |shell, _, cx| {
@@ -10815,7 +10819,7 @@ mod tests {
                 (selected, other.unwrap())
             })
             .unwrap();
-        let bounds = |cx: &mut gpui::VisualTestContext, id: i64| {
+        let bounds = |cx: &mut gpui_kit::VisualTestContext, id: i64| {
             cx.debug_bounds(Box::leak(format!("title-tab-{id}").into_boxed_str()))
                 .unwrap()
         };
@@ -10825,7 +10829,7 @@ mod tests {
             "the selected tab shrinks only down to its floor"
         );
         assert!(bounds(cx, other).size.width < px(SELECTED_TAB_MIN_WIDTH));
-        let close = |cx: &mut gpui::VisualTestContext, id: i64| {
+        let close = |cx: &mut gpui_kit::VisualTestContext, id: i64| {
             cx.debug_bounds(Box::leak(format!("close-title-tab-{id}").into_boxed_str()))
         };
         assert!(close(cx, selected).is_some(), "the selected tab can close");
@@ -10877,11 +10881,11 @@ mod tests {
             "and while a closed tab collapses: {closing:?}"
         );
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sidebar_toggle_holds_still_and_history_follows_the_sidebar(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.update(|cx| cx.set_reduce_motion(true));
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         let width = window
             .update(cx, |shell, _, _| {
@@ -10922,11 +10926,11 @@ mod tests {
             px(NO_TRAFFIC_LIGHTS + 72.)
         );
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn collapsed_sidebar_peeks_from_the_edge_and_the_toggle(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.update(|cx| cx.set_reduce_motion(true));
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         window
             .update(cx, |shell, window, cx| shell.toggle_sidebar(window, cx))
@@ -10935,14 +10939,14 @@ mod tests {
         let width = window
             .update(cx, |shell, _, _| shell.workspace.sidebar_width)
             .unwrap();
-        let open = |cx: &mut gpui::VisualTestContext| {
+        let open = |cx: &mut gpui_kit::VisualTestContext| {
             window.update(cx, |shell, _, _| shell.peek_open()).unwrap()
         };
         assert!(cx.debug_bounds("sidebar-peek").is_none());
         // The window's left edge peeks it out, below the title bar.
-        cx.simulate_mouse_move(gpui::point(px(2.), px(20.)), None, Default::default());
+        cx.simulate_mouse_move(gpui_kit::point(px(2.), px(20.)), None, Default::default());
         assert!(!open(cx));
-        cx.simulate_mouse_move(gpui::point(px(2.), px(300.)), None, Default::default());
+        cx.simulate_mouse_move(gpui_kit::point(px(2.), px(300.)), None, Default::default());
         cx.run_until_parked();
         assert!(open(cx));
         let panel = cx.debug_bounds("sidebar-peek").unwrap();
@@ -10951,13 +10955,17 @@ mod tests {
         assert_eq!(panel.size.width, px(width));
         // Crossing onto the panel keeps it out; leaving it puts it away after
         // a grace period.
-        cx.simulate_mouse_move(gpui::point(px(100.), px(300.)), None, Default::default());
+        cx.simulate_mouse_move(
+            gpui_kit::point(px(100.), px(300.)),
+            None,
+            Default::default(),
+        );
         cx.executor()
             .advance_clock(std::time::Duration::from_millis(500));
         cx.run_until_parked();
         assert!(open(cx));
         cx.simulate_mouse_move(
-            gpui::point(px(width + 200.), px(300.)),
+            gpui_kit::point(px(width + 200.), px(300.)),
             None,
             Default::default(),
         );
@@ -10973,7 +10981,10 @@ mod tests {
         cx.simulate_mouse_move(toggle.center(), None, Default::default());
         cx.run_until_parked();
         assert!(open(cx));
-        cx.simulate_click(gpui::point(px(width + 200.), px(300.)), Default::default());
+        cx.simulate_click(
+            gpui_kit::point(px(width + 200.), px(300.)),
+            Default::default(),
+        );
         cx.run_until_parked();
         assert!(!open(cx));
         // Docking the sidebar drops the peek, and an open sidebar never peeks.
@@ -10988,15 +10999,15 @@ mod tests {
                 assert!(shell.sidebar_peek.is_none());
             })
             .unwrap();
-        cx.simulate_mouse_move(gpui::point(px(2.), px(300.)), None, Default::default());
+        cx.simulate_mouse_move(gpui_kit::point(px(2.), px(300.)), None, Default::default());
         cx.run_until_parked();
         assert!(!open(cx));
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn boxy_collapsed_sidebar_peeks_too(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         cx.update(|cx| cx.set_reduce_motion(true));
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         window
             .update(cx, |shell, window, cx| {
@@ -11006,10 +11017,10 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let open = |cx: &mut gpui::VisualTestContext| {
+        let open = |cx: &mut gpui_kit::VisualTestContext| {
             window.update(cx, |shell, _, _| shell.peek_open()).unwrap()
         };
-        cx.simulate_mouse_move(gpui::point(px(2.), px(300.)), None, Default::default());
+        cx.simulate_mouse_move(gpui_kit::point(px(2.), px(300.)), None, Default::default());
         cx.run_until_parked();
         assert!(open(cx));
         assert!(cx.debug_bounds("sidebar-peek").is_some());
@@ -11020,17 +11031,21 @@ mod tests {
                 shell.layout_changed(cx);
             })
             .unwrap();
-        cx.simulate_mouse_move(gpui::point(px(300.), px(300.)), None, Default::default());
-        cx.simulate_mouse_move(gpui::point(px(2.), px(300.)), None, Default::default());
+        cx.simulate_mouse_move(
+            gpui_kit::point(px(300.), px(300.)),
+            None,
+            Default::default(),
+        );
+        cx.simulate_mouse_move(gpui_kit::point(px(2.), px(300.)), None, Default::default());
         cx.run_until_parked();
         assert!(!open(cx));
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn original_sidebar_geometry_matches_tauri_chrome(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, _) = window(cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
-        visual.simulate_resize(gpui::size(px(1500.), px(900.)));
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        visual.simulate_resize(gpui_kit::size(px(1500.), px(900.)));
         window
             .update(visual, |shell, _, cx| {
                 shell.workspace.classic_layout = true;
@@ -11077,12 +11092,12 @@ mod tests {
         assert!(visual.debug_bounds("sidebar-project-button").is_none());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn original_sidebar_tools_replace_sessions_in_the_left_column(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, _) = window(cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
-        visual.simulate_resize(gpui::size(px(1500.), px(900.)));
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        visual.simulate_resize(gpui_kit::size(px(1500.), px(900.)));
         window
             .update(visual, |shell, _, cx| {
                 shell.workspace.classic_layout = true;
@@ -11134,12 +11149,12 @@ mod tests {
         assert!(visual.debug_bounds("changes-header").is_none());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn original_sidebar_compact_rail_uses_vertical_workspace_tabs(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, _) = window(cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
-        visual.simulate_resize(gpui::size(px(1500.), px(900.)));
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        visual.simulate_resize(gpui_kit::size(px(1500.), px(900.)));
         window
             .update(visual, |shell, _, cx| {
                 shell.workspace.classic_layout = true;
@@ -11195,12 +11210,12 @@ mod tests {
         assert!(visual.debug_bounds("classic-workspace-tabs").is_some());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn original_sidebar_workspace_tabs_reorder_and_persist(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, _) = window(cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
-        visual.simulate_resize(gpui::size(px(1500.), px(900.)));
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        visual.simulate_resize(gpui_kit::size(px(1500.), px(900.)));
         window
             .update(visual, |shell, _, cx| {
                 shell.workspace.classic_layout = true;
@@ -11247,7 +11262,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn new_boxy_layout_runs_the_sidebar_and_workspace_full_height(cx: &mut TestAppContext) {
         crate::theme::configure(&crate::settings::Preferences::default(), false);
         let (window, _, _) = window(cx);
@@ -11257,7 +11272,7 @@ mod tests {
                 w.draw(cx).clear(cx);
             })
             .unwrap();
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             (
                 visual.debug_bounds("sidebar-frame"),
                 visual.debug_bounds("main-pane-frame").unwrap(),
@@ -11286,7 +11301,7 @@ mod tests {
         // The right panel toggle holds the window's corner, and the strip
         // runs up to it.
         let corner = |cx: &mut TestAppContext| {
-            gpui::VisualTestContext::from_window(window.into(), cx)
+            gpui_kit::VisualTestContext::from_window(window.into(), cx)
                 .debug_bounds("toggle-right-panel")
                 .unwrap()
         };
@@ -11316,7 +11331,7 @@ mod tests {
                 })
                 .unwrap();
             let (_, main, tabs) = frames(cx);
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             let explorer = visual.debug_bounds("right-panel-explorer").unwrap();
             assert!(visual.debug_bounds("right-panel-changes").is_none());
             let history = visual.debug_bounds("right-panel-history").unwrap();
@@ -11328,11 +11343,11 @@ mod tests {
             assert!(tabs.right() <= explorer.left());
             assert_eq!(corner(cx), closed_corner);
         }
-        let history = gpui::VisualTestContext::from_window(window.into(), cx)
+        let history = gpui_kit::VisualTestContext::from_window(window.into(), cx)
             .debug_bounds("right-panel-history")
             .expect("the panel's pane buttons show beside the toggle");
         assert!(history.right() <= closed_corner.left());
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.simulate_click(history.center(), Default::default());
         visual.run_until_parked();
         window
@@ -11353,20 +11368,20 @@ mod tests {
             .unwrap();
         frames(cx);
         assert!(
-            gpui::VisualTestContext::from_window(window.into(), cx)
+            gpui_kit::VisualTestContext::from_window(window.into(), cx)
                 .debug_bounds("right-panel-history")
                 .is_none(),
             "closed, the corner holds only the toggle"
         );
         // The visit arrows stay at the open sidebar's edge, not in the strip.
-        let forward = gpui::VisualTestContext::from_window(window.into(), cx)
+        let forward = gpui_kit::VisualTestContext::from_window(window.into(), cx)
             .debug_bounds("visit-forward")
             .unwrap();
         assert!(forward.right() <= sidebar.right());
         assert!(forward.right() > sidebar.right() - px(16.));
         // The sidebar toggle holds still as the sidebar closes and reopens.
         let toggle = |cx: &mut TestAppContext| {
-            gpui::VisualTestContext::from_window(window.into(), cx)
+            gpui_kit::VisualTestContext::from_window(window.into(), cx)
                 .debug_bounds("toggle-sidebar")
                 .unwrap()
         };
@@ -11395,7 +11410,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn toggling_the_sidebar_after_its_cached_frames_does_not_replay_stale_paint(
         cx: &mut TestAppContext,
     ) {
@@ -11435,7 +11450,7 @@ mod tests {
         draw(cx);
         draw(cx);
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn main_pane_covers_a_fixed_sidebar_with_a_clipped_fade(cx: &mut TestAppContext) {
         use std::time::Duration;
         let (window, _, active) = window(cx);
@@ -11468,7 +11483,7 @@ mod tests {
                     .bounds
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let toggle = visual.debug_bounds("toggle-sidebar").unwrap();
         for visible in [false, true] {
             window
@@ -11597,7 +11612,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn switching_session_in_current_tab_keeps_its_slot_and_selection_settled(
         cx: &mut TestAppContext,
     ) {
@@ -11627,7 +11642,7 @@ mod tests {
                 next
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let original_button = visual.debug_bounds("new-tab").unwrap();
         for (step, expected) in [(-1, next), (1, current), (-1, next), (1, current)] {
@@ -11681,7 +11696,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tab_project_and_session_keys_follow_monocode(cx: &mut TestAppContext) {
         let (window, a, b) = same_project_window(cx);
         cx.update(|cx| {
@@ -11746,13 +11761,13 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn session_menu_copies_ids_through_its_submenu(cx: &mut TestAppContext) {
         let (window, a, _) = window(cx);
         cx.update(crate::popover::bind);
         window
             .update(cx, |shell, w, cx| {
-                let anchor = Anchor::Point(gpui::point(px(40.), px(120.)));
+                let anchor = Anchor::Point(gpui_kit::point(px(40.), px(120.)));
                 shell.open_menu(MenuTarget::Session(a), anchor, w, cx);
             })
             .unwrap();
@@ -11767,7 +11782,7 @@ mod tests {
         let copied = cx.update(|cx| cx.read_from_clipboard().and_then(|c| c.text()));
         assert_eq!(copied, Some(a.to_string()));
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn desktop_database_sessions_load_and_copy_their_original_ids(cx: &mut TestAppContext) {
         let mut store = Store::open_monocode(std::path::Path::new(":memory:")).unwrap();
         let summary = store.create("codex", "/work/monocode").unwrap();
@@ -11814,7 +11829,7 @@ mod tests {
                 assert_eq!(transcript.source_rows()[0].text, "Existing desktop history");
                 shell.open_menu(
                     MenuTarget::Session(id),
-                    Anchor::Point(gpui::point(px(40.), px(120.))),
+                    Anchor::Point(gpui_kit::point(px(40.), px(120.))),
                     w,
                     cx,
                 );
@@ -11826,7 +11841,7 @@ mod tests {
         let copied = cx.update(|cx| cx.read_from_clipboard().and_then(|c| c.text()));
         assert_eq!(copied, Some(original));
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sidebar_hover_updates_labels_without_rebuilding_the_chat(cx: &mut TestAppContext) {
         let (window, _, active) = window(cx);
         let root = window.root(cx).unwrap();
@@ -11834,20 +11849,20 @@ mod tests {
             root.read_with(cx, |s, cx| s.sessions[&active].read(cx).transcript.clone());
         let before = transcript.read_with(cx, |t, _| t.render_passes);
         cx.update_window(window.into(), |_, w, cx| {
-            w.simulate_mouse_move(gpui::point(px(40.), px(133.)), cx)
+            w.simulate_mouse_move(gpui_kit::point(px(40.), px(133.)), cx)
         })
         .unwrap();
         cx.run_until_parked();
         assert_eq!(root.read_with(cx, |s, _| s.sidebar_hover), Some("Inbox"));
         cx.update_window(window.into(), |_, w, cx| {
-            w.simulate_mouse_move(gpui::point(px(40.), px(166.)), cx)
+            w.simulate_mouse_move(gpui_kit::point(px(40.), px(166.)), cx)
         })
         .unwrap();
         cx.run_until_parked();
         assert_eq!(root.read_with(cx, |s, _| s.sidebar_hover), Some("Notes"));
         assert_eq!(transcript.read_with(cx, |t, _| t.render_passes), before);
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn many_blank_tabs_fit_without_creating_sidebar_conversations(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         window
@@ -11884,7 +11899,7 @@ mod tests {
                         .bounds_for_item(shell.workspace.tabs.len() - 1)
                 );
                 let id = shell.workspace.active.unwrap();
-                let anchor = Anchor::Point(gpui::point(px(400.), px(30.)));
+                let anchor = Anchor::Point(gpui_kit::point(px(400.), px(30.)));
                 shell.open_menu(MenuTarget::Tab(id), anchor, w, cx);
                 // Closing every tab preserves one fresh blank tab, as in Monocode.
                 for id in shell.workspace.tabs.clone() {
@@ -11907,7 +11922,7 @@ mod tests {
         cx.run_until_parked();
         (window, a, b)
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn selected_file_reference_preserves_the_live_draft_and_requests_focus(
         cx: &mut TestAppContext,
     ) {
@@ -11975,7 +11990,7 @@ mod tests {
         cx.run_until_parked();
         (window, ids.0, ids.1)
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn leaving_the_original_layout_defaults_to_boxy_only_before_the_notice(
         cx: &mut TestAppContext,
     ) {
@@ -11997,7 +12012,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn workspace_style_shortcut_only_switches_the_focused_layout(cx: &mut TestAppContext) {
         let (window, _, _) = window(cx);
         window
@@ -12015,14 +12030,14 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn slash_menu_stays_below_tabs_with_centered_and_docked_input(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, id) = window(cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         for boxy in [false, true] {
             for height in [700., 500.] {
-                visual.simulate_resize(gpui::size(px(1200.), px(height)));
+                visual.simulate_resize(gpui_kit::size(px(1200.), px(height)));
                 for has_messages in [false, true] {
                     window
                         .update(visual, |shell, window, cx| {
@@ -12055,7 +12070,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn pane_surfaces_follow_the_edge_at_a_constant_width(cx: &mut TestAppContext) {
         use std::time::Duration;
         let (window, _, id) = window(cx);
@@ -12081,7 +12096,7 @@ mod tests {
                 window.draw(cx).clear(cx);
             })
             .unwrap();
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             let clip = visual.debug_bounds("right-panel-frame").unwrap();
             let content = visual.debug_bounds("right-panel-content").unwrap();
             assert!((content.left() - clip.left()).abs() < px(2.));
@@ -12138,7 +12153,7 @@ mod tests {
                 window.draw(cx).clear(cx);
             })
             .unwrap();
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             let clip = visual.debug_bounds("review-frame").unwrap();
             let content = visual.debug_bounds("review-content").unwrap();
             assert!((content.left() - clip.left()).abs() < px(2.));
@@ -12160,17 +12175,17 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn explorer_files_share_the_review_pane_and_dirty_close_can_cancel_or_save(
         cx: &mut TestAppContext,
     ) {
         cx.update(|cx| cx.set_reduce_motion(true));
-        use gpui::EntityInputHandler;
+        use gpui_kit::EntityInputHandler;
         let path =
             std::env::temp_dir().join(format!("monocode-file-pane-{}.rs", std::process::id()));
         std::fs::write(&path, "fn main() {}\n").unwrap();
         let (window, _, id) = window(cx);
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         window
             .update(cx, |shell, w, cx| {
                 shell.open(id, w, cx);
@@ -12227,9 +12242,9 @@ mod tests {
         std::fs::remove_file(path).unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn panes_split_resize_and_take_drops_from_panes_tabs_and_the_sidebar(cx: &mut TestAppContext) {
-        use gpui::{Modifiers, point};
+        use gpui_kit::{Modifiers, point};
         let (window, a, b) = window(cx);
         cx.update(|cx| {
             bind_keys(cx);
@@ -12242,7 +12257,7 @@ mod tests {
                 shell.focus_active(w, cx);
             })
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         let count_selector: &'static str =
             Box::leak(format!("title-tab-pane-count-{b}").into_boxed_str());
@@ -12466,7 +12481,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_split_pane_slides_in_from_its_edge_then_settles(cx: &mut TestAppContext) {
         let (window, new, b) = same_project_window(cx);
         window
@@ -12475,7 +12490,7 @@ mod tests {
                 shell.focus_active(w, cx);
             })
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         window
             .update(cx, |shell, _, cx| {
@@ -12540,7 +12555,7 @@ mod tests {
             .unwrap();
         assert!((entering.size.width - pane.size.width).abs() < px(2.));
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_closed_pane_slides_out_to_its_edge_while_its_neighbour_grows(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         cx.update(|cx| {
@@ -12553,7 +12568,7 @@ mod tests {
                 shell.focus_active(w, cx);
             })
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         cx.simulate_keystrokes("cmd-d");
         cx.run_until_parked();
@@ -12608,12 +12623,12 @@ mod tests {
                 .is_none()
         );
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn closing_session_header_stays_hidden_on_the_settling_frame(cx: &mut TestAppContext) {
         assert_closed_header_stays_hidden(cx, false);
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn closing_file_header_stays_hidden_on_the_settling_frame(cx: &mut TestAppContext) {
         assert_closed_header_stays_hidden(cx, true);
     }
@@ -12641,7 +12656,7 @@ mod tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let header = Box::leak(format!("split-header-{session}").into_boxed_str());
         assert!(visual.debug_bounds(header).is_some());
         visual.update(|_, cx| cx.set_reduce_motion(false));
@@ -12705,21 +12720,21 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_crowding_pane_collapses_the_sidebar_and_its_room_brings_it_back(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         cx.update(|cx| {
             bind_keys(cx);
             cx.set_reduce_motion(true);
         });
-        cx.simulate_window_resize(window.into(), gpui::size(px(1000.), px(800.)));
+        cx.simulate_window_resize(window.into(), gpui_kit::size(px(1000.), px(800.)));
         window
             .update(cx, |shell, w, cx| {
                 shell.open(b, w, cx);
                 shell.focus_active(w, cx);
             })
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         window
             .update(cx, |shell, _, _| {
@@ -12762,7 +12777,7 @@ mod tests {
             .update(cx, |shell, _, _| assert!(!shell.workspace.sidebar_visible))
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_split_session_starts_with_the_default_access(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         cx.update(|cx| {
@@ -12780,7 +12795,7 @@ mod tests {
                 shell.focus_active(w, cx);
             })
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         for keys in ["cmd-d", "cmd-shift-d"] {
             cx.simulate_keystrokes(keys);
@@ -12801,21 +12816,21 @@ mod tests {
                 .unwrap();
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn the_sidebar_follows_the_room_however_it_changes(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         cx.update(|cx| {
             bind_keys(cx);
             cx.set_reduce_motion(true);
         });
-        cx.simulate_window_resize(window.into(), gpui::size(px(1400.), px(800.)));
+        cx.simulate_window_resize(window.into(), gpui_kit::size(px(1400.), px(800.)));
         window
             .update(cx, |shell, w, cx| {
                 shell.open(b, w, cx);
                 shell.focus_active(w, cx);
             })
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         // Wide enough for two panes beside the sidebar.
         cx.simulate_keystrokes("cmd-d");
@@ -12824,19 +12839,19 @@ mod tests {
             .update(cx, |shell, _, _| assert!(shell.workspace.sidebar_visible))
             .unwrap();
         // Narrowing the window crowds the panes; the sidebar makes room.
-        cx.simulate_resize(gpui::size(px(1000.), px(800.)));
+        cx.simulate_resize(gpui_kit::size(px(1000.), px(800.)));
         cx.run_until_parked();
         window
             .update(cx, |shell, _, _| assert!(!shell.workspace.sidebar_visible))
             .unwrap();
         // Widening it again brings the sidebar back.
-        cx.simulate_resize(gpui::size(px(1400.), px(800.)));
+        cx.simulate_resize(gpui_kit::size(px(1400.), px(800.)));
         cx.run_until_parked();
         window
             .update(cx, |shell, _, _| assert!(shell.workspace.sidebar_visible))
             .unwrap();
         // Shown by hand while crowded, it stays until the room changes again.
-        cx.simulate_resize(gpui::size(px(1000.), px(800.)));
+        cx.simulate_resize(gpui_kit::size(px(1000.), px(800.)));
         cx.run_until_parked();
         cx.simulate_keystrokes("cmd-b");
         cx.run_until_parked();
@@ -12845,17 +12860,17 @@ mod tests {
             .unwrap();
         // Hidden by hand, it stays hidden however wide the window grows.
         cx.simulate_keystrokes("cmd-b");
-        cx.simulate_resize(gpui::size(px(1600.), px(800.)));
+        cx.simulate_resize(gpui_kit::size(px(1600.), px(800.)));
         cx.run_until_parked();
         window
             .update(cx, |shell, _, _| assert!(!shell.workspace.sidebar_visible))
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn reordered_tabs_slide_into_place_instead_of_jumping(cx: &mut TestAppContext) {
-        use gpui::{Modifiers, point};
+        use gpui_kit::{Modifiers, point};
         let (window, a, b) = same_project_window(cx);
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         let first = cx
             .debug_bounds(Box::leak(format!("title-tab-{a}").into_boxed_str()))
@@ -12900,7 +12915,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn the_terminal_dock_toggles_adds_closes_and_moves(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         cx.update(|cx| {
@@ -12914,7 +12929,7 @@ mod tests {
                 shell.focus_active(w, cx);
             })
             .unwrap();
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         cx.run_until_parked();
         assert!(cx.debug_bounds("terminal-dock").is_none());
         cx.simulate_keystrokes("cmd-j");
@@ -12957,7 +12972,7 @@ mod tests {
             })
             .unwrap();
         // Docked right, it takes width: a narrow window gives up its sidebar.
-        cx.simulate_resize(gpui::size(px(1000.), px(800.)));
+        cx.simulate_resize(gpui_kit::size(px(1000.), px(800.)));
         cx.run_until_parked();
         window
             .update(cx, |shell, _, cx| {
@@ -12984,10 +12999,10 @@ mod tests {
             .unwrap();
         assert!(cx.debug_bounds("terminal-dock").is_none());
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn closing_the_last_review_tab_removes_the_pane(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
-        let cx = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let cx = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         window
             .update(cx, |shell, window, cx| {
                 shell.open(b, window, cx);
@@ -13039,7 +13054,7 @@ mod tests {
             .update(cx, |shell, _, _| assert!(!shell.reviews.contains_key(&b)))
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn closing_and_reopening_tabs_preserves_busy_session_draft_and_history(
         cx: &mut TestAppContext,
     ) {
@@ -13091,7 +13106,7 @@ mod tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn typing_and_streaming_do_not_rebuild_sidebar_or_tabs(cx: &mut TestAppContext) {
         let (window, _, b) = window(cx);
         let root = window.root(cx).unwrap();

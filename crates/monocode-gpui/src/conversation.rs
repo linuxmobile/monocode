@@ -37,7 +37,7 @@ use crate::{
     transcript::TranscriptView,
 };
 pub(crate) use accounts::UsageResumed;
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, CursorStyle, Entity, EventEmitter, Focusable, MouseButton, Role,
     SharedString, StyleRefinement, Subscription, Window, canvas, div, prelude::*, px,
 };
@@ -93,8 +93,8 @@ const YELLOW_300: u32 = 0xffdf20;
 const SKY_300: u32 = 0x74d4ff;
 const FUCHSIA_300: u32 = 0xf4a8ff;
 const AMBER_400: u32 = 0xffb900;
-fn tint(color: u32, alpha: f32) -> gpui::Hsla {
-    let mut c: gpui::Hsla = gpui::rgb(color).into();
+fn tint(color: u32, alpha: f32) -> gpui_kit::Hsla {
+    let mut c: gpui_kit::Hsla = gpui_kit::rgb(color).into();
     c.a = alpha;
     c
 }
@@ -189,7 +189,7 @@ pub(crate) struct Conversation {
     catalog: Vec<Model>,
     catalog_epoch: u64,
     account_switching: bool,
-    _usage_clock: gpui::Task<()>,
+    _usage_clock: gpui_kit::Task<()>,
     _account_usage: Option<Subscription>,
     approvals: std::collections::VecDeque<Approval>,
     approval_ui: approvals::State,
@@ -325,7 +325,7 @@ impl Conversation {
             self.draft_hint
         }
     }
-    pub(crate) fn archive_shortcut_blocked(&self, cx: &gpui::App) -> bool {
+    pub(crate) fn archive_shortcut_blocked(&self, cx: &gpui_kit::App) -> bool {
         self.menu.is_some()
             || self.response_menu.is_some()
             || self.git_picker.is_some()
@@ -415,11 +415,11 @@ impl Conversation {
                             .flex_shrink_0()
                             .text_size(px(11.))
                             .text_color(if self.needs_approval() {
-                                gpui::rgb(0xfbbf24).into()
+                                gpui_kit::rgb(0xfbbf24).into()
                             } else if self.responding() {
                                 accent_color()
                             } else if done {
-                                gpui::rgb(0x34d399).into()
+                                gpui_kit::rgb(0x34d399).into()
                             } else {
                                 content(0.45)
                             })
@@ -444,7 +444,7 @@ impl Conversation {
                     .mt_1p5()
                     .text_size(px(13.))
                     .line_height(px(20.))
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                     .text_color(content(1.))
                     .child(self.display_title()),
             )
@@ -1011,7 +1011,7 @@ impl Conversation {
     fn follow_up_action(
         &self,
         alternate: bool,
-        cx: &gpui::App,
+        cx: &gpui_kit::App,
     ) -> Option<(&'static str, &'static str)> {
         // Stop and provider switches send the message as the next turn.
         if self.settings.mono.is_some()
@@ -2683,7 +2683,7 @@ impl Conversation {
     }
     /// recentMenuModels: up to six remembered choices, with the current model
     /// added when it is not among them.
-    fn recent_model_items(&self, cx: &gpui::App) -> Vec<MenuItem> {
+    fn recent_model_items(&self, cx: &gpui_kit::App) -> Vec<MenuItem> {
         let provider = Kind::from_id(&self.summary.provider);
         let current = (provider, self.model.clone());
         let hidden = cx
@@ -3316,7 +3316,7 @@ impl Conversation {
             // label rolls to it while the key is down.
             // Only ⌘'s own changes matter, and only while it changes the action.
             .on_modifiers_changed(cx.listener(
-                |this, event: &gpui::ModifiersChangedEvent, _, cx| {
+                |this, event: &gpui_kit::ModifiersChangedEvent, _, cx| {
                     let alternate = event.modifiers.control;
                     if std::mem::replace(&mut this.send_alternate, alternate) != alternate
                         && this.follow_up_action(alternate, cx).is_some()
@@ -3325,18 +3325,20 @@ impl Conversation {
                     }
                 },
             ))
-            .on_click(cx.listener(move |this, event: &gpui::ClickEvent, _, cx| {
-                if !enabled {
-                    return;
-                }
-                if busy {
-                    this.stop(cx);
-                } else {
-                    let modifiers = event.modifiers();
-                    let alternate = modifiers.control;
-                    this.send_follow_up(alternate, cx);
-                }
-            }))
+            .on_click(
+                cx.listener(move |this, event: &gpui_kit::ClickEvent, _, cx| {
+                    if !enabled {
+                        return;
+                    }
+                    if busy {
+                        this.stop(cx);
+                    } else {
+                        let modifiers = event.modifiers();
+                        let alternate = modifiers.control;
+                        this.send_follow_up(alternate, cx);
+                    }
+                }),
+            )
     }
     // EmptySession.tsx: the composer centred under its question, or resting
     // where it will dock once a neighbouring pane squeezes it narrower than
@@ -3474,13 +3476,13 @@ fn perf_prompt(cx: &mut Context<Conversation>) {
 }
 
 /// The access mode the last composer pick left as the default for new chats.
-pub(crate) fn default_access(cx: &gpui::App) -> AccessMode {
+pub(crate) fn default_access(cx: &gpui_kit::App) -> AccessMode {
     cx.try_global::<crate::settings::Preferences>()
         .and_then(|prefs| prefs.default_access.as_deref())
         .map(AccessMode::from_id)
         .unwrap_or_default()
 }
-pub(crate) fn remember_access(mode: AccessMode, cx: &mut gpui::App) {
+pub(crate) fn remember_access(mode: AccessMode, cx: &mut gpui_kit::App) {
     if cx.has_global::<crate::settings::Preferences>() {
         cx.update_global::<crate::settings::Preferences, _>(|prefs, _| {
             prefs.default_access = Some(mode.id().into());
@@ -3493,7 +3495,7 @@ fn is_effort_key(key: &str) -> bool {
         "effort" | "reasoning" | "reasoningEffort" | "reasoning_effort"
     )
 }
-pub(crate) fn preferred_effort(provider: &str, cx: &gpui::App) -> Option<String> {
+pub(crate) fn preferred_effort(provider: &str, cx: &gpui_kit::App) -> Option<String> {
     cx.try_global::<crate::settings::Preferences>()
         .and_then(|prefs| prefs.provider_efforts.get(provider).cloned())
 }
@@ -3524,13 +3526,13 @@ fn model_control_toggle(control: &catalog::ModelControl) -> bool {
 #[cfg(test)]
 mod composer_motion_tests {
     use super::*;
-    use gpui::{
+    use gpui_kit::{
         Bounds, EntityInputHandler, TestAppContext, WindowBounds, WindowOptions, point, size,
     };
     use monocode_core::store::Store;
     use std::{sync::Mutex, time::Duration};
 
-    fn window(cx: &mut TestAppContext, width: f32) -> gpui::WindowHandle<Conversation> {
+    fn window(cx: &mut TestAppContext, width: f32) -> gpui_kit::WindowHandle<Conversation> {
         let store = Store::open(Path::new(":memory:")).unwrap();
         let summary = store.create("codex", "/work/monocode").unwrap();
         let store = Arc::new(Mutex::new(store));
@@ -3563,9 +3565,9 @@ mod composer_motion_tests {
         window
     }
     fn begin(
-        window: gpui::WindowHandle<Conversation>,
+        window: gpui_kit::WindowHandle<Conversation>,
         cx: &mut TestAppContext,
-    ) -> Bounds<gpui::Pixels> {
+    ) -> Bounds<gpui_kit::Pixels> {
         let from = window
             .update(cx, |c, _, cx| {
                 let from = c.composer_anchor.get().unwrap();
@@ -3582,7 +3584,7 @@ mod composer_motion_tests {
         cx.run_until_parked();
         from
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn composer_placeholder_stays_still_at_fractional_scale(cx: &mut TestAppContext) {
         let window = window(cx, 1000.);
         window
@@ -3605,7 +3607,7 @@ mod composer_motion_tests {
             assert_eq!(*initial_position.get_or_insert(position), position);
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn composer_uses_react_surface_and_equal_text_padding_with_attachments(
         cx: &mut TestAppContext,
     ) {
@@ -3617,7 +3619,7 @@ mod composer_motion_tests {
         });
         for width in [480., 1000.] {
             let window = window(cx, width);
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             for docked in [false, true] {
                 for attached in [false, true] {
                     window
@@ -3684,7 +3686,7 @@ mod composer_motion_tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn first_submit_moves_the_painted_composer_down_without_resizing_chat(cx: &mut TestAppContext) {
         let window = window(cx, 1000.);
         let from = begin(window, cx);
@@ -3751,7 +3753,7 @@ mod composer_motion_tests {
             "composer motion must not relayout the transcript"
         );
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn narrow_layout_and_opening_history_do_not_slide(cx: &mut TestAppContext) {
         let narrow = window(cx, 820.);
         narrow
@@ -3782,7 +3784,7 @@ mod composer_motion_tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn reduced_motion_docks_the_first_submit_immediately(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let window = window(cx, 1000.);
@@ -3925,7 +3927,7 @@ impl Render for Conversation {
 }
 
 // The composer's `h-6.5` toolbar pills share `bg-selection` and its hover.
-fn tool_pill(id: &'static str, label: &'static str) -> gpui::Stateful<gpui::Div> {
+fn tool_pill(id: &'static str, label: &'static str) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -3953,7 +3955,7 @@ fn composer_surface(radius: f32) -> impl IntoElement {
     canvas(
         |_, _, _| {},
         move |bounds, _, window, _| {
-            let surface = gpui::fill(bounds, fill).corner_radii(px(radius - 1.));
+            let surface = gpui_kit::fill(bounds, fill).corner_radii(px(radius - 1.));
 
             let _ = blur;
             window.paint_quad(surface);
@@ -3971,13 +3973,13 @@ fn send_button(
     busy: bool,
     glyph: &'static str,
     enabled: bool,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     let accent = primary_action(enabled);
     // Without an accent the button is the inverse of the surface: white with
     // black ink on dark, black with white ink on light.
     let light = crate::theme::is_light();
-    let solid: fn(f32) -> gpui::Hsla = if light { black } else { white };
-    let ink: fn(f32) -> gpui::Hsla = if light { white } else { black };
+    let solid: fn(f32) -> gpui_kit::Hsla = if light { black } else { white };
+    let ink: fn(f32) -> gpui_kit::Hsla = if light { white } else { black };
     div()
         .id(id)
         .debug_selector(|| id.into())
@@ -4013,7 +4015,7 @@ fn bar_trigger(
     id: &'static str,
     path: &'static str,
     label: SharedString,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -4092,10 +4094,10 @@ mod tests {
 #[cfg(test)]
 mod menu_tests {
     use super::*;
-    use gpui::{TestAppContext, WindowHandle, point};
+    use gpui_kit::{TestAppContext, WindowHandle, point};
     use monocode_core::store::Store;
     use std::sync::Mutex;
-    #[gpui::test]
+    #[gpui_kit::test]
     fn combined_picker_paints_effort_and_beside_mode_moves_it_to_its_own_control(
         cx: &mut TestAppContext,
     ) {
@@ -4121,7 +4123,7 @@ mod menu_tests {
                 cx.notify();
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
         let effort = visual
             .debug_bounds("composer-model-effort")
@@ -4149,7 +4151,7 @@ mod menu_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn composer_labels_use_the_saved_model_effort_and_the_catalog_default(cx: &mut TestAppContext) {
         let window = conversation(cx);
         window
@@ -4189,7 +4191,7 @@ mod menu_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn tool_paths_follow_restored_and_transferred_working_copies(cx: &mut TestAppContext) {
         let window = conversation(cx);
         window
@@ -4218,7 +4220,7 @@ mod menu_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn response_target_picker_preserves_model_effort_and_working_copy(cx: &mut TestAppContext) {
         let window = conversation(cx);
         let picked = std::rc::Rc::new(std::cell::RefCell::new(None));
@@ -4303,7 +4305,7 @@ mod menu_tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn new_tab_shows_its_folders_branch_at_once_and_no_loading_status(cx: &mut TestAppContext) {
         crate::git_cache::remember(
             "/work/remembered",
@@ -4326,7 +4328,7 @@ mod menu_tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         window
             .update(visual, |c, _, _| {
                 assert_eq!(c.branch.as_deref(), Some("main"));
@@ -4347,7 +4349,7 @@ mod menu_tests {
         assert!(visual.debug_bounds("provider-status").is_some());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn picked_access_becomes_the_default_for_new_chats(cx: &mut TestAppContext) {
         let store = Store::open(Path::new(":memory:")).unwrap();
         let first = store.create("codex", "/work").unwrap();
@@ -4378,7 +4380,7 @@ mod menu_tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn effort_choices_survive_provider_switches_and_new_projects(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_global(crate::settings::Preferences::default()));
         let window = conversation(cx);
@@ -4441,7 +4443,7 @@ mod menu_tests {
             .unwrap()
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn workspace_existing_worktrees_open_as_a_submenu_and_preserve_the_draft(
         cx: &mut TestAppContext,
     ) {
@@ -4508,7 +4510,7 @@ mod menu_tests {
             })
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.simulate_keystrokes("down down right");
         visual.run_until_parked();
         let parent = visual
@@ -4614,9 +4616,9 @@ mod menu_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mode_menu_edits_the_inline_prefix_and_removal_preserves_the_draft(cx: &mut TestAppContext) {
-        use gpui::EntityInputHandler;
+        use gpui_kit::EntityInputHandler;
         let window = conversation(cx);
         window
             .update(cx, |c, _, cx| {
@@ -4661,7 +4663,7 @@ mod menu_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn submitted_modes_clear_for_a_started_turn_and_stay_cleared_after_completion(
         cx: &mut TestAppContext,
     ) {
@@ -4700,7 +4702,7 @@ mod menu_tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn model_menu_picks_by_keyboard_and_returns_focus(cx: &mut TestAppContext) {
         let window = conversation(cx);
         open(window, ComposerMenu::Model, cx);
@@ -4734,7 +4736,7 @@ mod menu_tests {
         assert!(input_focused(window, cx));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn recent_models_open_on_right_click_and_pick_by_keyboard(cx: &mut TestAppContext) {
         let window = conversation(cx);
         window
@@ -4759,13 +4761,13 @@ mod menu_tests {
                 cx.notify();
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let pill = window
             .update(visual, |c, _, _| c.model_anchor.get().unwrap())
             .unwrap()
             .center();
-        visual.simulate_event(gpui::MouseDownEvent {
+        visual.simulate_event(gpui_kit::MouseDownEvent {
             position: pill,
             button: MouseButton::Right,
             modifiers: Default::default(),
@@ -4822,13 +4824,13 @@ mod menu_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn pressing_outside_dismisses_and_the_trigger_toggles(cx: &mut TestAppContext) {
         let window = conversation(cx);
         open(window, ComposerMenu::Access, cx);
         cx.update_window(window.into(), |_, w, cx| {
             w.dispatch_event(
-                gpui::PlatformInput::MouseDown(gpui::MouseDownEvent {
+                gpui_kit::PlatformInput::MouseDown(gpui_kit::MouseDownEvent {
                     position: point(px(1.), px(1.)),
                     button: MouseButton::Left,
                     modifiers: Default::default(),
@@ -4853,8 +4855,8 @@ mod menu_tests {
 }
 
 /// The amber bolt the model trigger carries while fast mode is on.
-pub(crate) fn fast_bolt() -> gpui::Div {
+pub(crate) fn fast_bolt() -> gpui_kit::Div {
     div()
         .flex_shrink_0()
-        .child(icon("zap", 12.).text_color(gpui::rgb(0xfbbf24)))
+        .child(icon("zap", 12.).text_color(gpui_kit::rgb(0xfbbf24)))
 }

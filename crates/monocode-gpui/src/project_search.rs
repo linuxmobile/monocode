@@ -5,7 +5,7 @@ use crate::{
     right_panel::{RED_400, spinner, stroke, tabular},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Context, Entity, EventEmitter, FocusHandle, Focusable, HighlightStyle, Role,
     ScrollHandle, StyledText, Subscription, Task, Window, div, point, prelude::*, px, rgb,
 };
@@ -20,7 +20,7 @@ use std::{
     time::Duration,
 };
 
-fn accent(alpha: f32) -> gpui::Hsla {
+fn accent(alpha: f32) -> gpui_kit::Hsla {
     let mut color = accent_color();
     color.a = alpha;
     color
@@ -274,7 +274,7 @@ impl ProjectSearch {
         label: &'static str,
         path: &'static str,
         active: bool,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         div()
             .id(id)
             .role(Role::Button)
@@ -419,7 +419,7 @@ impl Render for ProjectSearch {
                                     .w(px(28.))
                                     .flex_shrink_0()
                                     .pt(px(1.))
-                                    .text_align(gpui::TextAlign::Right)
+                                    .text_align(gpui_kit::TextAlign::Right)
                                     .font_family("monospace")
                                     .font_features(tabular())
                                     .text_size(px(11.))
@@ -437,9 +437,11 @@ impl Render for ProjectSearch {
                                     .text_color(content(0.8))
                                     .child(text),
                             )
-                            .on_click(cx.listener(move |this, event: &gpui::ClickEvent, _, cx| {
-                                this.pick(group_index, index, event.click_count() >= 2, cx);
-                            }))
+                            .on_click(cx.listener(
+                                move |this, event: &gpui_kit::ClickEvent, _, cx| {
+                                    this.pick(group_index, index, event.click_count() >= 2, cx);
+                                },
+                            ))
                     }))
                     .into_any_element()
             })

@@ -7,7 +7,7 @@ use crate::{
     runtime::{Database, locked},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Context, Entity, EventEmitter, FocusHandle, Focusable, Role, SharedString,
     Subscription, Window, div, prelude::*, px, rgb,
 };
@@ -32,10 +32,10 @@ mod trigger_menu;
 /// Event providers and schedules are separate from agent harness branding.
 fn trigger_mark(kind: &str, side: f32) -> AnyElement {
     if kind == "gitlab" {
-        return gpui::img("inbox-gitlab-color.svg")
+        return gpui_kit::img("inbox-gitlab-color.svg")
             .size(px(side))
             .flex_shrink_0()
-            .object_fit(gpui::ObjectFit::Contain)
+            .object_fit(gpui_kit::ObjectFit::Contain)
             .into_any_element();
     }
     let (path, color) = match kind {
@@ -612,7 +612,7 @@ impl Automations {
     /// Asks with the standard confirmation before deleting the open automation.
     fn ask_delete(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let prompt = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             "Delete this automation?",
             Some("Its run history will be deleted too."),
             &["Delete", "Cancel"],
@@ -819,7 +819,7 @@ impl Automations {
         cx.notify();
     }
     fn browse_project(&mut self, cx: &mut Context<Self>) {
-        let prompt = cx.prompt_for_paths(gpui::PathPromptOptions {
+        let prompt = cx.prompt_for_paths(gpui_kit::PathPromptOptions {
             files: false,
             directories: true,
             multiple: false,
@@ -859,9 +859,9 @@ fn project_name(path: &str) -> String {
         .unwrap_or_else(|| path.into())
 }
 fn button(
-    id: impl Into<gpui::ElementId>,
+    id: impl Into<gpui_kit::ElementId>,
     label: impl Into<SharedString>,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     let label: SharedString = label.into();
     div()
         .id(id)
@@ -956,7 +956,7 @@ impl Render for Automations {
                                 div()
                                     .truncate()
                                     .text_size(px(13.))
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                                     .child(automation.name),
                             )
                             .child(
@@ -1040,7 +1040,7 @@ impl Render for Automations {
             .flex()
             .flex_col()
             .text_color(content(1.))
-            .capture_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+            .capture_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
                     // Let the trigger menu close its active submenu first.
                     if this.trigger_menu.is_some() {
@@ -1081,7 +1081,7 @@ impl Render for Automations {
                                     .m(px(16.))
                                     .p(px(10.))
                                     .rounded(px(8.))
-                                    .bg(gpui::rgba(0xf8717114))
+                                    .bg(gpui_kit::rgba(0xf8717114))
                                     .text_size(px(12.))
                                     .text_color(rgb(0xfca5a5))
                                     .child(error),

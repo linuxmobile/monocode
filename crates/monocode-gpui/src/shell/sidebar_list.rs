@@ -1,6 +1,6 @@
 //! Only construct and lay out sidebar cards near the viewport.
 use super::*;
-use gpui::{ListAlignment, ListState, list};
+use gpui_kit::{ListAlignment, ListState, list};
 use monocode_core::session_groups::Entry;
 use std::cell::{Cell, RefCell};
 
@@ -143,7 +143,7 @@ fn sidebar_edge_mask(
     inset: bool,
     begin: bool,
 ) -> impl IntoElement {
-    gpui::canvas(
+    gpui_kit::canvas(
         |_, _, _| {},
         move |bounds, _, window, _| {
             let offset = state.logical_scroll_top();
@@ -157,8 +157,8 @@ fn sidebar_edge_mask(
                 if height <= px(0.) {
                     continue;
                 }
-                let band = gpui::Bounds::new(
-                    gpui::point(
+                let band = gpui_kit::Bounds::new(
+                    gpui_kit::point(
                         bounds.left(),
                         if at_top {
                             bounds.top()
@@ -166,7 +166,7 @@ fn sidebar_edge_mask(
                             bounds.bottom() - height
                         },
                     ),
-                    gpui::size(bounds.size.width, height),
+                    gpui_kit::size(bounds.size.width, height),
                 );
 
                 if !begin {
@@ -186,10 +186,10 @@ fn sidebar_edge_mask(
                         } else {
                             band.bottom() - px(y as f32 + 1.)
                         };
-                        window.paint_quad(gpui::fill(
-                            gpui::Bounds::new(
-                                gpui::point(band.left(), y),
-                                gpui::size(band.size.width, px(1.)),
+                        window.paint_quad(gpui_kit::fill(
+                            gpui_kit::Bounds::new(
+                                gpui_kit::point(band.left(), y),
+                                gpui_kit::size(band.size.width, px(1.)),
                             ),
                             color,
                         ));
@@ -431,7 +431,7 @@ impl Shell {
             .flex_1()
             .min_h_0()
             .overflow_hidden()
-            .on_scroll_wheel(cx.listener(|this, _, _, cx| this.sidebar_scrolled(cx)))
+            .on_scroll(cx.listener(|this, _, _, cx| this.sidebar_scrolled(cx)))
             .child(sidebar_edge_mask(
                 self.sidebar_list.state.clone(),
                 !self.workspace.classic_layout,
@@ -883,12 +883,12 @@ mod tests {
     use super::super::*;
     use super::age_label;
     use chrono::TimeZone;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn focused_navigation_trailing_items_share_the_filter_axis(cx: &mut TestAppContext) {
         let (window, _, _) = super::super::tests::window(cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         for count in [0, 128] {
             window
                 .update(visual, |shell, _, cx| {
@@ -911,10 +911,10 @@ mod tests {
             }
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn focused_search_sits_beside_sidebar_options(cx: &mut TestAppContext) {
         let (window, _, _) = super::super::tests::window(cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("sidebar-search-field").is_none());
         let search = visual.debug_bounds("sidebar-search-button").unwrap();
@@ -928,15 +928,15 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn focused_new_session_leads_navigation_and_marks_blank_sessions(cx: &mut TestAppContext) {
         let (window, _, active) = super::super::tests::window(cx);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let new = visual.debug_bounds("sidebar-navigation-New").unwrap();
         let inbox = visual.debug_bounds("sidebar-navigation-Inbox").unwrap();
         assert!(new.bottom() <= inbox.top());
-        let selected = |visual: &mut gpui::VisualTestContext| {
+        let selected = |visual: &mut gpui_kit::VisualTestContext| {
             window
                 .update(visual, |shell, _, cx| shell.active_session_is_blank(cx))
                 .unwrap()
@@ -971,7 +971,7 @@ mod tests {
         assert!(visual.debug_bounds("sidebar-navigation-New").is_none());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sidebar_options_switch_card_heights_and_persist_without_loading_history(
         cx: &mut TestAppContext,
     ) {
@@ -1000,7 +1000,7 @@ mod tests {
                 (id, shell.sessions.len())
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let selector: &'static str = Box::leak(format!("sidebar-session-{id}").into_boxed_str());
         let model_selector: &'static str =
             Box::leak(format!("session-model-{id}").into_boxed_str());
@@ -1061,7 +1061,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sidebar_visibility_switches_stay_open_preserve_notes_and_survive_restart(
         cx: &mut TestAppContext,
     ) {
@@ -1069,7 +1069,7 @@ mod tests {
         window
             .update(cx, |shell, w, cx| shell.open_notes(w, cx))
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let options = visual.debug_bounds("sidebar-options").unwrap();
         visual.simulate_click(options.center(), Default::default());
@@ -1196,7 +1196,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn activity_visibility_switch_preserves_agents_and_survives_restart(cx: &mut TestAppContext) {
         let (window, a, b) = super::super::tests::window(cx);
         window
@@ -1207,7 +1207,7 @@ mod tests {
                 shell.invalidate_chrome(cx);
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         for boxy in [false, true] {
             window
                 .update(visual, |shell, _, cx| {
@@ -1261,7 +1261,7 @@ mod tests {
         assert!(visual.debug_bounds("sidebar-activity-card").is_none());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn scroll_and_hover_redraws_reuse_the_sidebar_index(cx: &mut TestAppContext) {
         let (window, _, _) = super::super::tests::window(cx);
         window
@@ -1279,7 +1279,7 @@ mod tests {
                 assert_eq!(shell.sidebar_list.structural_rebuilds, rebuilds + 1);
                 // Time expiry is a content refresh, not navigation: retain
                 // the user's position instead of snapping back to the active row.
-                shell.sidebar_list.state.scroll_to(gpui::ListOffset {
+                shell.sidebar_list.state.scroll_to(gpui_kit::ListOffset {
                     item_ix: 1,
                     offset_in_item: px(5.),
                 });
@@ -1299,7 +1299,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn large_project_only_lays_out_nearby_session_cards(cx: &mut TestAppContext) {
         let (window, _, _) = super::super::tests::window(cx);
         let started = std::time::Instant::now();

@@ -5,7 +5,7 @@ use crate::{
     popover::{Align, Anchor, AnchorSlot, Side, popover},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, Bounds, Context, Focusable, MouseButton, Pixels, Role, Size, Window, div,
     prelude::*, px,
 };
@@ -223,10 +223,13 @@ impl FileEditor {
                 .into_any_element(),
         )
     }
-    pub(super) fn selection_surface(&self, cx: &Context<Self>) -> impl gpui::IntoElement + use<> {
+    pub(super) fn selection_surface(
+        &self,
+        cx: &Context<Self>,
+    ) -> impl gpui_kit::IntoElement + use<> {
         let slot = self.selection.surface.clone();
         let weak = cx.entity().downgrade();
-        gpui::canvas(
+        gpui_kit::canvas(
             move |bounds, _, cx| {
                 if slot.get().is_some_and(|old| old != bounds) {
                     let _ = weak.update(cx, |this, cx| {

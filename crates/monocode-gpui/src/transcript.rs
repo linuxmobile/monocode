@@ -34,7 +34,7 @@ use crate::{
     reveal::{Disclosure, Motion, PacedText},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AvailableSpace, Bounds, ClipboardItem, Context, Entity, FollowMode, ListAlignment, ListOffset,
     ListState, Pixels, Role, SharedString, StyleRefinement, Window, canvas, div, list, prelude::*,
     px, rgb, size,
@@ -48,7 +48,7 @@ use std::{
     time::Instant,
 };
 /// Animates the transcript on the first display frame at or after `due`.
-fn motion_frame(view: gpui::WeakEntity<TranscriptView>, due: Option<Instant>, window: &Window) {
+fn motion_frame(view: gpui_kit::WeakEntity<TranscriptView>, due: Option<Instant>, window: &Window) {
     window.on_next_frame(move |window, cx| {
         if due.is_some_and(|due| Instant::now() < due) {
             motion_frame(view, due, window);
@@ -84,7 +84,7 @@ struct TakenMessage {
 pub(crate) enum MonoResponseAction {
     Quote {
         text: String,
-        window: gpui::AnyWindowHandle,
+        window: gpui_kit::AnyWindowHandle,
     },
     Activity(usize),
     /// Retry or discard a message that was not sent.
@@ -93,7 +93,7 @@ pub(crate) enum MonoResponseAction {
         remove: bool,
     },
 }
-impl gpui::EventEmitter<MonoResponseAction> for TranscriptView {}
+impl gpui_kit::EventEmitter<MonoResponseAction> for TranscriptView {}
 
 fn work_title(model: Option<&str>, elapsed_ms: Option<u64>, live: bool) -> String {
     let model = model.map(str::trim).filter(|model| !model.is_empty());
@@ -251,9 +251,9 @@ const CHAT_FOLLOW_MAX_SPEED: f32 = 18.;
 const FOLLOW_ROWS: usize = 80;
 
 struct FollowMeasure {
-    viewport: gpui::Size<Pixels>,
+    viewport: gpui_kit::Size<Pixels>,
     bottom: Pixels,
-    window_size: gpui::Size<Pixels>,
+    window_size: gpui_kit::Size<Pixels>,
     rows: Vec<((usize, usize), f32)>,
     /// Regular chats fill the space below an anchored prompt before scrolling.
     footer: f32,
@@ -654,12 +654,12 @@ impl PhaseLayout {
 
 pub(crate) struct TranscriptView {
     selection: selection::Selection,
-    selection_focus: Option<gpui::FocusHandle>,
+    selection_focus: Option<gpui_kit::FocusHandle>,
     links: links::State,
     work_item_cards: user_links::Cards,
     source: Vec<Row>,
     source_bytes: usize,
-    attachment_images: HashMap<String, gpui::Entity<attachments::Photo>>,
+    attachment_images: HashMap<String, gpui_kit::Entity<attachments::Photo>>,
     visuals: HashMap<usize, visuals::CachedVisual>,
     /// Visual ids the answers place in their prose.
     placed: HashSet<String>,
@@ -1036,7 +1036,7 @@ impl TranscriptView {
         output: String,
         before_user: bool,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         let copied = self.copied_response.is_some_and(|(id, _)| id == turn);
         let saved = self.note_feedback.get(&turn).is_some_and(|r| r.is_ok());
         let pending = self.note_pending.contains(&turn);
@@ -1174,7 +1174,7 @@ impl TranscriptView {
             .into_any_element()
     }
     /// The Mono signs its turn with its mascot and name, beside a live ticker.
-    fn mono_turn_header(&self, turn: usize, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn mono_turn_header(&self, turn: usize, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         // Completion runs share the original turn's header.
         let label = self
             .mono_activity()
@@ -1221,7 +1221,7 @@ impl TranscriptView {
         turn: usize,
         label: Option<String>,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         let Some((mascot, color, name)) = self.mono_look.clone() else {
             return div().into_any_element();
         };
@@ -1285,7 +1285,7 @@ impl TranscriptView {
             .into_any_element()
     }
     /// MonoReactionBadge, on the top left corner of the message it answers.
-    fn reaction_badge(&self, prompt: usize) -> Option<gpui::AnyElement> {
+    fn reaction_badge(&self, prompt: usize) -> Option<gpui_kit::AnyElement> {
         let (emoji, born) = self.reactions.get(&prompt)?;
         // agent-chat-bubble-in: it lands with a small bounce.
         let (scale, opacity) = born.map_or((1., 1.), |born| {
@@ -1320,7 +1320,7 @@ impl TranscriptView {
         )
     }
     /// The sent message's actions, under its bubble while it is hovered.
-    fn prompt_actions(&mut self, start: usize, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn prompt_actions(&mut self, start: usize, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         let end = (start + 1..self.source.len())
             .find(|&i| self.source[i].first)
             .unwrap_or(self.source.len());
@@ -1881,7 +1881,7 @@ impl TranscriptView {
             }
         }
     }
-    fn launch_row(&mut self, ix: usize, id: i64, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn launch_row(&mut self, ix: usize, id: i64, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         let (top, bottom) = self.mono_card_spacing(ix);
         let view = self.launches.get(&id).cloned();
         div()
@@ -1918,7 +1918,7 @@ impl TranscriptView {
     }
     /// A queued message's bubble, as UserMessageBlock draws one, with its
     /// delivery line when it could not be sent.
-    fn pending_row(&mut self, ix: usize, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn pending_row(&mut self, ix: usize, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         let Some(message) = self.pending.get(ix).cloned() else {
             return div().into_any_element();
         };
@@ -1995,7 +1995,7 @@ impl TranscriptView {
                                             12.
                                         };
                                         window.paint_quad(
-                                            gpui::fill(bounds, user_bubble_fill())
+                                            gpui_kit::fill(bounds, user_bubble_fill())
                                                 .corner_radii(px(radius)),
                                         );
                                     },
@@ -2166,7 +2166,7 @@ impl TranscriptView {
         complete: bool,
         before_user: bool,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         if !complete {
             // Reserve the action gap while the ticker works in the header.
             return div()
@@ -2687,7 +2687,7 @@ impl TranscriptView {
                             // The working time redraws the whole transcript;
                             // skip it while the tab or the app is out of view.
                             if this.streaming && this.visible && crate::pulse::app_active(cx) {
-                                cx.notify_paint();
+                                cx.notify();
                             }
                             this.streaming
                         })
@@ -4377,8 +4377,6 @@ impl TranscriptView {
         resized |= self.agent_panels.animating() || !self.motions.is_empty();
         if resized {
             cx.notify();
-        } else {
-            cx.notify_paint();
         }
     }
     fn highlight(&mut self, fence: &Arc<Fence>, cx: &mut Context<Self>) {
@@ -4456,7 +4454,7 @@ impl TranscriptView {
         lines: std::ops::Range<usize>,
         ix: usize,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         self.highlight(&fence, cx);
         let first = lines.start == 0;
         let last = lines.end == fence.lines.len();
@@ -4535,7 +4533,7 @@ impl TranscriptView {
                                             }
                                         })
                                         .on_mouse_down(
-                                            gpui::MouseButton::Right,
+                                            gpui_kit::MouseButton::Right,
                                             move |event, window, cx| {
                                                 markdown::link_menu(
                                                     &menu_path,
@@ -4610,7 +4608,12 @@ impl TranscriptView {
             )
             .into_any_element()
     }
-    fn row(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn row(
+        &mut self,
+        ix: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::AnyElement {
         self.rendered += 1;
         if let Some(group) = self.rows[ix].phase_group()
             && self.windowed_phase(group)
@@ -4685,7 +4688,7 @@ impl TranscriptView {
         active: bool,
         window: &Window,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         let header = self.row_body(ix, true, window, cx);
         let open = self
             .phases
@@ -4747,7 +4750,7 @@ impl TranscriptView {
         animate: bool,
         window: &Window,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> gpui_kit::AnyElement {
         let row = self.rows[ix].clone();
         let prompt_width = self.split_prompt_width(ix, window);
         let message = &self.messages[row.message];
@@ -5291,7 +5294,7 @@ impl TranscriptView {
                     .when(user && !bare, |d| {
                         // AgentTranscript.tsx: text-sm (14px / 20px), px-3 py-2.
                         // Measurement shapes this font at the same size.
-                        d.font(gpui::font(crate::fonts::UI))
+                        d.font(gpui_kit::font(crate::fonts::UI))
                             .text_size(PROMPT_TEXT_SIZE)
                             .line_height(px(20.))
                             .px(PROMPT_PAD_X * 0.5)
@@ -5309,14 +5312,14 @@ impl TranscriptView {
                                             } else {
                                                 12.
                                             };
-                                        let corners = gpui::Corners {
+                                        let corners = gpui_kit::Corners {
                                             top_left: px(if first { radius } else { 0. }),
                                             top_right: px(if first { radius } else { 0. }),
                                             bottom_left: px(if last { radius } else { 0. }),
                                             bottom_right: px(if last { radius } else { 0. }),
                                         };
                                         window.paint_quad(
-                                            gpui::fill(bounds, user_bubble_fill())
+                                            gpui_kit::fill(bounds, user_bubble_fill())
                                                 .corner_radii(corners),
                                         );
                                         if let Some(burst) = burst.filter(burst::Burst::behind_text)
@@ -5356,7 +5359,7 @@ impl TranscriptView {
                                 div()
                                     .when(clamp, |d| d.line_clamp(4).text_ellipsis())
                                     .child({
-                                        let styled = gpui::StyledText::new(text.clone())
+                                        let styled = gpui_kit::StyledText::new(text.clone())
                                             .with_highlights(markdown::mark_styles(
                                                 &text,
                                                 vec![],
@@ -5392,7 +5395,7 @@ impl TranscriptView {
                                     12.
                                 };
                                 let bottom = px(if last { radius } else { 0. });
-                                let corners = gpui::Corners {
+                                let corners = gpui_kit::Corners {
                                     top_left: px(radius),
                                     top_right: px(radius),
                                     bottom_left: bottom,
@@ -5422,7 +5425,7 @@ impl TranscriptView {
                                     .text_color(content(0.6))
                                     .hover(|s| s.bg(content(0.08)).text_color(content(1.)))
                                     .child(if collapsed { "Show more" } else { "Show less" })
-                                    .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| {
+                                    .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
                                         cx.stop_propagation()
                                     })
                                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -5638,7 +5641,7 @@ impl TranscriptView {
                     ),
             );
         let outer = div()
-            .id(gpui::SharedString::from(format!(
+            .id(gpui_kit::SharedString::from(format!(
                 "motion-{}-{}",
                 key.0, key.1
             )))
@@ -5745,7 +5748,7 @@ impl TranscriptView {
         }
         px(BOTTOM_INSET + remaining.max(0.))
     }
-    fn footer(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn footer(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         div()
             .h(self.footer_height(window, cx))
             .w_full()
@@ -5765,7 +5768,7 @@ impl TranscriptView {
             cx.notify();
         }
     }
-    pub(crate) fn jump_bounds(&self) -> Option<gpui::Bounds<gpui::Pixels>> {
+    pub(crate) fn jump_bounds(&self) -> Option<gpui_kit::Bounds<gpui_kit::Pixels>> {
         self.show_jump.then(|| self.jump_anchor.get()).flatten()
     }
     fn jump_to_bottom(&mut self, cx: &mut Context<Self>) {
@@ -5820,7 +5823,7 @@ impl TranscriptView {
         self.rebuild(group, cx);
     }
 }
-impl gpui::EventEmitter<ResponseRequest> for TranscriptView {}
+impl gpui_kit::EventEmitter<ResponseRequest> for TranscriptView {}
 impl Render for TranscriptView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.perf_scroll(window, cx);
@@ -5882,20 +5885,20 @@ impl Render for TranscriptView {
             .on_action(cx.listener(Self::copy_selection))
             .on_action(cx.listener(Self::open_link_menu))
             .capture_any_mouse_down(cx.listener(
-                |this, event: &gpui::MouseDownEvent, window, cx| {
-                    if event.button == gpui::MouseButton::Right && this.links.open.is_none() {
+                |this, event: &gpui_kit::MouseDownEvent, window, cx| {
+                    if event.button == gpui_kit::MouseButton::Right && this.links.open.is_none() {
                         window.focus(this.selection_focus.as_ref().unwrap(), cx);
                     }
                 },
             ))
             .on_mouse_down(
-                gpui::MouseButton::Left,
+                gpui_kit::MouseButton::Left,
                 cx.listener(|this, _, _, cx| {
                     this.selection.clear_if_not_dragging();
                     cx.notify();
                 }),
             )
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" && this.selection.active() {
                     this.selection.clear();
                     cx.notify();
@@ -5903,8 +5906,14 @@ impl Render for TranscriptView {
                 }
             }))
             .on_mouse_move(cx.listener(Self::move_selection))
-            .on_mouse_up(gpui::MouseButton::Left, cx.listener(Self::finish_selection))
-            .on_mouse_up_out(gpui::MouseButton::Left, cx.listener(Self::finish_selection))
+            .on_mouse_up(
+                gpui_kit::MouseButton::Left,
+                cx.listener(Self::finish_selection),
+            )
+            .on_mouse_up_out(
+                gpui_kit::MouseButton::Left,
+                cx.listener(Self::finish_selection),
+            )
             .role(Role::Log)
             .aria_label(if self.document {
                 "Note body"
@@ -6024,7 +6033,7 @@ impl Render for TranscriptView {
                                         .hover(|s| s.text_color(content(1.)).bg(content(0.04)))
                                         .child(floating_surface())
                                         .child(icon("chevron-down", 16.))
-                                        .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| {
+                                        .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
                                             cx.stop_propagation()
                                         })
                                         .on_click(
@@ -6044,7 +6053,7 @@ pub(crate) fn floating_surface() -> impl IntoElement {
         |bounds, _, window, _| {
             let radius = bounds.size.height / 2.;
 
-            window.paint_quad(gpui::fill(bounds, rgb(CHAT)).corner_radii(radius));
+            window.paint_quad(gpui_kit::fill(bounds, rgb(CHAT)).corner_radii(radius));
         },
     )
     .absolute()
@@ -6145,7 +6154,7 @@ mod mono_status_tests {
 #[cfg(test)]
 mod scroll_tests {
     use super::*;
-    use gpui::{TestAppContext, WindowBounds, WindowOptions, point};
+    use gpui_kit::{TestAppContext, WindowBounds, WindowOptions, point};
 
     fn row(role: &str, text: &str) -> Row {
         Row {
@@ -6164,7 +6173,7 @@ mod scroll_tests {
         view.rebuild(0, cx);
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn expanded_user_chunks_paint_one_aligned_bubble(cx: &mut TestAppContext) {
         // Compare settled bubble geometry rather than per-row resize glides.
         cx.update(|cx| cx.set_reduce_motion(true));
@@ -6273,7 +6282,7 @@ mod scroll_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn settled_tab_switches_preserve_rows_layout_and_scroll(cx: &mut TestAppContext) {
         let view = cx.new(|_| TranscriptView::new());
         view.update(cx, |view, cx| {
@@ -6317,7 +6326,7 @@ mod scroll_tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn exit_rows_survive_a_patch_that_merges_messages(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(false));
         let window = cx.update(|cx| {
@@ -6358,7 +6367,7 @@ mod scroll_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn hiding_settles_live_text_and_showing_reuses_hidden_updates(cx: &mut TestAppContext) {
         let view = cx.new(|_| TranscriptView::new());
         view.update(cx, |view, cx| {
@@ -6418,7 +6427,7 @@ mod scroll_tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn fresh_follow_ups_keep_provider_metrics_and_timing_on_the_original_turn(
         cx: &mut TestAppContext,
     ) {
@@ -6483,7 +6492,7 @@ mod scroll_tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn clicking_a_phase_uses_one_reveal_and_rapid_toggles_preserve_its_progress(
         cx: &mut TestAppContext,
     ) {
@@ -6579,7 +6588,7 @@ mod scroll_tests {
         }).unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn closing_a_phase_keeps_its_header_and_final_frame_in_place(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(Default::default(), |_, cx| {
@@ -6716,7 +6725,7 @@ mod scroll_tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn work_and_phase_disclosures_finish_at_their_natural_height_after_resizing(
         cx: &mut TestAppContext,
     ) {
@@ -6824,7 +6833,7 @@ mod scroll_tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_turn_actions_stay_while_moving_between_its_rows_in_any_event_order(
         cx: &mut TestAppContext,
     ) {
@@ -6849,7 +6858,7 @@ mod scroll_tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_messages_stack_past_a_reaction_and_queued_bubbles_hand_over(cx: &mut TestAppContext) {
         let view = cx.new(|_| {
             let mut view = TranscriptView::new();
@@ -6896,7 +6905,7 @@ mod scroll_tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_turns_merge_follow_ups_hide_live_prose_and_queue_above_the_work(
         cx: &mut TestAppContext,
     ) {
@@ -7006,7 +7015,7 @@ mod scroll_tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn desktop_work_metadata_renders_once_after_the_reply_and_never_as_prose(
         cx: &mut TestAppContext,
     ) {
@@ -7032,7 +7041,7 @@ mod scroll_tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_document_and_session_cards_are_one_line_like_react(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let start = serde_json::to_string(&ToolCall {
@@ -7089,7 +7098,7 @@ mod scroll_tests {
             )
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let document = visual.debug_bounds("mono-artifact-card").unwrap();
         let session = visual.debug_bounds("mono-launch-card-7").unwrap();
@@ -7101,7 +7110,7 @@ mod scroll_tests {
         assert!(session.size.width <= px(384.));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_chat_rests_on_the_composer_and_slides_sent_messages_in(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(
@@ -7196,7 +7205,7 @@ mod scroll_tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn prompt_rise_moves_the_painted_bubble_without_moving_its_scroll_anchor(
         cx: &mut TestAppContext,
     ) {
@@ -7280,7 +7289,7 @@ mod scroll_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn steered_prompts_take_the_top_anchor_without_restarting_the_provider_turn(
         cx: &mut TestAppContext,
     ) {
@@ -7390,7 +7399,7 @@ mod scroll_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn live_prompt_anchors_respect_history_visibility_and_the_anchor_preference(
         cx: &mut TestAppContext,
     ) {
@@ -7429,7 +7438,7 @@ mod scroll_tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sent_prompt_stays_at_the_top_then_long_replies_follow_until_scrolled_away(
         cx: &mut TestAppContext,
     ) {

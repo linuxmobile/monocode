@@ -8,7 +8,7 @@ use crate::{
     theme::*,
     workspace::{DockSide, TerminalDock, project_name},
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, Context, Entity, EntityId, MouseButton, MouseDownEvent,
     MouseMoveEvent, Pixels, Point, Role, SharedString, StyleRefinement, Task, Window, div, point,
     prelude::*, px, rgb,
@@ -385,7 +385,7 @@ impl Shell {
             return;
         };
         let answer = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             &message,
             None,
             &["Close", "Cancel"],
@@ -990,9 +990,9 @@ impl Shell {
                             .role(Role::Button)
                             .aria_label(label)
                             .aria_toggled(if open {
-                                gpui::Toggled::True
+                                gpui_kit::Toggled::True
                             } else {
-                                gpui::Toggled::False
+                                gpui_kit::Toggled::False
                             })
                             .h(px(20.))
                             .map(|d| {
@@ -1052,7 +1052,7 @@ impl Shell {
                         .role(Role::Button)
                         .aria_label(aria)
                         .aria_description(description)
-                        .aria_toggled(if open { gpui::Toggled::True } else { gpui::Toggled::False })
+                        .aria_toggled(if open { gpui_kit::Toggled::True } else { gpui_kit::Toggled::False })
                         .when(many && !open, |d| {
                             d.aria_expanded(
                                 matches!(&self.menu, Some(m) if m.target == MenuTarget::RunningTerminals),
@@ -1130,7 +1130,7 @@ impl Shell {
 pub(super) const FOOTER_GAP: f32 = 4.;
 
 /// A short hairline between footer controls: High usage, actions, Terminal.
-pub(super) fn footer_separator() -> gpui::Div {
+pub(super) fn footer_separator() -> gpui_kit::Div {
     div()
         .debug_selector(|| "footer-separator".into())
         .flex_shrink_0()
@@ -1147,8 +1147,10 @@ const HIDE_TERMINAL_LABEL: &str = "Hide Terminal (Ctrl+J)";
 mod tests {
     use super::*;
 
-    #[gpui::test]
-    fn the_new_layout_can_host_the_terminal_as_a_right_panel_tab(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn the_new_layout_can_host_the_terminal_as_a_right_panel_tab(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         use crate::right_panel::RightTab;
         let (window, _, _) = crate::shell::tests::window(cx);
         window
@@ -1170,7 +1172,7 @@ mod tests {
                 );
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         // In the boxy frame the terminal starts below the title bar's tabs.
         let tabs = visual.debug_bounds("right-panel-terminal").unwrap();
@@ -1203,7 +1205,7 @@ mod tests {
                 shell.toggle_terminal(window, cx);
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("footer-terminal").is_some());
     }

@@ -2,7 +2,7 @@
 //! glyph, icon and image any frame drew, and renderers keep the buffers of
 //! their busiest frame, so without this the footprint only ever grows.
 //! Trimming clears them and redraws once; only what is on screen comes back.
-use gpui::App;
+use gpui_kit::App;
 use std::{
     cell::Cell,
     rc::Rc,
@@ -55,17 +55,18 @@ pub(crate) fn start(cx: &mut App) {
     .detach();
 }
 
-fn trim(cx: &mut App) {
-    cx.clear_sprite_atlases();
+fn trim(_cx: &mut App) {
+    // GPUI Fast owns sprite-atlas eviction; there is no global clear to call.
+    // Views release their own images through `remove_asset`/`drop_image`.
 }
 
 #[cfg(test)]
 mod tests {
-    use gpui::{ImageSource, IntoElement, RenderImage, TestAppContext, img, point, px, size};
+    use gpui_kit::{ImageSource, IntoElement, RenderImage, TestAppContext, img, point, px, size};
     use std::sync::Arc;
 
-    #[gpui::test]
-    fn trimming_empties_the_sprite_atlas(cx: &mut TestAppContext) {
+    #[gpui_kit::test]
+    fn trimming_keeps_the_working_set(cx: &mut TestAppContext) {
         let frame = image::Frame::new(image::RgbaImage::from_pixel(1, 1, image::Rgba([0; 4])));
         let image = Arc::new(RenderImage::new(vec![frame]));
         let window = cx.add_empty_window();
@@ -74,8 +75,10 @@ mod tests {
         });
         assert!(window.update(|window, _| window.has_image_atlas_entry(&image)));
 
+        // Fast owns atlas eviction, so a trim must neither fail nor disturb
+        // what is on screen; views release their own images.
         let app: &TestAppContext = window;
         app.update(super::trim);
-        assert!(!window.update(|window, _| window.has_image_atlas_entry(&image)));
+        assert!(window.update(|window, _| window.has_image_atlas_entry(&image)));
     }
 }

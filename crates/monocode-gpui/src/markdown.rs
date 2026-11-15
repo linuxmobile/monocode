@@ -7,15 +7,15 @@ use crate::syntax::HighlightedDocument;
 use crate::theme::*;
 use crate::transcript::selection::TextSelection;
 pub(crate) use cache::{PreparedRow, RenderCache};
-use gpui::Window;
-use gpui::{
+use gpui_kit::Window;
+use gpui_kit::{
     AnyElement, App, ClickEvent, Div, FontStyle, FontWeight, HighlightStyle, InteractiveText,
     MouseButton, Pixels, Point, Role, SharedString, StrikethroughStyle, StyledText, div,
     prelude::*, px, rgb,
 };
 pub(crate) use search::{mark_row, mark_styles, row_text};
 
-#[derive(Clone, Debug, PartialEq, gpui::Action)]
+#[derive(Clone, Debug, PartialEq, gpui_kit::Action)]
 #[action(namespace = markdown, no_json)]
 pub(crate) struct LinkMenu {
     pub url: String,
@@ -512,7 +512,7 @@ fn rich_inline(
             let selected = selection.as_ref().map(|s| {
                 let selected = s.offset(offset);
                 if file {
-                    selected.with_cursor(gpui::CursorStyle::PointingHand)
+                    selected.with_cursor(gpui_kit::CursorStyle::PointingHand)
                 } else {
                     selected
                 }
@@ -545,7 +545,7 @@ fn rich_inline(
                     .when(file, |d| {
                         let path = style.link.clone().unwrap_or_else(|| text.clone());
                         let menu_path = path.clone();
-                        d.cursor(gpui::CursorStyle::PointingHand)
+                        d.cursor(gpui_kit::CursorStyle::PointingHand)
                             .hover(|s| s.bg(content(0.13)))
                             .on_click(move |event, window, cx| {
                                 if activate_link(event, clicked_selection.as_ref()) {
@@ -605,7 +605,7 @@ fn rich_inline(
                 let selected = selection.as_ref().map(|s| {
                     let selected = s.offset(offset);
                     if link.is_some() {
-                        selected.with_cursor(gpui::CursorStyle::PointingHand)
+                        selected.with_cursor(gpui_kit::CursorStyle::PointingHand)
                     } else {
                         selected
                     }
@@ -625,7 +625,7 @@ fn rich_inline(
                         .line_height(px(24.))
                         .opacity(alpha)
                         .when(link.is_some(), |d| {
-                            d.cursor(gpui::CursorStyle::PointingHand)
+                            d.cursor(gpui_kit::CursorStyle::PointingHand)
                         })
                         .child(child)
                         .on_click(move |event, window, cx| {
@@ -1108,10 +1108,10 @@ mod fence_highlight_tests {
 mod rich_wrap_tests {
     use super::*;
     use crate::markdown_model::InlineStyle;
-    use gpui::{Context, TestAppContext};
+    use gpui_kit::{Context, TestAppContext};
 
     struct Fixture;
-    impl gpui::Render for Fixture {
+    impl gpui_kit::Render for Fixture {
         fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
             let runs = vec![
                 InlineRun {
@@ -1146,13 +1146,13 @@ mod rich_wrap_tests {
                 ))
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cjk_prose_with_inline_code_wraps_within_column(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(Default::default(), |_, cx| cx.new(|_| Fixture))
                 .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         visual.refresh().unwrap();
         let bounds = visual.debug_bounds("rich-wrap").unwrap();

@@ -22,7 +22,7 @@ pub(super) struct QueueEdit {
 }
 
 impl Conversation {
-    pub(super) fn draft_active(&self, cx: &gpui::App) -> bool {
+    pub(super) fn draft_active(&self, cx: &gpui_kit::App) -> bool {
         self.follow_ups.draft_selected
             || monocode_core::composer::consume_command(&self.input.read(cx).content, "draft")
                 .is_some()
@@ -32,7 +32,7 @@ impl Conversation {
         text: String,
         attachments: Vec<std::path::PathBuf>,
         mode: Option<String>,
-        cx: &gpui::App,
+        cx: &gpui_kit::App,
     ) -> Message {
         static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let prepared = self.completion.read(cx).prepare_prompt(&text);
@@ -102,7 +102,7 @@ impl Conversation {
     }
     /// Whether a plain follow-up sent now steers the turn rather than queuing;
     /// `invert` flips the preference, as Cmd+Enter does.
-    pub(super) fn steers_follow_up(&self, invert: bool, cx: &gpui::App) -> bool {
+    pub(super) fn steers_follow_up(&self, invert: bool, cx: &gpui_kit::App) -> bool {
         let prefers_steer = cx
             .try_global::<crate::settings::Preferences>()
             .is_none_or(|prefs| prefs.follow_up == "steer");
@@ -534,7 +534,7 @@ impl Conversation {
                             .child(queue_button("queue-cancel", "Cancel queued message edit", "close").on_click(cx.listener(|this, _, window, cx| this.finish_queue_edit(false, window, cx))))
                     } else {
                         let (steer, edit, remove) = (id.clone(), id.clone(), id);
-                        row.child(div().flex_1().min_w_0().py_1().child(div().id("queued-message-text").role(Role::Label).aria_label(message.label()).truncate().text_color(content(0.75)).child(message.label())).when_some(message.error.clone(), |d, error| d.child(div().id("queue-error").role(Role::Alert).text_color(gpui::rgb(0xf87171)).child(error))))
+                        row.child(div().flex_1().min_w_0().py_1().child(div().id("queued-message-text").role(Role::Label).aria_label(message.label()).truncate().text_color(content(0.75)).child(message.label())).when_some(message.error.clone(), |d, error| d.child(div().id("queue-error").role(Role::Alert).text_color(gpui_kit::rgb(0xf87171)).child(error))))
                             .when(Kind::from_id(&self.summary.provider).can_steer(), |d| d.child(queue_button("queue-steer", "Steer queued message", "queue-steer").w_auto().px_2().gap(px(6.)).opacity(if sending { 0.4 } else { 1. }).child("Steer").on_click(cx.listener(move |this, _, _, cx| {
                                 if !sending && let Some(message) = this.follow_ups.state.messages.iter_mut().find(|m| m.id == steer) {
                                     if !message.can_steer() && this.busy { return; }
@@ -566,7 +566,7 @@ fn queue_button(
     id: &'static str,
     label: &'static str,
     glyph: &'static str,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Button)
@@ -586,7 +586,7 @@ fn queue_button(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, WindowHandle};
+    use gpui_kit::{TestAppContext, WindowHandle};
     use monocode_core::store::Store;
     use std::sync::Mutex;
 
@@ -610,7 +610,7 @@ mod tests {
         })
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn queue_entrances_slide_above_a_stationary_composer_for_the_first_and_later_messages(
         cx: &mut TestAppContext,
     ) {
@@ -710,7 +710,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn submitted_modes_clear_after_queueing_and_do_not_leak_into_the_next_message(
         cx: &mut TestAppContext,
     ) {
@@ -762,7 +762,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn busy_sends_keep_their_order_attachments_and_edits_until_accepted(cx: &mut TestAppContext) {
         let window = conversation(cx);
         let (controls, received) = std::sync::mpsc::channel();
@@ -835,7 +835,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn stop_pauses_the_queue_and_retires_its_controls(cx: &mut TestAppContext) {
         let window = conversation(cx);
         let (controls, received) = std::sync::mpsc::channel();
@@ -861,7 +861,7 @@ mod tests {
         ));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_rejected_steer_keeps_its_text_for_retry(cx: &mut TestAppContext) {
         let window = conversation(cx);
         cx.update(|cx| {
@@ -925,7 +925,7 @@ mod tests {
             .unwrap()
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn the_submit_icon_shows_whether_enter_steers_or_queues(cx: &mut TestAppContext) {
         let window = conversation(cx);
         let action = |cx: &mut TestAppContext, follow_up: &str, alternate: bool| {
@@ -955,7 +955,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn alternate_steer_delivers_past_queued_message(cx: &mut TestAppContext) {
         let window = conversation(cx);
         let (controls, received) = std::sync::mpsc::channel();
@@ -988,7 +988,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn plain_steer_delivers_past_queued_message(cx: &mut TestAppContext) {
         let window = conversation(cx);
         cx.update(|cx| {
@@ -1026,7 +1026,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn modifier_click_inverts_both_follow_up_preferences(cx: &mut TestAppContext) {
         for (preference, expected) in [("steer", false), ("queue", true)] {
             let window = conversation(cx);
@@ -1044,10 +1044,10 @@ mod tests {
                     cx.notify();
                 })
                 .unwrap();
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             visual.refresh().unwrap();
             let bounds = visual.debug_bounds("send-or-stop").unwrap();
-            let modifiers = gpui::Modifiers {
+            let modifiers = gpui_kit::Modifiers {
                 platform: false,
                 control: !false,
                 ..Default::default()
@@ -1062,22 +1062,22 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cmd_enter_queues_when_follow_ups_steer(cx: &mut TestAppContext) {
         assert!(!alternate_send(cx, "steer", "after this turn"));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cmd_enter_steers_when_follow_ups_queue(cx: &mut TestAppContext) {
         assert!(alternate_send(cx, "queue", "change course"));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cmd_enter_cannot_steer_a_mode_turn(cx: &mut TestAppContext) {
         assert!(!alternate_send(cx, "queue", "/plan sketch it first"));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn draft_commands_save_without_starting_an_agent_and_remove_restores_a_blank(
         cx: &mut TestAppContext,
     ) {
@@ -1128,7 +1128,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sending_a_saved_draft_preserves_the_new_composer(cx: &mut TestAppContext) {
         let window = conversation(cx);
         cx.update(|cx| {

@@ -428,7 +428,7 @@ impl Shell {
 mod tests {
     use super::*;
     use crate::shell::tests::window;
-    use gpui::{TestAppContext, WindowHandle};
+    use gpui_kit::{TestAppContext, WindowHandle};
 
     fn add_session(shell: &mut Shell, window: &mut Window, cx: &mut Context<Shell>) -> i64 {
         let summary = locked(&shell.store)
@@ -457,7 +457,7 @@ mod tests {
             .unwrap()
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mixed_tabs_open_in_order_and_close_to_the_visible_neighbor(cx: &mut TestAppContext) {
         let (window, other_project, first) = window(cx);
         let mono = add_mono(window, cx);
@@ -504,7 +504,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_close_button_and_cmd_w_share_selection_and_focus(cx: &mut TestAppContext) {
         let (window, _, first) = window(cx);
         cx.update(|cx| {
@@ -518,7 +518,7 @@ mod tests {
             .update(cx, |shell, w, cx| shell.open_title_tab(&mono, w, cx))
             .unwrap();
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let close = visual.debug_bounds("close-mono-tab-button").unwrap();
         visual.simulate_click(close.center(), Default::default());
         visual.run_until_parked();
@@ -557,7 +557,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn worktree_tabs_cycle_close_and_return_without_touching_other_scopes(cx: &mut TestAppContext) {
         let (window, other_project, main) = window(cx);
         let mono_main = add_mono(window, cx);
@@ -633,7 +633,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mixed_reorder_and_restart_preserve_order_and_selected_mono(cx: &mut TestAppContext) {
         let (window, _, first) = window(cx);
         let mono = add_mono(window, cx);
@@ -685,7 +685,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn rapid_new_tabs_follow_request_order(cx: &mut TestAppContext) {
         let (window, _, first) = window(cx);
         let providers = [Kind::Claude, Kind::Codex, Kind::Claude, Kind::Codex];
@@ -721,14 +721,14 @@ mod tests {
 mod interaction_tests {
     use super::*;
     use crate::shell::tests::window;
-    use gpui::{Modifiers, TestAppContext, point};
+    use gpui_kit::{Modifiers, TestAppContext, point};
 
     fn sidebar_highlight(
-        window: gpui::WindowHandle<Shell>,
+        window: gpui_kit::WindowHandle<Shell>,
         selector: String,
         cx: &mut TestAppContext,
     ) -> bool {
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let selector = Box::leak(selector.into_boxed_str());
         let bounds = visual
             .debug_bounds(selector)
@@ -752,7 +752,7 @@ mod interaction_tests {
             .unwrap()
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sidebar_highlights_only_the_visible_mono_or_session(cx: &mut TestAppContext) {
         let (window, other, session) = window(cx);
         window
@@ -786,7 +786,7 @@ mod interaction_tests {
         assert!(sidebar_highlight(window, session_row.clone(), cx));
         assert!(!sidebar_highlight(window, mono_row.clone(), cx));
         let click = |selector: &str, cx: &mut TestAppContext| {
-            let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+            let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
             let bounds = visual
                 .debug_bounds(Box::leak(selector.to_owned().into_boxed_str()))
                 .unwrap();
@@ -845,7 +845,7 @@ mod interaction_tests {
         ));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn closing_a_session_button_selects_the_adjacent_mono_and_restores_its_composer(
         cx: &mut TestAppContext,
     ) {
@@ -865,7 +865,7 @@ mod interaction_tests {
                 mono
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let close = visual
             .debug_bounds(Box::leak(
@@ -884,7 +884,7 @@ mod interaction_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn dragging_a_mono_uses_the_mixed_strip_slots_and_keeps_the_active_session(
         cx: &mut TestAppContext,
     ) {
@@ -907,7 +907,7 @@ mod interaction_tests {
         let TitleTab::Mono { id, .. } = &mono else {
             panic!("expected a Mono");
         };
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let session_bounds = visual
             .debug_bounds(Box::leak(format!("title-tab-{first}").into_boxed_str()))

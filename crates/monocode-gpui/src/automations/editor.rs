@@ -1,7 +1,10 @@
 use super::*;
 use chrono::{Local, TimeZone};
 
-pub(super) fn toggle(id: impl Into<gpui::ElementId>, on: bool) -> gpui::Stateful<gpui::Div> {
+pub(super) fn toggle(
+    id: impl Into<gpui_kit::ElementId>,
+    on: bool,
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .role(Role::Switch)
@@ -53,15 +56,19 @@ pub(super) fn events(kind: &str) -> Vec<(String, String)> {
         _ => &[],
     })
 }
-fn section(label: &'static str) -> gpui::Div {
+fn section(label: &'static str) -> gpui_kit::Div {
     div()
         .px(px(4.))
         .text_size(px(12.))
-        .font_weight(gpui::FontWeight::MEDIUM)
+        .font_weight(gpui_kit::FontWeight::MEDIUM)
         .text_color(content(0.5))
         .child(label)
 }
-fn settings_row(label: &'static str, hint: &'static str, control: impl IntoElement) -> gpui::Div {
+fn settings_row(
+    label: &'static str,
+    hint: &'static str,
+    control: impl IntoElement,
+) -> gpui_kit::Div {
     div()
         .min_h(px(54.))
         .px(px(16.))
@@ -97,12 +104,12 @@ fn settings_row(label: &'static str, hint: &'static str, control: impl IntoEleme
 impl Automations {
     fn select_control(
         &self,
-        id: impl Into<gpui::ElementId>,
+        id: impl Into<gpui_kit::ElementId>,
         label: String,
         field: Choice,
         values: Vec<(String, String)>,
         cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         let anchor = AnchorSlot::default();
         let captured = anchor.clone();
         div()
@@ -537,7 +544,7 @@ impl Automations {
             .h(px(26.))
             .bg(content(1.))
             .text_color(shell_fill())
-            .font_weight(gpui::FontWeight::MEDIUM)
+            .font_weight(gpui_kit::FontWeight::MEDIUM)
             .when(disabled, |d| d.opacity(0.4))
             .on_click(cx.listener(move |this, _, _, cx| {
                 if !disabled {
@@ -575,7 +582,7 @@ impl Automations {
                                         div()
                                             .flex_1()
                                             .min_w_0()
-                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                            .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                                             .child(editor.name.clone()),
                                     ),
                             )
@@ -615,7 +622,7 @@ impl Automations {
                                     .items_center()
                                     .gap(px(6.))
                                     .text_size(px(12.))
-                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                                     .text_color(content(0.9))
                                     .hover(|s| s.bg(content(0.05)))
                                     .child(self.project_anchor.probe())
@@ -1081,35 +1088,35 @@ impl Automations {
                         .map(|t| format!("Scheduled · {}", t.label()))
                         .unwrap_or_else(|| "Scheduled".into())
                 };
-                let (label, color, fill): (&str, gpui::Hsla, gpui::Hsla) = match run.status.as_str()
-                {
-                    "succeeded" => (
-                        "Succeeded",
-                        rgb(0x34d399).into(),
-                        rgb(0x10b981).alpha(0.12).into(),
-                    ),
-                    "failed" => (
-                        "Failed",
-                        rgb(0xfb7185).into(),
-                        rgb(0xf43f5e).alpha(0.12).into(),
-                    ),
-                    "skipped" => (
-                        "Skipped",
-                        rgb(0xfbbf24).into(),
-                        rgb(0xf59e0b).alpha(0.12).into(),
-                    ),
-                    "cancelled" => ("Cancelled", content(0.5), content(0.08)),
-                    "running" => (
-                        "Running",
-                        rgb(0x60a5fa).into(),
-                        rgb(0x3b82f6).alpha(0.12).into(),
-                    ),
-                    _ => (
-                        "Pending",
-                        rgb(0x60a5fa).into(),
-                        rgb(0x3b82f6).alpha(0.12).into(),
-                    ),
-                };
+                let (label, color, fill): (&str, gpui_kit::Hsla, gpui_kit::Hsla) =
+                    match run.status.as_str() {
+                        "succeeded" => (
+                            "Succeeded",
+                            rgb(0x34d399).into(),
+                            rgb(0x10b981).alpha(0.12).into(),
+                        ),
+                        "failed" => (
+                            "Failed",
+                            rgb(0xfb7185).into(),
+                            rgb(0xf43f5e).alpha(0.12).into(),
+                        ),
+                        "skipped" => (
+                            "Skipped",
+                            rgb(0xfbbf24).into(),
+                            rgb(0xf59e0b).alpha(0.12).into(),
+                        ),
+                        "cancelled" => ("Cancelled", content(0.5), content(0.08)),
+                        "running" => (
+                            "Running",
+                            rgb(0x60a5fa).into(),
+                            rgb(0x3b82f6).alpha(0.12).into(),
+                        ),
+                        _ => (
+                            "Pending",
+                            rgb(0x60a5fa).into(),
+                            rgb(0x3b82f6).alpha(0.12).into(),
+                        ),
+                    };
                 table = table.child(
                     div()
                         .id(("automation-run", index))
@@ -1144,7 +1151,7 @@ impl Automations {
                                     .gap(px(4.))
                                     .rounded_full()
                                     .text_size(px(11.))
-                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                                     .text_color(color)
                                     .bg(fill)
                                     .when(run.status == "running", |d| {
@@ -1158,8 +1165,8 @@ impl Automations {
                                                 icon("loader", 10.)
                                                     .text_color(color)
                                                     .with_transformation(
-                                                        gpui::Transformation::rotate(
-                                                            gpui::percentage(delta),
+                                                        gpui_kit::Transformation::rotate(
+                                                            gpui_kit::percentage(delta),
                                                         ),
                                                     )
                                             },

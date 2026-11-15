@@ -8,7 +8,7 @@ use crate::{
     markdown, markdown_model,
     reveal::{Disclosure, Motion},
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, Pixels, Role, SharedString, Transformation, div, percentage, prelude::*,
     px, rgb,
 };
@@ -474,7 +474,7 @@ fn agent(
                             .items_baseline()
                             .gap_2()
                             .min_w_0()
-                            .max_w(gpui::relative(0.55))
+                            .max_w(gpui_kit::relative(0.55))
                             .flex_shrink_0()
                             .text_size(px(12.))
                             .text_color(content(0.4))
@@ -519,7 +519,7 @@ fn agent(
                     .text_size(px(12.))
                     .line_height(px(20.))
                     .text_color({
-                        let mut color: gpui::Hsla = rgb(0xf87171).into();
+                        let mut color: gpui_kit::Hsla = rgb(0xf87171).into();
                         color.a = 0.8;
                         color
                     })
@@ -1020,8 +1020,8 @@ fn markdown_text(
 }
 
 struct AgentBrief(String);
-impl gpui::Render for AgentBrief {
-    fn render(&mut self, _: &mut gpui::Window, _: &mut Context<Self>) -> impl IntoElement {
+impl gpui_kit::Render for AgentBrief {
+    fn render(&mut self, _: &mut gpui_kit::Window, _: &mut Context<Self>) -> impl IntoElement {
         div()
             .max_w(px(480.))
             .px_2()

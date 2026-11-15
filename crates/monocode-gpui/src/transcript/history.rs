@@ -488,7 +488,7 @@ impl TranscriptView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
     fn long_mono(turns: usize) -> Vec<Row> {
         (0..turns).flat_map(|turn| [
@@ -497,7 +497,7 @@ mod tests {
         ]).collect()
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn long_mono_initial_display_and_live_patches_keep_history_unmaterialized(
         cx: &mut TestAppContext,
     ) {
@@ -531,7 +531,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn internal_mono_reports_also_keep_the_initial_display_bounded(cx: &mut TestAppContext) {
         let mut rows = long_mono(1_000);
         for row in &mut rows {
@@ -555,7 +555,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_group_cache_follows_changed_prompt_boundaries(cx: &mut TestAppContext) {
         let view = cx.new(|_| TranscriptView::new());
         view.update(cx, |view, cx| {
@@ -571,7 +571,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn older_mono_pages_preserve_the_reading_anchor_and_search_reaches_archived_rows(
         cx: &mut TestAppContext,
     ) {
@@ -610,7 +610,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn paged_mono_reads_older_turns_above_a_window_whose_rows_keep_their_numbers(
         cx: &mut TestAppContext,
     ) {
@@ -699,7 +699,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn replacing_history_discards_an_in_flight_mono_page(cx: &mut TestAppContext) {
         let view = cx.new(|_| TranscriptView::new());
         view.update(cx, |view, cx| {
@@ -739,7 +739,7 @@ mod tests {
         ]
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn suspended_history_releases_payload_and_restores_search_folds_and_scroll(
         cx: &mut TestAppContext,
     ) {
@@ -772,7 +772,7 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn visible_running_and_unsaved_action_histories_are_pinned(cx: &mut TestAppContext) {
         let view = cx.new(|_| TranscriptView::new());
         view.update(cx, |view, cx| {

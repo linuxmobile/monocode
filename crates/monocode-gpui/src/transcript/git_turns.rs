@@ -4,7 +4,7 @@
 use super::*;
 use crate::conversation::git_actions::GitAction;
 use crate::right_panel::{DIFF_ADD, DIFF_DEL, format_integer, tabular};
-use gpui::{AnyElement, Div};
+use gpui_kit::{AnyElement, Div};
 use monocode_core::git::{
     CommitFile,
     report::{self, Report, Run, Step},
@@ -94,7 +94,7 @@ fn counts(additions: u64, deletions: u64) -> Div {
         .items_center()
         .gap(px(6.))
         .text_size(px(11.))
-        .font_weight(gpui::FontWeight::SEMIBOLD)
+        .font_weight(gpui_kit::FontWeight::SEMIBOLD)
         .font_features(tabular())
         .child(
             div()
@@ -257,7 +257,9 @@ impl TranscriptView {
                         div().child(commit.hash.clone()).into_any_element()
                     })
                     .when(copied, |d| d.child("Copied"))
-                    .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                    .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation()
+                    })
                     .on_click(cx.listener(move |this, _, _, cx| {
                         cx.write_to_clipboard(ClipboardItem::new_string(hash.clone()));
                         let born = Instant::now();
@@ -415,7 +417,7 @@ impl TranscriptView {
                             .truncate()
                             .text_size(px(12.))
                             .line_height(px(18.))
-                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                             .text_color(content(0.85))
                             .child(title),
                     )
@@ -436,13 +438,15 @@ impl TranscriptView {
                         .rounded(px(6.))
                         .bg(content(0.08))
                         .text_size(px(11.))
-                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .font_weight(gpui_kit::FontWeight::MEDIUM)
                         .text_color(content(0.75))
                         .cursor_pointer()
                         .hover(|s| s.bg(content(0.12)).text_color(content(1.)))
                         .child(icon(glyph, 13.).text_color(content(0.6)))
                         .child(label)
-                        .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                        .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
+                            cx.stop_propagation()
+                        })
                         .on_click(move |_, _, cx| cx.open_url(&url)),
                 )
             });
@@ -498,7 +502,9 @@ impl TranscriptView {
                     ),
                     (None, None) => d,
                 })
-                .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
+                    cx.stop_propagation()
+                })
                 .on_click(move |_, window, cx| {
                     window
                         .dispatch_action(Box::new(crate::file_editor::OpenPath(path.clone())), cx);
@@ -680,7 +686,7 @@ fn title_text(card: &GitCard) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
     fn row(role: &str, text: String) -> Row {
         Row {
@@ -709,7 +715,7 @@ mod tests {
             .collect()
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn pill_turns_show_one_live_step_then_a_card_for_the_reply(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let window = cx.update(|cx| {
@@ -736,7 +742,7 @@ mod tests {
                 );
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         window
             .update(visual, |view, _, _| {
@@ -809,7 +815,7 @@ mod tests {
         assert!(visual.debug_bounds("git-card-4").is_some());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn ordinary_turns_and_empty_results_keep_their_reply(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let window = cx.update(|cx| {

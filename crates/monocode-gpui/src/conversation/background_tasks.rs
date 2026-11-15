@@ -95,7 +95,7 @@ impl Conversation {
                 div()
                     .flex_shrink_0()
                     .text_color(content(0.8))
-                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                     .child(title),
             )
             .child(
@@ -158,7 +158,7 @@ impl Conversation {
     }
 }
 
-fn background_row(task: &BackgroundTask) -> gpui::Stateful<gpui::Div> {
+fn background_row(task: &BackgroundTask) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(SharedString::from(format!("background-{}", task.id)))
         .debug_selector({
@@ -222,7 +222,7 @@ fn live_clock(task: &BackgroundTask) -> impl IntoElement {
             let ms = monocode_core::time::now_ms().saturating_sub(started_at);
             // A slow breath: the dot swells and its halo fades out.
             let breath = 0.5 - 0.5 * (phase * std::f32::consts::TAU).cos();
-            let live: gpui::Hsla = gpui::rgb(LIVE).into();
+            let live: gpui_kit::Hsla = gpui_kit::rgb(LIVE).into();
             div()
                 .flex_shrink_0()
                 .flex()
@@ -277,7 +277,7 @@ fn elapsed(ms: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, VisualTestContext};
+    use gpui_kit::{TestAppContext, VisualTestContext};
     use monocode_core::store::Store;
     use std::sync::Mutex;
 
@@ -291,7 +291,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn background_work_sits_on_the_ledge_steers_new_messages_and_clears_on_stop(
         cx: &mut TestAppContext,
     ) {
@@ -342,7 +342,7 @@ mod tests {
         assert!(visual.debug_bounds("background-tasks-header").is_none());
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_lone_task_folds_into_the_header(cx: &mut TestAppContext) {
         let store = Store::open(Path::new(":memory:")).unwrap();
         let summary = store.create("claude", "/tmp").unwrap();

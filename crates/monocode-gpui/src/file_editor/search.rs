@@ -52,9 +52,9 @@ impl FileEditor {
                 .role(Role::Button)
                 .aria_label(title)
                 .aria_toggled(if on {
-                    gpui::Toggled::True
+                    gpui_kit::Toggled::True
                 } else {
-                    gpui::Toggled::False
+                    gpui_kit::Toggled::False
                 })
                 .size(px(24.))
                 .flex()
@@ -62,7 +62,7 @@ impl FileEditor {
                 .justify_center()
                 .rounded_md()
                 .text_size(px(11.))
-                .font_weight(gpui::FontWeight::SEMIBOLD)
+                .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                 .text_color(content(if on { 1. } else { 0.6 }))
                 .when(on, |d| d.bg(accent_color().opacity(0.25)))
                 .hover(|s| s.bg(content(0.1)))

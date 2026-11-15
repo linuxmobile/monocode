@@ -1,12 +1,12 @@
 //! Prepare the React worker's texture once. Cover cropping, corner clipping and
 //! view-relative masks happen while painting, including during live resize.
 use crate::popover::AnchorSlot;
-use gpui::{
+use gpui_kit::{
     App, Asset, Bounds, Context, ObjectFit, RenderImage, Role, Window, canvas, div, img,
     prelude::*, px,
 };
 #[cfg(test)]
-use gpui::{Corners, Pixels};
+use gpui_kit::{Corners, Pixels};
 use monocode_core::project_appearance::{Background, Effect, read_image};
 use std::{
     hash::{Hash, Hasher},
@@ -125,7 +125,7 @@ pub(crate) struct ProjectBackground {
     /// Set when the shell switches here from a tab drawing no background; the
     /// fade starts once the texture is ready, so a reload doesn't pop in.
     fade: Option<Instant>,
-    _release: Option<gpui::Subscription>,
+    _release: Option<gpui_kit::Subscription>,
 }
 impl ProjectBackground {
     #[cfg(test)]
@@ -237,13 +237,13 @@ impl ProjectBackground {
                     let _ = (preview, &clip, opacity);
                     let height = bounds.size.height.as_f32().ceil() as usize;
                     for y in 0..height {
-                        let mut color: gpui::Hsla = gpui::rgb(CHAT).into();
+                        let mut color: gpui_kit::Hsla = gpui_kit::rgb(CHAT).into();
                         color.a =
                             1. - background_fade((y as f32 + 0.5) / height as f32, empty, haze);
-                        window.paint_quad(gpui::fill(
+                        window.paint_quad(gpui_kit::fill(
                             Bounds::new(
-                                gpui::point(bounds.left(), bounds.top() + px(y as f32)),
-                                gpui::size(bounds.size.width, px(1.)),
+                                gpui_kit::point(bounds.left(), bounds.top() + px(y as f32)),
+                                gpui_kit::size(bounds.size.width, px(1.)),
                             ),
                             color,
                         ));
@@ -331,7 +331,7 @@ impl Render for ProjectBackground {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, point, size};
+    use gpui_kit::{TestAppContext, point, size};
 
     #[test]
     fn textures_shrink_only_to_still_cover_the_largest_screen() {
@@ -363,11 +363,11 @@ mod tests {
         assert_eq!(corners(inset, true, None), Corners::all(px(11.)));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn new_views_share_pending_artwork_and_draw_warm_images_on_the_first_frame(
         cx: &mut TestAppContext,
     ) {
-        struct Surface(Vec<gpui::Entity<ProjectBackground>>);
+        struct Surface(Vec<gpui_kit::Entity<ProjectBackground>>);
         impl Render for Surface {
             fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
                 div()
@@ -481,9 +481,9 @@ mod tests {
         });
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn live_resize_and_opacity_reuse_the_texture_without_a_background_job(cx: &mut TestAppContext) {
-        struct Surface(gpui::Entity<ProjectBackground>);
+        struct Surface(gpui_kit::Entity<ProjectBackground>);
         impl Render for Surface {
             fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
                 div().relative().size_full().child(self.0.clone())

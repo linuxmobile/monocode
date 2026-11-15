@@ -1,7 +1,7 @@
 //! Controlled native counterpart of NewLayoutNotice.tsx. The shell owns and
 //! persists the inset-layout and dismissed preferences after receiving events.
 use crate::theme::*;
-use gpui::{Context, EventEmitter, FontWeight, Render, Role, Window, div, prelude::*, px};
+use gpui_kit::{Context, EventEmitter, FontWeight, Render, Role, Window, div, prelude::*, px};
 
 pub(crate) enum LayoutNoticeEvent {
     Try,

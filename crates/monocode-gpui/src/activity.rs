@@ -1,5 +1,5 @@
 //! Direct presentation port of AgentTranscript's ActivityPhaseGroup and PhaseStep.
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, ContentMask, Element, ElementId, GlobalElementId, InspectorElementId,
     LayoutId, Pixels, StyledText, Window, point, prelude::*,
 };
@@ -110,15 +110,15 @@ impl Element for Shimmer {
 }
 
 /// A work icon by name. `monocode` is the app's own logo, for its tools.
-pub(crate) fn glyph(name: &'static str, side: f32) -> gpui::Div {
+pub(crate) fn glyph(name: &'static str, side: f32) -> gpui_kit::Div {
     if name == "monocode" {
-        return gpui::div()
-            .size(gpui::px(side))
+        return gpui_kit::div()
+            .size(gpui_kit::px(side))
             .flex_shrink_0()
-            .child(gpui::img("monocode.png").size(gpui::px(side)));
+            .child(gpui_kit::img("monocode.png").size(gpui_kit::px(side)));
     }
-    gpui::div()
-        .size(gpui::px(side))
+    gpui_kit::div()
+        .size(gpui_kit::px(side))
         .flex_shrink_0()
         .child(crate::theme::icon(name, side))
 }
@@ -328,21 +328,21 @@ pub(crate) fn tile_rail_branch(last: bool, branch: bool) -> impl IntoElement {
 pub(crate) const TILE_RAIL_INDENT: f32 = crate::tab_tile::ACTIVITY_TILE.w + 8.;
 fn rail_from(left: f32, last: bool, branch: bool, offset: f32) -> impl IntoElement {
     let color = crate::theme::rail_color();
-    gpui::div()
+    gpui_kit::div()
         .absolute()
         .top_0()
-        .left(gpui::px(left))
-        .w(gpui::px(9.))
+        .left(gpui_kit::px(left))
+        .w(gpui_kit::px(9.))
         .h_full()
         .child(
-            gpui::div()
+            gpui_kit::div()
                 .absolute()
                 .top_0()
                 .left_0()
-                .w(gpui::px(1.))
+                .w(gpui_kit::px(1.))
                 .map(|d| {
                     if last {
-                        d.h(gpui::px(7. + offset))
+                        d.h(gpui_kit::px(7. + offset))
                     } else {
                         d.h_full()
                     }
@@ -351,12 +351,12 @@ fn rail_from(left: f32, last: bool, branch: bool, offset: f32) -> impl IntoEleme
         )
         .when(branch, |d| {
             d.child(
-                gpui::svg()
+                gpui_kit::svg()
                     .path("tool-branch")
                     .absolute()
                     .left_0()
-                    .top(gpui::px(6. + offset))
-                    .size(gpui::px(9.))
+                    .top(gpui_kit::px(6. + offset))
+                    .size(gpui_kit::px(9.))
                     .text_color(color),
             )
         })
@@ -365,7 +365,7 @@ fn rail_from(left: f32, last: bool, branch: bool, offset: f32) -> impl IntoEleme
 #[cfg(test)]
 mod shimmer_tests {
     use super::*;
-    use gpui::{Context, Render, TestAppContext, canvas, div, px};
+    use gpui_kit::{Context, Render, TestAppContext, canvas, div, px};
     use std::{cell::RefCell, rc::Rc};
 
     struct Preview {
@@ -390,9 +390,9 @@ mod shimmer_tests {
                             };
                             let layout = shimmer.text.layout().clone();
                             let mut shimmer = shimmer.into_any_element();
-                            let available = gpui::size(
-                                gpui::AvailableSpace::Definite(px(220.)),
-                                gpui::AvailableSpace::MinContent,
+                            let available = gpui_kit::size(
+                                gpui_kit::AvailableSpace::Definite(px(220.)),
+                                gpui_kit::AvailableSpace::MinContent,
                             );
                             let measured = shimmer.layout_as_root(available, window, cx);
                             let plain = StyledText::new(text);
@@ -401,7 +401,7 @@ mod shimmer_tests {
                                 .into_any_element()
                                 .layout_as_root(available, window, cx);
                             assert_eq!(measured, plain);
-                            let glyphs = |layout: &gpui::TextLayout| {
+                            let glyphs = |layout: &gpui_kit::TextLayout| {
                                 layout
                                     .line_layouts()
                                     .iter()
@@ -418,7 +418,7 @@ mod shimmer_tests {
                 )
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn sweep_preserves_plain_text_kerning_ligatures_and_glyph_positions(cx: &mut TestAppContext) {
         let geometry = Rc::new(RefCell::new(None));
         let window = cx.update(|cx| {

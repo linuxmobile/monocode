@@ -5,7 +5,7 @@ use crate::{
     },
     theme::*,
 };
-use gpui::{AnyElement, Context, Role, SharedString, div, prelude::*, px};
+use gpui_kit::{AnyElement, Context, Role, SharedString, div, prelude::*, px};
 impl SettingsView {
     pub(super) fn archive_page(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let mut rows = vec![self.row(

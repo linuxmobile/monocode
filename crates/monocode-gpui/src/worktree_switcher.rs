@@ -5,7 +5,7 @@ use crate::{
     runtime::{Database, locked},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     Context, Entity, EventEmitter, FocusHandle, Focusable, Role, ScrollHandle, Subscription,
     Window, div, prelude::*, px,
 };
@@ -222,13 +222,13 @@ impl WorktreeSwitcher {
             _changed: changed,
         }
     }
-    pub(crate) fn focus(&self, cx: &gpui::App) -> FocusHandle {
+    pub(crate) fn focus(&self, cx: &gpui_kit::App) -> FocusHandle {
         self.search.focus_handle(cx)
     }
-    fn query(&self, cx: &gpui::App) -> String {
+    fn query(&self, cx: &gpui_kit::App) -> String {
         self.search.read(cx).content.trim().to_owned()
     }
-    fn can_create(&self, cx: &gpui::App) -> bool {
+    fn can_create(&self, cx: &gpui_kit::App) -> bool {
         self.state.is_some()
             && self.load_error.is_none()
             && !self.query(cx).is_empty()
@@ -322,7 +322,7 @@ impl Render for WorktreeSwitcher {
                 }
                 cx.stop_propagation();
             }))
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
                     if !this.creating {
                         cx.emit(Event::Dismissed);
@@ -516,7 +516,7 @@ impl Render for WorktreeSwitcher {
                             .px_2()
                             .py_2()
                             .text_size(px(11.))
-                            .text_color(gpui::rgb(0xf87171))
+                            .text_color(gpui_kit::rgb(0xf87171))
                             .child(error),
                     )
                 },
@@ -560,7 +560,7 @@ impl Render for WorktreeSwitcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use monocode_core::{git::Worktree, store::Store};
     use std::{
         cell::RefCell,
@@ -621,7 +621,7 @@ mod tests {
         );
         assert!(rows("/repo/project", Some(&state), "new-copy").is_empty());
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn cached_worktrees_show_before_metadata_and_membership_never_loads_full_settings(
         cx: &mut TestAppContext,
     ) {
@@ -717,7 +717,7 @@ mod tests {
             assert!(!tabs.contains_key("/repo"));
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn search_keyboard_selection_and_create_footer_match_the_flyout(cx: &mut TestAppContext) {
         cx.update(input::bind);
         let store = Arc::new(Mutex::new(Store::open(Path::new(":memory:")).unwrap()));
@@ -764,7 +764,7 @@ mod tests {
                 cx.notify();
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert_eq!(
             visual

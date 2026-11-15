@@ -5,7 +5,7 @@ use crate::{
     runtime::{Database, locked},
     theme::*,
 };
-use gpui::{AnyElement, Context, ImageSource, Render, Role, Window, div, prelude::*, px};
+use gpui_kit::{AnyElement, Context, ImageSource, Render, Role, Window, div, prelude::*, px};
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 use std::{path::Path, time::Instant};
 
@@ -107,7 +107,7 @@ impl Render for Preview {
                                 .max_w_full()
                                 .max_h(px(640.))
                                 .rounded_md()
-                                .object_fit(gpui::ObjectFit::Contain),
+                                .object_fit(gpui_kit::ObjectFit::Contain),
                         )
                         .into_any_element(),
                     Row::Missing(error) => div()
@@ -117,7 +117,7 @@ impl Render for Preview {
                         .child(error.clone())
                         .into_any_element(),
                     Row::Markdown(row) => {
-                        let id: gpui::SharedString = format!("note-markdown-{ix}").into();
+                        let id: gpui_kit::SharedString = format!("note-markdown-{ix}").into();
                         let body: AnyElement = match &row.part {
                             Part::Code { fence, lines } => div()
                                 .id(id.clone())

@@ -1,7 +1,7 @@
 //! Generated HTML is shown as its source text: Linux has no sandboxed web view.
 
-use gpui::div;
-use gpui::{Context, Window, prelude::*};
+use gpui_kit::div;
+use gpui_kit::{Context, Window, prelude::*};
 
 pub(super) struct Html {
     body: String,
@@ -21,7 +21,7 @@ impl Html {
     }
     pub(super) fn hide(&self) {}
 }
-impl gpui::Render for Html {
+impl gpui_kit::Render for Html {
     fn render(&mut self, _: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div().p_4().child(self.body.clone()).into_any_element()
     }

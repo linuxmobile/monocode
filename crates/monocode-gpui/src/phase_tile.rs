@@ -4,7 +4,7 @@
 //! fold keeps the chevron. The tile animates by itself, so a hover redraws
 //! this tile, not the transcript.
 use crate::{tab_tile, theme::*};
-use gpui::{Context, Render, SharedString, Transformation, Window, percentage, prelude::*};
+use gpui_kit::{Context, Render, SharedString, Transformation, Window, percentage, prelude::*};
 
 /// What the tile shows when it isn't showing its chevron.
 #[derive(Clone, PartialEq)]
@@ -128,7 +128,7 @@ impl Render for PhaseTile {
                     // White on a brand colour; a multicolour logo's tile is
                     // neutral, and takes the neutral tile's ink.
                     if provider_tile(provider).is_some() {
-                        gpui::white()
+                        gpui_kit::white()
                     } else {
                         tab_tile::tile_ink()
                     },

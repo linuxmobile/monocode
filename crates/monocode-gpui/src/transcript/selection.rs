@@ -1,6 +1,6 @@
 //! Select the rendered text, retaining byte anchors instead of shaped history.
 use super::*;
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Element, ElementId, GlobalElementId, InspectorElementId, LayoutId,
     MouseButton, Point, TextLayout, WeakEntity,
 };
@@ -53,7 +53,7 @@ pub(crate) struct TextSelection {
     offset: usize,
     quote: bool,
     row_text: Option<SharedString>,
-    cursor: gpui::CursorStyle,
+    cursor: gpui_kit::CursorStyle,
 }
 impl Selection {
     pub(super) fn hide_menu(&self) {
@@ -137,7 +137,7 @@ fn menu_anchor(state: &State) -> Option<Point<Pixels>> {
         .flatten()
         .filter(|p| p.y == top.y)
         .map_or(fragment.layout.bounds().right(), |p| p.x);
-    Some(gpui::point((top.x + right) / 2., top.y))
+    Some(gpui_kit::point((top.x + right) / 2., top.y))
 }
 fn snap(text: &str, byte: usize) -> usize {
     if byte >= text.len() {
@@ -181,7 +181,7 @@ impl TextSelection {
         self.row_text = Some(text);
         self
     }
-    pub(crate) fn with_cursor(mut self, cursor: gpui::CursorStyle) -> Self {
+    pub(crate) fn with_cursor(mut self, cursor: gpui_kit::CursorStyle) -> Self {
         self.cursor = cursor;
         self
     }
@@ -350,8 +350,8 @@ impl Element for SelectedText {
                     let left = if y == a.y { a.x } else { bounds.left() };
                     let right = if y == b.y { b.x } else { bounds.right() };
                     if right > left {
-                        window.paint_quad(gpui::fill(
-                            Bounds::new(gpui::point(left, y), size(right - left, height)),
+                        window.paint_quad(gpui_kit::fill(
+                            Bounds::new(gpui_kit::point(left, y), size(right - left, height)),
                             crate::theme::text_selection(),
                         ))
                     }
@@ -389,12 +389,12 @@ impl TranscriptView {
             offset: 0,
             quote: quote && !self.document,
             row_text: None,
-            cursor: gpui::CursorStyle::IBeam,
+            cursor: gpui_kit::CursorStyle::IBeam,
         })
     }
     pub(super) fn move_selection(
         &mut self,
-        event: &gpui::MouseMoveEvent,
+        event: &gpui_kit::MouseMoveEvent,
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -462,7 +462,7 @@ impl TranscriptView {
     }
     pub(super) fn finish_selection(
         &mut self,
-        event: &gpui::MouseUpEvent,
+        event: &gpui_kit::MouseUpEvent,
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -661,8 +661,8 @@ impl TranscriptView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
-    #[gpui::test]
+    use gpui_kit::TestAppContext;
+    #[gpui_kit::test]
     fn rendered_selection_crosses_markdown_and_code_without_chrome_or_other_responses(
         cx: &mut TestAppContext,
     ) {
@@ -704,7 +704,7 @@ mod tests {
         assert_eq!(snap("e\u{301}🙂", 4), 3);
         assert_eq!(word("hello café", 7), 6..11);
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn documents_are_selectable_and_copy_without_chat_actions(cx: &mut TestAppContext) {
         let view =
             cx.new(|cx| TranscriptView::document("# QA note\n\nSelect **this** text.".into(), cx));
@@ -722,7 +722,7 @@ mod tests {
                 state.response = response;
                 state.anchor = Some(Position { row: key, byte: 7 });
                 state.head = Some(Position { row: key, byte: 11 });
-                state.menu = Some(gpui::point(px(10.), px(10.)));
+                state.menu = Some(gpui_kit::point(px(10.), px(10.)));
             }
             assert_eq!(view.selected_text().as_deref(), Some("this"));
             assert!(view.selection_menu(cx).is_some());

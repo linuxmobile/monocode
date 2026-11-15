@@ -1,7 +1,7 @@
 //! Rebuild overrides from the original native keymap, preserving each action's
 //! focus predicate. Resetting restores defaults without accumulating bindings.
 use super::Preferences;
-use gpui::{App, Global, KeyBinding};
+use gpui_kit::{App, Global, KeyBinding};
 use std::collections::{HashMap, HashSet};
 struct Defaults {
     bindings: Vec<KeyBinding>,
@@ -22,8 +22,9 @@ pub(crate) fn apply(prefs: &Preferences, cx: &mut App) {
     let baseline = cx.global::<Defaults>().bindings.clone();
     let mut bindings = Vec::new();
     let mut rebound = HashSet::new();
+    let os = cx.platform_info().os;
     for binding in baseline {
-        let Some(command) = command(&binding) else {
+        let Some(command) = command(&binding, os) else {
             bindings.push(binding);
             continue;
         };
@@ -39,7 +40,7 @@ pub(crate) fn apply(prefs: &Preferences, cx: &mut App) {
                 binding.predicate(),
                 false,
                 binding.action_input(),
-                &gpui::DummyKeyboardMapper,
+                cx,
             )
         {
             bindings.push(custom);
@@ -49,8 +50,8 @@ pub(crate) fn apply(prefs: &Preferences, cx: &mut App) {
     cx.bind_keys(bindings);
     cx.global_mut::<Defaults>().applied = prefs.keybindings.clone();
 }
-fn command(binding: &KeyBinding) -> Option<&'static str> {
-    let keys = binding.keystrokes().first()?.unparse();
+fn command(binding: &KeyBinding, os: gpui_kit::OperatingSystem) -> Option<&'static str> {
+    let keys = binding.keystrokes().first()?.unparse(os);
     Some(match binding.action().name() {
         "workspace::GoToFile" => "App: Go to File",
         "workspace::OpenCommandPalette" => "App: Command Palette",

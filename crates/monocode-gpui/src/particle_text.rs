@@ -1,5 +1,5 @@
 //! ParticleText.tsx: reveal the new title while the previous glyphs drift away.
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, ContentMask, Element, ElementId, Font, Global, GlobalElementId, Hsla,
     InspectorElementId, LayoutId, Pixels, PlatformTextSystem, RenderGlyphParams, ShapedLine, Size,
     TextAlign, TextRun, Window, div, fill, point, prelude::*, px,
@@ -102,7 +102,7 @@ impl Particle {
             Some((
                 Bounds::new(
                     point(px(self.x + self.vx * drift), px(self.y + self.vy * drift)),
-                    gpui::size(side, side),
+                    gpui_kit::size(side, side),
                 ),
                 alpha,
             )),
@@ -162,16 +162,16 @@ fn sample_text(
                 (value.abs() - 0.5).ceil().copysign(value) / f32::from(variants)
             };
             let origin = point(
-                quantize(origin.x, gpui::SUBPIXEL_VARIANTS_X),
-                quantize(origin.y, gpui::SUBPIXEL_VARIANTS_Y),
+                quantize(origin.x, gpui_kit::SUBPIXEL_VARIANTS_X),
+                quantize(origin.y, gpui_kit::SUBPIXEL_VARIANTS_Y),
             );
             let params = RenderGlyphParams {
                 font_id: run.font_id,
                 glyph_id: glyph.id,
                 font_size: line.font_size,
                 subpixel_variant: point(
-                    (origin.x.fract() * f32::from(gpui::SUBPIXEL_VARIANTS_X)) as u8,
-                    (origin.y.fract() * f32::from(gpui::SUBPIXEL_VARIANTS_Y)) as u8,
+                    (origin.x.fract() * f32::from(gpui_kit::SUBPIXEL_VARIANTS_X)) as u8,
+                    (origin.y.fract() * f32::from(gpui_kit::SUBPIXEL_VARIANTS_Y)) as u8,
                 ),
                 scale_factor: scale,
                 is_emoji: glyph.is_emoji,
@@ -417,10 +417,10 @@ fn paint_text(
                     }
                     let strip = Bounds::new(
                         bounds.origin + point(px(left), px(0.)),
-                        gpui::size(px(1. / scale), bounds.size.height),
+                        gpui_kit::size(px(1. / scale), bounds.size.height),
                     );
                     window.with_content_mask(Some(ContentMask { bounds: strip }), |window| {
-                        gpui::Style {
+                        gpui_kit::Style {
                             opacity: Some(alpha),
                             ..Default::default()
                         }

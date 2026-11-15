@@ -1,6 +1,6 @@
 // Native text-input plumbing adapted from GPUI's Apache-2.0 examples/input.rs.
 // Copyright Zed Industries. See NOTICE for source and license.
-use gpui::{
+use gpui_kit::{
     App, AvailableSpace, Bounds, ClipboardItem, ContentMask, Context, CursorStyle, Element,
     ElementId, ElementInputHandler, Entity, EntityInputHandler, EventEmitter, FocusHandle,
     Focusable, GlobalElementId, Hsla, ImgResourceLoader, InspectorElementId, KeyBinding, LayoutId,
@@ -88,7 +88,7 @@ pub struct Rejected(pub &'static str);
 pub fn bind(cx: &mut App) {
     let selection_modifier = "ctrl";
     cx.bind_keys([KeyBinding::new(
-        &format!("{selection_modifier}-c"),
+        Box::leak(format!("{selection_modifier}-c").into_boxed_str()),
         Copy,
         Some("TranscriptSelection"),
     )]);
@@ -112,8 +112,16 @@ pub fn bind(cx: &mut App) {
     ]);
     let modifier = "ctrl";
     cx.bind_keys([
-        KeyBinding::new(&format!("{modifier}-z"), Undo, Some("CodeEditor")),
-        KeyBinding::new(&format!("{modifier}-shift-z"), Redo, Some("CodeEditor")),
+        KeyBinding::new(
+            Box::leak(format!("{modifier}-z").into_boxed_str()),
+            Undo,
+            Some("CodeEditor"),
+        ),
+        KeyBinding::new(
+            Box::leak(format!("{modifier}-shift-z").into_boxed_str()),
+            Redo,
+            Some("CodeEditor"),
+        ),
         KeyBinding::new("ctrl-space", Complete, Some("CodeEditor")),
         KeyBinding::new("cmd-alt-[", FoldCode, Some("CodeEditor")),
         KeyBinding::new("cmd-alt-]", UnfoldCode, Some("CodeEditor")),
@@ -126,12 +134,28 @@ pub fn bind(cx: &mut App) {
         KeyBinding::new("shift-tab", Outdent, Some("CodeEditor")),
     ]);
     cx.bind_keys([
-        KeyBinding::new(&format!("{modifier}-a"), SelectAll, Some("Composer")),
-        KeyBinding::new(&format!("{modifier}-c"), Copy, Some("Composer")),
-        KeyBinding::new(&format!("{modifier}-v"), Paste, Some("Composer")),
-        KeyBinding::new(&format!("{modifier}-x"), Cut, Some("Composer")),
         KeyBinding::new(
-            &format!("{modifier}-enter"),
+            Box::leak(format!("{modifier}-a").into_boxed_str()),
+            SelectAll,
+            Some("Composer"),
+        ),
+        KeyBinding::new(
+            Box::leak(format!("{modifier}-c").into_boxed_str()),
+            Copy,
+            Some("Composer"),
+        ),
+        KeyBinding::new(
+            Box::leak(format!("{modifier}-v").into_boxed_str()),
+            Paste,
+            Some("Composer"),
+        ),
+        KeyBinding::new(
+            Box::leak(format!("{modifier}-x").into_boxed_str()),
+            Cut,
+            Some("Composer"),
+        ),
+        KeyBinding::new(
+            Box::leak(format!("{modifier}-enter").into_boxed_str()),
             SubmitSecondary,
             Some("Composer"),
         ),
@@ -145,29 +169,33 @@ pub fn bind(cx: &mut App) {
 
     let word_modifier = "ctrl";
     cx.bind_keys([
-        KeyBinding::new(&format!("{word_modifier}-left"), WordLeft, Some("Composer")),
         KeyBinding::new(
-            &format!("{word_modifier}-right"),
+            Box::leak(format!("{word_modifier}-left").into_boxed_str()),
+            WordLeft,
+            Some("Composer"),
+        ),
+        KeyBinding::new(
+            Box::leak(format!("{word_modifier}-right").into_boxed_str()),
             WordRight,
             Some("Composer"),
         ),
         KeyBinding::new(
-            &format!("{word_modifier}-shift-left"),
+            Box::leak(format!("{word_modifier}-shift-left").into_boxed_str()),
             SelectWordLeft,
             Some("Composer"),
         ),
         KeyBinding::new(
-            &format!("{word_modifier}-shift-right"),
+            Box::leak(format!("{word_modifier}-shift-right").into_boxed_str()),
             SelectWordRight,
             Some("Composer"),
         ),
         KeyBinding::new(
-            &format!("{word_modifier}-backspace"),
+            Box::leak(format!("{word_modifier}-backspace").into_boxed_str()),
             DeleteWordLeft,
             Some("Composer"),
         ),
         KeyBinding::new(
-            &format!("{word_modifier}-delete"),
+            Box::leak(format!("{word_modifier}-delete").into_boxed_str()),
             DeleteWordRight,
             Some("Composer"),
         ),
@@ -211,7 +239,7 @@ pub struct Input {
     reveal_pending: bool,
     selecting: bool,
     drag_position: Option<Point<Pixels>>,
-    autoscroll: Option<gpui::Task<()>>,
+    autoscroll: Option<gpui_kit::Task<()>>,
 }
 impl EventEmitter<Submitted> for Input {}
 impl EventEmitter<AlternateSubmitted> for Input {}
@@ -601,7 +629,7 @@ impl Input {
     }
     fn scroll(
         &mut self,
-        event: &gpui::ScrollWheelEvent,
+        event: &gpui_kit::ScrollEvent,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -1160,7 +1188,7 @@ fn paint_drag_listener(input: &Entity<Input>, w: &mut Window, cx: &App) {
     }
     let input = input.clone();
     w.on_mouse_event(move |e: &MouseMoveEvent, phase, _, cx| {
-        if phase == gpui::DispatchPhase::Capture {
+        if phase == gpui_kit::DispatchPhase::Capture {
             input.update(cx, |input, cx| input.drag_move(e, cx));
         }
     });
@@ -1184,7 +1212,7 @@ impl EntityInputHandler for Input {
         &mut self,
         _: &mut Window,
         cx: &mut Context<Self>,
-    ) -> gpui::TextInputConfiguration {
+    ) -> gpui_kit::TextInputConfiguration {
         let enabled = !self.secret
             && !self.single_line
             && self.inline_commands
@@ -1192,7 +1220,7 @@ impl EntityInputHandler for Input {
             && cx
                 .try_global::<crate::settings::Preferences>()
                 .is_some_and(|p| p.autocorrect);
-        gpui::TextInputConfiguration {
+        gpui_kit::TextInputConfiguration {
             autocorrect: enabled,
             suggestions: enabled,
             ..Default::default()
@@ -1855,7 +1883,7 @@ impl Render for Input {
             .on_action(cx.listener(Self::redo))
             .on_action(cx.listener(Self::indent))
             .on_action(cx.listener(Self::outdent))
-            .on_scroll_wheel(cx.listener(Self::scroll))
+            .on_scroll(cx.listener(Self::scroll))
             .on_action(cx.listener(Self::backspace))
             .on_action(cx.listener(Self::delete))
             .on_action(cx.listener(Self::left))
@@ -1952,7 +1980,7 @@ mod tests {
 #[cfg(test)]
 mod native_input_tests {
     use super::*;
-    use gpui::{TestAppContext, WindowBounds, WindowHandle, WindowOptions};
+    use gpui_kit::{TestAppContext, WindowBounds, WindowHandle, WindowOptions};
 
     fn field(cx: &mut TestAppContext, single_line: bool) -> WindowHandle<Input> {
         let window = cx.update(|cx| {
@@ -1982,7 +2010,7 @@ mod native_input_tests {
         cx.refresh().unwrap();
         window
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn context_menu_preserves_selection_copies_pastes_and_restores_focus(cx: &mut TestAppContext) {
         let window = field(cx, false);
         replace(window, "hello world", cx);
@@ -1995,7 +2023,7 @@ mod native_input_tests {
             .unwrap();
         cx.update_window(window.into(), |_, w, cx| {
             w.dispatch_event(
-                gpui::PlatformInput::MouseDown(MouseDownEvent {
+                gpui_kit::PlatformInput::MouseDown(MouseDownEvent {
                     position,
                     button: MouseButton::Right,
                     modifiers: Default::default(),
@@ -2049,7 +2077,7 @@ mod native_input_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn context_menu_moves_caret_outside_selection_and_escape_preserves_text(
         cx: &mut TestAppContext,
     ) {
@@ -2082,7 +2110,7 @@ mod native_input_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn bounded_textarea_wheel_scroll_survives_repaint_and_typing_reveals_caret(
         cx: &mut TestAppContext,
     ) {
@@ -2095,7 +2123,7 @@ mod native_input_tests {
                 input.set_text("Read each line of these instructions.\n".repeat(30), cx);
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         let (before, position) = window
             .update(visual, |input, _, _| {
@@ -2103,11 +2131,12 @@ mod native_input_tests {
             })
             .unwrap();
         assert!(before > px(80.));
-        visual.simulate_event(gpui::ScrollWheelEvent {
+        visual.simulate_event(gpui_kit::ScrollEvent {
             position,
-            delta: gpui::ScrollDelta::Pixels(point(px(0.), px(80.))),
+            delta: gpui_kit::ScrollDelta::Pixels(point(px(0.), px(80.))),
             modifiers: Default::default(),
-            touch_phase: gpui::TouchPhase::Moved,
+            touch_phase: gpui_kit::TouchPhase::Moved,
+            source: gpui_kit::ScrollSource::Pointer,
         });
         visual.run_until_parked();
         let scrolled = window
@@ -2132,7 +2161,7 @@ mod native_input_tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn field_limits_and_disabled_editing_preserve_text(cx: &mut TestAppContext) {
         let window = field(cx, true);
         window
@@ -2165,7 +2194,7 @@ mod native_input_tests {
         input.read_with(cx, |i, _| i.content[i.selection.clone()].to_string())
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn inline_commands_preserve_text_geometry_wrapping_and_clipboard(cx: &mut TestAppContext) {
         let window = field(cx, false);
         let input = window.root(cx).unwrap();
@@ -2207,7 +2236,7 @@ mod native_input_tests {
             && i.has_message_text()));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn retained_inline_mode_keeps_placeholder_caret_and_ime_in_sync(cx: &mut TestAppContext) {
         let window = field(cx, false);
         let input = window.root(cx).unwrap();
@@ -2243,7 +2272,7 @@ mod native_input_tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn keyboard_selection_dispatches_in_search_and_composer(cx: &mut TestAppContext) {
         let modifier = "ctrl";
         let word_modifier = "ctrl";
@@ -2286,7 +2315,7 @@ mod native_input_tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn multiline_line_and_document_selection_preserve_the_anchor(cx: &mut TestAppContext) {
         let window = field(cx, false);
         let input = window.root(cx).unwrap();
@@ -2321,7 +2350,7 @@ mod native_input_tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn composer_placeholder_stays_still_in_short_viewport(cx: &mut TestAppContext) {
         let window = field(cx, false);
         window
@@ -2339,7 +2368,7 @@ mod native_input_tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn search_repaints_keep_placeholder_still_and_long_queries_scroll_horizontally(
         cx: &mut TestAppContext,
     ) {
@@ -2386,7 +2415,7 @@ mod native_input_tests {
             );
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn secret_fields_preserve_unicode_value_and_mask_drawing_ime_and_clipboard(
         cx: &mut TestAppContext,
     ) {
@@ -2424,7 +2453,7 @@ mod native_input_tests {
             })
             .unwrap();
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn ime_replacement_and_grapheme_deletion(cx: &mut TestAppContext) {
         let window = cx.update(|cx| {
             cx.open_window(Default::default(), |_, cx| cx.new(Input::new))

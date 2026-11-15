@@ -1,6 +1,6 @@
 //! The development runner owns stdin; a command or EOF requests normal shutdown.
 //! Release builds do not include this hook.
-use gpui::App;
+use gpui_kit::App;
 
 pub fn install(cx: &mut App) {
     if std::env::var("MONOCODE_DEV_RELOAD").as_deref() != Ok("1") {

@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{TestAppContext, WindowHandle};
+use gpui_kit::{TestAppContext, WindowHandle};
 use monocode_core::store::Store;
 use std::sync::mpsc;
 
@@ -66,7 +66,7 @@ fn launch(
         .unwrap()
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn submitted_operator_access_survives_the_composer_reset(cx: &mut TestAppContext) {
     let (window, _, caller) = crate::shell::tests::window(cx);
     window
@@ -131,7 +131,7 @@ fn submitted_operator_access_survives_the_composer_reset(cx: &mut TestAppContext
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn unsent_operator_selection_does_not_grant_app_access(cx: &mut TestAppContext) {
     let (window, _, caller) = crate::shell::tests::window(cx);
     window
@@ -145,7 +145,7 @@ fn unsent_operator_selection_does_not_grant_app_access(cx: &mut TestAppContext) 
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn operator_planning_turns_keep_read_only_app_access_after_submission(cx: &mut TestAppContext) {
     for mode in ["plan", "orchestrator"] {
         let (window, _, caller) = setup(cx);
@@ -179,7 +179,7 @@ fn operator_planning_turns_keep_read_only_app_access_after_submission(cx: &mut T
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn operator_scopes_sessions_and_preserves_an_unsent_draft(cx: &mut TestAppContext) {
     let (window, other, caller) = setup(cx);
     window
@@ -252,7 +252,7 @@ fn operator_scopes_sessions_and_preserves_an_unsent_draft(cx: &mut TestAppContex
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn operator_children_are_visible_durable_and_do_not_navigate_by_default(cx: &mut TestAppContext) {
     let (window, _, caller) = setup(cx);
     let child = launch(
@@ -303,7 +303,7 @@ fn operator_children_are_visible_durable_and_do_not_navigate_by_default(cx: &mut
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn operator_launches_can_build_nested_splits(cx: &mut TestAppContext) {
     let (window, _, caller) = setup(cx);
     let right = launch(window, caller, "right", json!({"placement":"right"}), cx);
@@ -325,7 +325,7 @@ fn operator_launches_can_build_nested_splits(cx: &mut TestAppContext) {
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn operator_archive_delete_and_folder_actions_settle_after_persistence(cx: &mut TestAppContext) {
     let (window, _, caller) = setup(cx);
     let archived = launch(window, caller, "archive-child", json!({}), cx);
@@ -400,7 +400,7 @@ fn operator_archive_delete_and_folder_actions_settle_after_persistence(cx: &mut 
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn operator_retries_use_durable_receipts_and_reject_changed_input(cx: &mut TestAppContext) {
     let (window, _, caller) = setup(cx);
     let child = launch(window, caller, "repeat", json!({}), cx);
@@ -435,7 +435,7 @@ fn operator_retries_use_durable_receipts_and_reject_changed_input(cx: &mut TestA
         .unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn operator_notes_and_conversation_paging_use_the_project_api(cx: &mut TestAppContext) {
     let (window, _, caller) = setup(cx);
     let child = launch(window, caller, "read-child", json!({}), cx);
@@ -494,7 +494,7 @@ fn operator_notes_and_conversation_paging_use_the_project_api(cx: &mut TestAppCo
     );
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn operator_creates_selects_and_validates_real_worktrees(cx: &mut TestAppContext) {
     let root = std::env::temp_dir().join(format!(
         "operator-worktrees-{}",
@@ -630,7 +630,7 @@ fn operator_creates_selects_and_validates_real_worktrees(cx: &mut TestAppContext
     std::fs::remove_dir_all(root).unwrap();
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn app_launch_submission_uses_the_saved_message_identity(cx: &mut TestAppContext) {
     let (window, _, caller) = setup(cx);
     let child = launch(window, caller, "queued-seed", json!({}), cx);

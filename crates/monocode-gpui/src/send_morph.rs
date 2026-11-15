@@ -7,7 +7,7 @@
 //! The surface is the tab tiles' language: a gradient that is lighter at
 //! the top, a bright rim, a hairline edge and a lift beneath it.
 use crate::theme::*;
-use gpui::{
+use gpui_kit::{
     AnyElement, Corners, Hsla, MouseButton, Role, SharedString, Window, canvas, div, prelude::*, px,
 };
 use std::time::{Duration, Instant};
@@ -78,7 +78,7 @@ fn ease(start: Instant, length: Duration, now: Instant) -> f32 {
 /// The pill's width for `label`, measured in the window's font.
 pub(crate) fn expanded_width(label: &str, window: &Window) -> f32 {
     let style = window.text_style();
-    let run = gpui::TextRun {
+    let run = gpui_kit::TextRun {
         len: label.len(),
         font: style.font(),
         color: content(1.),
@@ -172,9 +172,9 @@ fn surface(fill: Hsla, enabled: bool, open: f32) -> impl IntoElement {
             let light = is_light();
             let corners = Corners::all(px(RADIUS));
             let inner = |by: f32| {
-                gpui::Bounds::new(
-                    bounds.origin + gpui::point(px(by), px(by)),
-                    gpui::size(
+                gpui_kit::Bounds::new(
+                    bounds.origin + gpui_kit::point(px(by), px(by)),
+                    gpui_kit::size(
                         bounds.size.width - px(by * 2.),
                         bounds.size.height - px(by * 2.),
                     ),
@@ -187,16 +187,20 @@ fn surface(fill: Hsla, enabled: bool, open: f32) -> impl IntoElement {
                     // Light: a contact line and a small soft drop, plus
                     // a faint glow of its own colour as the pill opens.
                     &[
-                        gpui::BoxShadow::new(px(0.), px(1.), black(if light { 0.1 } else { 0.22 }))
-                            .blur_radius(px(1.)),
-                        gpui::BoxShadow::new(
+                        gpui_kit::BoxShadow::new(
+                            px(0.),
+                            px(1.),
+                            black(if light { 0.1 } else { 0.22 }),
+                        )
+                        .blur_radius(px(1.)),
+                        gpui_kit::BoxShadow::new(
                             px(0.),
                             px(2.),
                             black(if light { 0.05 } else { 0.12 }),
                         )
                         .blur_radius(px(4.))
                         .spread_radius(px(-1.)),
-                        gpui::BoxShadow::new(px(0.), px(2.), fill.opacity(0.18 * open))
+                        gpui_kit::BoxShadow::new(px(0.), px(2.), fill.opacity(0.18 * open))
                             .blur_radius(px(8.))
                             .spread_radius(px(-2.)),
                     ],
@@ -204,7 +208,7 @@ fn surface(fill: Hsla, enabled: bool, open: f32) -> impl IntoElement {
             }
             // The ring: one pixel proud of the button all round.
             window.paint_quad(
-                gpui::fill(
+                gpui_kit::fill(
                     inner(-1.),
                     if light {
                         black(if enabled { 0.14 } else { 0.06 })
@@ -224,12 +228,12 @@ fn surface(fill: Hsla, enabled: bool, open: f32) -> impl IntoElement {
                 (fill, fill)
             };
             window.paint_quad(
-                gpui::fill(
+                gpui_kit::fill(
                     bounds,
-                    gpui::linear_gradient(
+                    gpui_kit::linear_gradient(
                         180.,
-                        gpui::linear_color_stop(top, 0.),
-                        gpui::linear_color_stop(bottom, 1.),
+                        gpui_kit::linear_color_stop(top, 0.),
+                        gpui_kit::linear_color_stop(bottom, 1.),
                     ),
                 )
                 .corner_radii(corners),
@@ -238,9 +242,9 @@ fn surface(fill: Hsla, enabled: bool, open: f32) -> impl IntoElement {
                 // The bevel: a bright line inside the top edge, a shade
                 // inside the bottom one.
                 let edge = |top: f32, bottom: f32, color: Hsla| {
-                    gpui::fill(inner(0.), gpui::transparent_black())
+                    gpui_kit::fill(inner(0.), gpui_kit::transparent_black())
                         .corner_radii(corners)
-                        .border_widths(gpui::Edges {
+                        .border_widths(gpui_kit::Edges {
                             top: px(top),
                             right: px(0.),
                             bottom: px(bottom),
@@ -253,7 +257,7 @@ fn surface(fill: Hsla, enabled: bool, open: f32) -> impl IntoElement {
                 // A hairline just inside the edge gives a white or pale
                 // button a defined shape against its ring.
                 window.paint_quad(
-                    gpui::fill(inner(0.), gpui::transparent_black())
+                    gpui_kit::fill(inner(0.), gpui_kit::transparent_black())
                         .corner_radii(corners)
                         .border_widths(px(1.))
                         .border_color(black(0.1)),
@@ -269,7 +273,7 @@ fn surface(fill: Hsla, enabled: bool, open: f32) -> impl IntoElement {
 
 /// One line of the button: its glyph (or stop square) and, as the pill
 /// opens, its label.
-fn line(face: Face, ink: Hsla, open: f32) -> gpui::Div {
+fn line(face: Face, ink: Hsla, open: f32) -> gpui_kit::Div {
     div()
         .h(px(HEIGHT))
         .flex()
@@ -298,7 +302,7 @@ fn line(face: Face, ink: Hsla, open: f32) -> gpui::Div {
                 .flex_shrink_0()
                 .whitespace_nowrap()
                 .text_size(px(LABEL_SIZE))
-                .font_weight(gpui::FontWeight::MEDIUM)
+                .font_weight(gpui_kit::FontWeight::MEDIUM)
                 .text_color(ink)
                 .opacity(open)
                 .child(face.label),
@@ -311,7 +315,7 @@ pub(crate) fn button(
     face: Face,
     frame: &Frame,
     enabled: bool,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui_kit::Stateful<gpui_kit::Div> {
     let (fill, ink) = palette(enabled);
     let open = frame.open;
     let lines: Vec<AnyElement> = match frame.roll {

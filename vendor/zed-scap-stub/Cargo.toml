@@ -1,0 +1,14 @@
+[package]
+name = "zed-scap"
+version = "0.0.8-zed"
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "scap"
+path = "src/lib.rs"
+
+[features]
+default = []
+x11 = []
+wayland = []

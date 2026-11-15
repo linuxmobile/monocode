@@ -2,7 +2,7 @@
 //! Visual Studio Code's `scmHistory.ts` (MIT, Copyright (c) Microsoft
 //! Corporation). Previous row `output` lanes become the next row's `input`;
 //! curves are SVG arcs, not cubics.
-use gpui::{Hsla, PathBuilder, Pixels, Point, Window, point, px};
+use gpui_kit::{Hsla, PathBuilder, Pixels, Point, Window, point, px};
 use std::collections::HashMap;
 
 pub(crate) const SWIMLANE_HEIGHT: f32 = 22.;

@@ -18,7 +18,7 @@ pub(crate) struct Rails {
     /// This frame's /operator groups, and the sessions they took from the list.
     pub(super) started: HashMap<i64, Vec<i64>>,
     pub(super) children: HashSet<i64>,
-    frames: Option<gpui::Task<()>>,
+    frames: Option<gpui_kit::Task<()>>,
 }
 #[derive(Clone, Copy)]
 struct Motion {
@@ -54,7 +54,7 @@ pub(crate) enum Rail {
 
 /// `.zen-phase-step.orchestration-tree-step`: a step branching off the
 /// transcript's tool rail, its row 2px lower inside the step's padding.
-pub(super) fn step(last: bool, child: impl IntoElement) -> gpui::Div {
+pub(super) fn step(last: bool, child: impl IntoElement) -> gpui_kit::Div {
     div()
         .relative()
         .pl(px(20.))
@@ -559,7 +559,7 @@ impl Shell {
                 this.hover_session(id, anchor.clone(), *hovered, false, window, cx);
             }))
             .on_click(
-                cx.listener(move |this, event: &gpui::ClickEvent, window, cx| {
+                cx.listener(move |this, event: &gpui_kit::ClickEvent, window, cx| {
                     if std::mem::take(&mut this.skip_session_click) {
                         return;
                     }
@@ -771,7 +771,7 @@ impl Shell {
                         let alert =
                             needs_input || matches!(task.status.as_str(), "failed" | "blocked");
                         let done = task.status == "completed";
-                        let tone: gpui::Hsla = if alert {
+                        let tone: gpui_kit::Hsla = if alert {
                             rgb(0xfbbf24).into()
                         } else if working {
                             accent_color()
@@ -994,13 +994,13 @@ impl Shell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, VisualTestContext};
+    use gpui_kit::{TestAppContext, VisualTestContext};
 
-    fn bounds(cx: &mut VisualTestContext, selector: String) -> Option<gpui::Bounds<Pixels>> {
+    fn bounds(cx: &mut VisualTestContext, selector: String) -> Option<gpui_kit::Bounds<Pixels>> {
         cx.debug_bounds(Box::leak(selector.into_boxed_str()))
     }
     /// Rail motion runs on the wall clock, as the window's frames do.
-    fn settle(window: gpui::WindowHandle<Shell>, cx: &mut VisualTestContext) {
+    fn settle(window: gpui_kit::WindowHandle<Shell>, cx: &mut VisualTestContext) {
         for _ in 0..2 {
             std::thread::sleep(OPEN + Duration::from_millis(20));
             window
@@ -1013,7 +1013,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn operator_and_orchestrator_threads_hang_their_work_on_a_rail_that_follows_selection(
         cx: &mut TestAppContext,
     ) {

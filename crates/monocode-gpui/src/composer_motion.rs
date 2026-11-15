@@ -1,6 +1,6 @@
 //! useComposerDockMotion.ts: move the first submitted composer's painted surface
 //! from its empty-session slot to the dock, without moving the transcript layout.
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, Element, ElementId, GlobalElementId, InspectorElementId, IntoElement,
     LayoutId, Pixels, Point, Window, point, px,
 };
@@ -138,7 +138,7 @@ impl Element for Slide {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::size;
+    use gpui_kit::size;
 
     #[test]
     fn launch_matches_reacts_translation_and_easing_then_settles() {

@@ -1,5 +1,5 @@
 //! ActivityPhaseGroup's bounded live window and useLivePhaseScroll.
-use gpui::{
+use gpui_kit::{
     AnyElement, Bounds, Context, Pixels, ScrollHandle, Window, canvas, div, prelude::*, px,
 };
 use std::{
@@ -84,7 +84,7 @@ fn wheel(scroll: &ScrollHandle, following: &Cell<bool>, delta: Pixels) -> bool {
     }
     let y = (offset + delta).clamp(-max, px(0.));
     following.set(delta < px(0.) && -max + px(1.) >= y);
-    scroll.set_offset(gpui::point(scroll.offset().x, y));
+    scroll.set_offset(gpui_kit::point(scroll.offset().x, y));
     true
 }
 
@@ -120,7 +120,7 @@ pub(super) fn live_phase(
                         .id("live-phase-content")
                         .w_full()
                         .min_w_0()
-                        .on_scroll_wheel(move |event, window, cx| {
+                        .on_scroll(move |event, window, cx| {
                             if enabled
                                 && wheel(
                                     &handle,
@@ -190,9 +190,9 @@ fn paint_mask(bounds: Bounds<Pixels>, begin: bool, top: f32, bottom: f32, window
             for (at_top, height) in [(true, top), (false, bottom)] {
                 let height = height.min(bounds.size.height.as_f32());
                 for y in 0..height.ceil() as usize {
-                    let mut color: gpui::Hsla = gpui::rgb(crate::theme::CHAT).into();
+                    let mut color: gpui_kit::Hsla = gpui_kit::rgb(crate::theme::CHAT).into();
                     color.a = (1. - (y as f32 + 0.5) / height).clamp(0., 1.);
-                    let origin = gpui::point(
+                    let origin = gpui_kit::point(
                         bounds.left(),
                         if at_top {
                             bounds.top() + px(y as f32)
@@ -200,8 +200,8 @@ fn paint_mask(bounds: Bounds<Pixels>, begin: bool, top: f32, bottom: f32, window
                             bounds.bottom() - px(y as f32 + 1.)
                         },
                     );
-                    window.paint_quad(gpui::fill(
-                        Bounds::new(origin, gpui::size(bounds.size.width, px(1.))),
+                    window.paint_quad(gpui_kit::fill(
+                        Bounds::new(origin, gpui_kit::size(bounds.size.width, px(1.))),
                         color,
                     ));
                 }
@@ -214,9 +214,9 @@ fn paint_mask(bounds: Bounds<Pixels>, begin: bool, top: f32, bottom: f32, window
 mod tests {
     use super::super::{Body, TranscriptView};
     use super::*;
-    use gpui::{
-        ScrollDelta, ScrollWheelEvent, TestAppContext, TouchPhase, WindowBounds, WindowOptions,
-        point, size,
+    use gpui_kit::{
+        ScrollDelta, ScrollEvent, TestAppContext, TouchPhase, WindowBounds, WindowOptions, point,
+        size,
     };
     use monocode_core::{tool::ToolCall, transcript::Row};
     use std::time::Duration;
@@ -234,12 +234,13 @@ mod tests {
         call.input = format!(r#"{{"file_path":"src/file-{i}.rs"}}"#);
         row("tool", &serde_json::to_string(&call).unwrap())
     }
-    fn wheel_event(position: gpui::Point<Pixels>, delta: f32) -> ScrollWheelEvent {
-        ScrollWheelEvent {
+    fn wheel_event(position: gpui_kit::Point<Pixels>, delta: f32) -> ScrollEvent {
+        ScrollEvent {
             position,
             delta: ScrollDelta::Pixels(point(px(0.), px(delta))),
             modifiers: Default::default(),
             touch_phase: TouchPhase::Moved,
+            source: gpui_kit::ScrollSource::Pointer,
         }
     }
 
@@ -257,7 +258,7 @@ mod tests {
         assert_eq!(edges.update((24., 0.), halfway, true), (24., 0.));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn live_group_caps_height_follows_appends_and_respects_nested_wheels(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let window = cx.update(|cx| {
@@ -273,7 +274,7 @@ mod tests {
             )
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         let outer_wheels = Rc::new(Cell::new(0));
         window
             .update(visual, |view, _, cx| {
@@ -401,7 +402,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn short_groups_have_no_fades_and_live_groups_collapse_from_the_capped_height(
         cx: &mut TestAppContext,
     ) {
@@ -412,7 +413,7 @@ mod tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         window
             .update(visual, |view, _, cx| {
                 view.streaming(true, cx);

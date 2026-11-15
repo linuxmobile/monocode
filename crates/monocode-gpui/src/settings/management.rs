@@ -596,7 +596,7 @@ impl SettingsView {
                 if tree.dirty != Some(false) {
                     consequences = consequences.child(
                         div()
-                            .text_color(gpui::rgb(0xfbbf24))
+                            .text_color(gpui_kit::rgb(0xfbbf24))
                             .child("All uncommitted and untracked changes here are discarded."),
                     );
                 }
@@ -648,7 +648,7 @@ impl SettingsView {
                     .id("management-error")
                     .role(Role::Alert)
                     .text_size(px(11.))
-                    .text_color(gpui::rgb(0xf87171))
+                    .text_color(gpui_kit::rgb(0xf87171))
                     .child(error)
                     .into_any_element(),
             );
@@ -843,7 +843,7 @@ impl SettingsView {
                             .border_b_1()
                             .border_color(content(0.1))
                             .text_size(px(14.))
-                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .font_weight(gpui_kit::FontWeight::SEMIBOLD)
                             .flex()
                             .items_center()
                             .justify_between()

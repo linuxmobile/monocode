@@ -1,6 +1,6 @@
 //! Native Mermaid previews with a bounded cache shared across virtualized rows.
 use super::*;
-use gpui::{ClipboardItem, Context, IntoElement, RenderImage, RenderOnce, Subscription, Task};
+use gpui_kit::{ClipboardItem, Context, IntoElement, RenderImage, RenderOnce, Subscription, Task};
 use mermaid_rs_renderer::{LayoutConfig, Theme, compute_layout, parse_mermaid_strict, render_svg};
 use std::{collections::VecDeque, time::Duration};
 #[path = "mermaid_curves.rs"]
@@ -32,7 +32,7 @@ struct DiagramCache {
     entries: VecDeque<(PreviewKey, PreviewResult, usize)>,
     generation: u64,
 }
-impl gpui::Global for DiagramCache {}
+impl gpui_kit::Global for DiagramCache {}
 
 pub(crate) fn generation(cx: &App) -> u64 {
     cx.try_global::<DiagramCache>()
@@ -211,22 +211,68 @@ fn diagram_svg(source: &str, dark: bool) -> Result<(String, f32, f32), String> {
 fn rasterize(
     source: &str,
     dark: bool,
-    renderer: &gpui::SvgRenderer,
+    renderer: &gpui_kit::SvgRenderer,
 ) -> Result<Arc<RenderImage>, String> {
     let (svg, width, height) = diagram_svg(source, dark)?;
     let scale = (MAX_IMAGE_SIDE / width.max(height)).min(2.);
+    // GPUI Fast parses images where the old renderer dropped them, so strip
+    // `<image>` elements before parsing: diagrams never carry raster content.
     let svg = renderer
-        .parse_svg_without_images(svg.as_bytes())
+        .parse_svg(strip_images(&svg).as_bytes())
         .map_err(|error| error.to_string())?;
     renderer
         .render_parsed(
             &svg,
-            gpui::SvgSize::ExactSize(gpui::size(
-                gpui::DevicePixels((width * scale).ceil().clamp(1., MAX_IMAGE_SIDE) as i32),
-                gpui::DevicePixels((height * scale).ceil().clamp(1., MAX_IMAGE_SIDE) as i32),
+            gpui_kit::SvgSize::ExactSize(gpui_kit::size(
+                gpui_kit::DevicePixels((width * scale).ceil().clamp(1., MAX_IMAGE_SIDE) as i32),
+                gpui_kit::DevicePixels((height * scale).ceil().clamp(1., MAX_IMAGE_SIDE) as i32),
             )),
         )
         .map_err(|error| error.to_string())
+}
+
+/// Remove `<image>` elements (direct or nested) from untrusted SVG text.
+/// Tag matching is ASCII case-insensitive; content outside images is kept.
+fn strip_images(svg: &str) -> String {
+    let bytes = svg.as_bytes();
+    let mut out = String::with_capacity(svg.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'<'
+            && svg[i + 1..]
+                .chars()
+                .next()
+                .is_some_and(|c| c == 'i' || c == 'I')
+            && svg[i + 1..i + 6].eq_ignore_ascii_case("image")
+            && svg[i + 6..]
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_whitespace() || c == '/' || c == '>')
+        {
+            let mut j = i + 6;
+            let mut quoted = None;
+            while j < bytes.len() {
+                let c = bytes[j];
+                if let Some(q) = quoted {
+                    if c == q {
+                        quoted = None;
+                    }
+                } else if c == b'"' || c == b'\'' {
+                    quoted = Some(c);
+                } else if c == b'>' {
+                    j += 1;
+                    break;
+                }
+                j += 1;
+            }
+            // A paired `</image>` closes nothing rendered; skip to the tag end.
+            i = j;
+        } else {
+            out.push(bytes[i] as char);
+            i += 1;
+        }
+    }
+    out
 }
 
 fn source_preview(fence: &Arc<Fence>) -> Arc<Fence> {
@@ -293,14 +339,14 @@ impl RenderOnce for Diagram {
                 ))
                 .into_any_element()
         } else if let Some(Ok(image)) = &preview.result {
-            gpui::img(image.clone())
+            gpui_kit::img(image.clone())
                 .absolute()
                 .inset_0()
                 .debug_selector(|| "mermaid-image".into())
                 .role(Role::Image)
                 .aria_label(format!("Mermaid diagram\n{}", self.fence.code))
                 .size_full()
-                .object_fit(gpui::ObjectFit::Contain)
+                .object_fit(gpui_kit::ObjectFit::Contain)
                 .into_any_element()
         } else {
             div()
@@ -430,9 +476,9 @@ mod tests {
         code: &'static str,
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn copying_shows_check_then_resets_and_repeated_copy_restarts_feedback(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let preview = cx.new(|_| Preview::default());
         preview.update(cx, |state, cx| state.copy("graph LR; A-->B\r\n", cx));
@@ -453,7 +499,7 @@ mod tests {
         cx.run_until_parked();
         assert!(!preview.read_with(cx, |state, _| state.copied));
     }
-    impl gpui::Render for Fixture {
+    impl gpui_kit::Render for Fixture {
         fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
             div().w(px(self.width)).when(self.visible, |d| {
                 d.child(Diagram {
@@ -465,9 +511,9 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn preview_buttons_switch_source_and_copy_without_changing_height(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let window = cx.update(|cx| {
             cx.open_window(Default::default(), |_, cx| {
@@ -479,7 +525,7 @@ mod tests {
             })
             .unwrap()
         });
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         assert!(visual.debug_bounds("mermaid-source").is_none());
         assert!(visual.debug_bounds("mermaid-loading").is_some());
@@ -774,10 +820,12 @@ mod tests {
         let nested_svg = format!(
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><image href="data:image/svg+xml;base64,{encoded}" width="2" height="2"/></svg>"#
         );
-        let renderer = gpui::SvgRenderer::new(Arc::new(()));
+        let renderer = gpui_kit::SvgRenderer::new(Arc::new(()));
         for svg in [file_svg, nested_svg] {
-            let size =
-                gpui::SvgSize::ExactSize(gpui::size(gpui::DevicePixels(2), gpui::DevicePixels(2)));
+            let size = gpui_kit::SvgSize::ExactSize(gpui_kit::size(
+                gpui_kit::DevicePixels(2),
+                gpui_kit::DevicePixels(2),
+            ));
             let normal = renderer
                 .render_parsed(&renderer.parse_svg(svg.as_bytes()).unwrap(), size)
                 .unwrap();
@@ -793,7 +841,9 @@ mod tests {
             );
             let blocked = renderer
                 .render_parsed(
-                    &renderer.parse_svg_without_images(svg.as_bytes()).unwrap(),
+                    &renderer
+                        .parse_svg(super::strip_images(&svg).as_bytes())
+                        .unwrap(),
                     size,
                 )
                 .unwrap();
@@ -844,9 +894,9 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn source_updates_cancel_pending_work_and_theme_changes_replace_pixels(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let preview = cx.new(|_| Preview::default());
         preview.update(cx, |this, cx| {
@@ -897,8 +947,8 @@ mod tests {
         preview.read_with(cx, |this, _| assert!(matches!(this.result, Some(Err(_)))));
     }
 
-    #[gpui::test]
-    fn cache_reuses_pixels_after_row_release_and_bounds_errors(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn cache_reuses_pixels_after_row_release_and_bounds_errors(cx: &mut gpui_kit::TestAppContext) {
         let preview = cx.new(|_| Preview::default());
         preview.update(cx, |this, cx| {
             this.prepare("graph LR; A-->B".into(), false, cx)

@@ -11,7 +11,7 @@ use crate::{
     right_panel::*,
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, App, ClipboardEntry, ClipboardItem, Context, Entity, EventEmitter, ExternalPaths,
     FocusHandle, Focusable, FontWeight, Hsla, KeyBinding, KeyDownEvent, ListAlignment, ListState,
     MouseButton, MouseDownEvent, Point, PromptLevel, Role, SharedString, StyleRefinement,
@@ -101,10 +101,14 @@ pub(crate) fn bind(cx: &mut App) {
         KeyBinding::new("delete", Delete, c),
         KeyBinding::new("backspace", Delete, c),
         KeyBinding::new("escape", ClearCut, c),
-        KeyBinding::new(&format!("{m}-c"), CopyEntry, c),
-        KeyBinding::new(&format!("{m}-x"), CutEntry, c),
-        KeyBinding::new(&format!("{m}-v"), PasteEntry, c),
-        KeyBinding::new(&format!("{m}-shift-c"), CopyPath, c),
+        KeyBinding::new(Box::leak(format!("{m}-c").into_boxed_str()), CopyEntry, c),
+        KeyBinding::new(Box::leak(format!("{m}-x").into_boxed_str()), CutEntry, c),
+        KeyBinding::new(Box::leak(format!("{m}-v").into_boxed_str()), PasteEntry, c),
+        KeyBinding::new(
+            Box::leak(format!("{m}-shift-c").into_boxed_str()),
+            CopyPath,
+            c,
+        ),
         KeyBinding::new("escape", CancelName, Some("ExplorerName")),
     ]);
 }
@@ -156,7 +160,7 @@ enum Line {
 }
 struct OpenMenu {
     target: Target,
-    anchor: Point<gpui::Pixels>,
+    anchor: Point<gpui_kit::Pixels>,
     menu: Entity<Menu>,
     _events: Subscription,
 }
@@ -392,7 +396,7 @@ impl Explorer {
         self.clip = None;
         self.menu = None;
         self.set_operation_error(None, cx);
-        self.list.scroll_to(gpui::ListOffset::default());
+        self.list.scroll_to(gpui_kit::ListOffset::default());
         self.read_dir(root, cx);
         self.rebuild(cx);
         true
@@ -1009,7 +1013,7 @@ impl Explorer {
     fn open_menu(
         &mut self,
         target: Target,
-        at: Point<gpui::Pixels>,
+        at: Point<gpui_kit::Pixels>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -1227,7 +1231,7 @@ impl Explorer {
         label: SharedString,
         path: &'static str,
         enabled: bool,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         div()
             .id(id)
             .role(Role::Button)
@@ -1402,7 +1406,7 @@ impl Explorer {
                         }),
                     )
                     .on_drag_move::<ExternalPaths>(cx.listener(
-                        move |this, event: &gpui::DragMoveEvent<ExternalPaths>, _, cx| {
+                        move |this, event: &gpui_kit::DragMoveEvent<ExternalPaths>, _, cx| {
                             if event.bounds.contains(&event.event.position) {
                                 let target = this.create_parent(Some(&over_path));
                                 if this.drag_over.as_ref() != Some(&target) {

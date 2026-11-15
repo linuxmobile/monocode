@@ -109,9 +109,9 @@ impl Shell {
 mod tests {
     use super::*;
     use crate::{review::ReviewTab, shell::tests::window};
-    use gpui::{EntityInputHandler, TestAppContext, VisualTestContext, point};
+    use gpui_kit::{EntityInputHandler, TestAppContext, VisualTestContext, point};
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn mono_file_link_opens_visible_editor_and_preserves_its_chat(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, session) = window(cx);
@@ -230,7 +230,7 @@ mod tests {
         std::fs::remove_dir_all(folder).unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn file_word_wrap_is_shared_and_persisted_across_restart(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, session) = window(cx);
@@ -330,7 +330,7 @@ mod tests {
         std::fs::remove_dir_all(folder).unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn numbered_shortcuts_return_from_file_only_tabs_to_sessions(cx: &mut TestAppContext) {
         cx.update(|cx| {
             bind_keys(cx);
@@ -428,7 +428,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn session_pane_grip_detaches_and_redocks_preserving_chat_and_dirty_files(
         cx: &mut TestAppContext,
     ) {
@@ -575,7 +575,7 @@ mod tests {
         std::fs::remove_file(path).unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn session_pane_grip_places_chat_on_each_edge_of_its_attached_file(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         for edge in [Edge::Left, Edge::Right, Edge::Top, Edge::Bottom] {
@@ -638,7 +638,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn file_pane_grip_detaches_and_redocks_without_recreating_dirty_editors(
         cx: &mut TestAppContext,
     ) {
@@ -821,7 +821,7 @@ mod tests {
         std::fs::remove_file(path).unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn file_tab_drag_reorders_and_keeps_the_selected_editor(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, session) = window(cx);
@@ -867,7 +867,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn file_pane_grip_places_an_embedded_review_on_each_edge(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let (window, _, session) = window(cx);

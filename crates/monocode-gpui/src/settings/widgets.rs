@@ -5,7 +5,7 @@ use crate::{
     popover::{Align, Anchor, AnchorSlot, Side, popover},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, MouseDownEvent, Role,
     SharedString, Stateful, div, prelude::*, px, relative, rgb,
 };
@@ -154,7 +154,7 @@ pub(crate) fn primary_button(
         .border_0()
         .bg(content(1.))
         .text_color(ink)
-        .font_weight(gpui::FontWeight::MEDIUM)
+        .font_weight(gpui_kit::FontWeight::MEDIUM)
         .map(|d| {
             if disabled {
                 d.opacity(0.4)
@@ -373,9 +373,9 @@ impl SettingsView {
             .role(Role::Switch)
             .aria_label(label.into())
             .aria_toggled(if on {
-                gpui::Toggled::True
+                gpui_kit::Toggled::True
             } else {
-                gpui::Toggled::False
+                gpui_kit::Toggled::False
             })
             .relative()
             .h(px(20.))
@@ -530,7 +530,7 @@ impl SettingsView {
             )
             .into_any_element()
     }
-    pub(super) fn slide(&mut self, kind: SliderKind, x: gpui::Pixels, cx: &mut Context<Self>) {
+    pub(super) fn slide(&mut self, kind: SliderKind, x: gpui_kit::Pixels, cx: &mut Context<Self>) {
         let Some(bounds) = self.slider_tracks.borrow().get(&kind).and_then(|s| s.get()) else {
             return;
         };
@@ -639,8 +639,8 @@ impl SettingsView {
                         icon("chevron-down-hi", 14.)
                             .text_color(content(0.5))
                             .when(open, |s| {
-                                s.with_transformation(gpui::Transformation::rotate(
-                                    gpui::percentage(0.5),
+                                s.with_transformation(gpui_kit::Transformation::rotate(
+                                    gpui_kit::percentage(0.5),
                                 ))
                             }),
                     )
@@ -656,7 +656,7 @@ impl SettingsView {
                                 this.select_filter
                                     .update(cx, |i, cx| i.set_text(String::new(), cx));
                                 window.focus(
-                                    &gpui::Focusable::focus_handle(&this.select_filter, cx),
+                                    &gpui_kit::Focusable::focus_handle(&this.select_filter, cx),
                                     cx,
                                 );
                             } else {
@@ -796,7 +796,7 @@ impl SettingsView {
                                     }),
                             )
                             .on_key_down(cx.listener(
-                                move |this, event: &gpui::KeyDownEvent, window, cx| {
+                                move |this, event: &gpui_kit::KeyDownEvent, window, cx| {
                                     let key = event.keystroke.key.as_str();
                                     let last = count.saturating_sub(1);
                                     match key {

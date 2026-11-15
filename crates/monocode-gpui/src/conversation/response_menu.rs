@@ -1,6 +1,6 @@
 use super::*;
 use crate::popover::MenuOpened;
-use gpui::App;
+use gpui_kit::App;
 use monocode_core::{
     accounts::Profile,
     response::{Target, TransferKind},
@@ -366,7 +366,7 @@ pub(super) fn model_ids_match(provider: Kind, left: &str, right: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, WindowHandle};
+    use gpui_kit::{TestAppContext, WindowHandle};
     use monocode_core::store::Store;
     use std::sync::Mutex;
 
@@ -443,7 +443,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn response_picker_loads_only_the_opened_provider_and_keeps_the_flyout(
         cx: &mut TestAppContext,
     ) {
@@ -497,7 +497,7 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn response_picker_ignores_old_completions_and_insets_model_rows(cx: &mut TestAppContext) {
         let window = conversation(cx);
         window
@@ -505,9 +505,9 @@ mod tests {
                 let request = Some((1, TransferKind::Handoff, Instant::now()));
                 view.response_request = request;
                 let anchor = AnchorSlot::default();
-                anchor.set(Some(gpui::Bounds::new(
-                    gpui::point(px(100.), px(300.)),
-                    gpui::size(px(20.), px(20.)),
+                anchor.set(Some(gpui_kit::Bounds::new(
+                    gpui_kit::point(px(100.), px(300.)),
+                    gpui_kit::size(px(20.), px(20.)),
                 )));
                 view.make_response_menu(
                     1,
@@ -533,7 +533,7 @@ mod tests {
         cx.run_until_parked();
         cx.simulate_keystrokes(window.into(), "right");
         cx.run_until_parked();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
         let row = visual
             .debug_bounds(
@@ -552,7 +552,7 @@ mod tests {
         assert_eq!(surface.bottom() - row.bottom(), px(5.));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn second_opinion_excludes_the_resolved_alias_of_the_current_model(cx: &mut TestAppContext) {
         let window = conversation(cx);
         window

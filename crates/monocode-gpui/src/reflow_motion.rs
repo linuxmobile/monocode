@@ -4,7 +4,7 @@
 //! new layout, so the column flows while it wraps instead of ticking.
 //! The chat's follow offset shares this prepaint scope, moving each row's
 //! clipping and hitboxes together with its content.
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Bounds, Element, ElementId, GlobalElementId, InspectorElementId, IntoElement,
     LayoutId, Pixels, Window, point, px,
 };
@@ -157,7 +157,7 @@ impl Element for Glide {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::size;
+    use gpui_kit::size;
 
     fn at(top: f32, width: f32) -> Bounds<Pixels> {
         Bounds::new(point(px(0.), px(top)), size(px(width), px(48.)))

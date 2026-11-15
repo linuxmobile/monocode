@@ -3,7 +3,7 @@ use crate::{
     settings::{SettingsEvent, management::Target, widgets::icon_action},
     theme::*,
 };
-use gpui::{AnyElement, Context, SharedString, div, prelude::*, px};
+use gpui_kit::{AnyElement, Context, SharedString, div, prelude::*, px};
 impl SettingsView {
     pub(super) fn monos_page(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let p = self.prefs.clone();

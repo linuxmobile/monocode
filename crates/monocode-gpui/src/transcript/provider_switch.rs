@@ -18,7 +18,7 @@ impl TranscriptView {
             })
     }
 
-    pub(super) fn provider_separator(&self, start: usize) -> Option<gpui::AnyElement> {
+    pub(super) fn provider_separator(&self, start: usize) -> Option<gpui_kit::AnyElement> {
         if self.mono || self.document || self.source.get(start)?.role != "user" {
             return None;
         }
@@ -62,7 +62,7 @@ impl TranscriptView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
     fn row(role: &str, text: &str) -> Row {
         Row {
@@ -79,7 +79,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_rule_marks_only_the_first_prompt_another_provider_answers(cx: &mut TestAppContext) {
         let view = cx.new(|cx| {
             let mut view = TranscriptView::new();

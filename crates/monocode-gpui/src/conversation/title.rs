@@ -5,7 +5,7 @@ use monocode_core::session_title::{TextModel, display_title};
 impl Conversation {
     /// The background model picked in Settings, else this session's harness.
     /// Only the session's own provider reuses the session's account.
-    pub(super) fn background_text_model(&self, cx: &gpui::App) -> TextModel {
+    pub(super) fn background_text_model(&self, cx: &gpui_kit::App) -> TextModel {
         let kind = Kind::from_id(&self.summary.provider);
         let account = self.settings.account.clone();
         let chosen = cx
@@ -190,9 +190,9 @@ mod tests {
             assert_eq!(display_title(title, "codex"), "New session");
         }
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn late_generated_titles_preserve_manual_names_and_conversation_history(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),
@@ -220,15 +220,15 @@ mod tests {
         });
         assert!(locked(&store).unwrap().load(id).unwrap().rows.is_empty());
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn first_prompts_link_a_pasted_pull_request_without_replacing_a_link(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         let store = Arc::new(std::sync::Mutex::new(
             monocode_core::store::Store::open(Path::new(":memory:")).unwrap(),
         ));
         let prompt = "hey lets review this pr\n\nhttps://github.com/acme/app/pull/1142 its for the native one";
-        let fresh = |cx: &mut gpui::TestAppContext| {
+        let fresh = |cx: &mut gpui_kit::TestAppContext| {
             let mut summary = locked(&store).unwrap().create("codex", "/tmp").unwrap();
             summary.title = "New Codex session".into();
             locked(&store)

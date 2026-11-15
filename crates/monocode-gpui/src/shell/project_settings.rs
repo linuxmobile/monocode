@@ -130,7 +130,7 @@ impl Shell {
             || (prefs.theme == "system"
                 && matches!(
                     window.appearance(),
-                    gpui::WindowAppearance::Light | gpui::WindowAppearance::VibrantLight
+                    gpui_kit::WindowAppearance::Light | gpui_kit::WindowAppearance::VibrantLight
                 ));
         let app = prefs.project_theme();
         let appearance = self.appearance(&path);
@@ -143,7 +143,7 @@ impl Shell {
         });
         cx.notify();
     }
-    fn project_dialog_events<T: gpui::EventEmitter<Event>>(
+    fn project_dialog_events<T: gpui_kit::EventEmitter<Event>>(
         &mut self,
         view: &Entity<T>,
         path: String,
@@ -191,7 +191,7 @@ impl Shell {
         let view = self.background_dialog.as_ref()?.view.clone();
         let viewport = window.viewport_size();
         let width = 420f32.min(viewport.width.as_f32() - 24.);
-        let (measured, popup_region, view): (_, _, gpui::AnyView) = match view {
+        let (measured, popup_region, view): (_, _, gpui_kit::AnyView) = match view {
             ProjectDialog::Background(view) => (
                 view.read(cx).measured_height().unwrap_or(622.),
                 view.read(cx).popup_region(),
@@ -204,7 +204,7 @@ impl Shell {
             ),
         };
         let height = (measured + 2.).min(viewport.height.as_f32() - 32.);
-        let anchor = Anchor::Point(gpui::point(
+        let anchor = Anchor::Point(gpui_kit::point(
             px((viewport.width.as_f32() - width) / 2.),
             px((viewport.height.as_f32() - height) / 2.),
         ));
@@ -236,7 +236,7 @@ impl Shell {
         id: i64,
         chat: Option<Entity<Conversation>>,
         cx: &mut Context<Self>,
-    ) -> gpui::Div {
+    ) -> gpui_kit::Div {
         let Some(chat) = chat else {
             return div().flex_1().min_h_0();
         };

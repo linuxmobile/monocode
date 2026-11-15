@@ -1,6 +1,6 @@
 //! The composer's searchable BranchPicker and existing-worktree list.
 use crate::{input, popover, theme::*};
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, Entity, EventEmitter, FocusHandle, Focusable, Role, Subscription, Window,
     div, prelude::*, px,
 };
@@ -17,9 +17,9 @@ pub(crate) enum Mode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn all_picker_modes_start_with_cached_choices_and_keep_them_after_refresh_failure(
         cx: &mut TestAppContext,
     ) {
@@ -158,7 +158,7 @@ impl GitPicker {
             _changed: changed,
         }
     }
-    pub(crate) fn focus(&self, cx: &gpui::App) -> FocusHandle {
+    pub(crate) fn focus(&self, cx: &gpui_kit::App) -> FocusHandle {
         self.search.focus_handle(cx)
     }
     pub(crate) fn mode(&self) -> Mode {
@@ -170,7 +170,7 @@ impl GitPicker {
         self.existing_only = true;
         self
     }
-    fn choices(&self, cx: &gpui::App) -> Vec<Choice> {
+    fn choices(&self, cx: &gpui_kit::App) -> Vec<Choice> {
         let query = self.search.read(cx).content.trim().to_owned();
         let needle = query.to_lowercase();
         let Some(state) = &self.state else {
@@ -278,7 +278,7 @@ impl GitPicker {
         cx.notify();
     }
 }
-impl gpui::Render for GitPicker {
+impl gpui_kit::Render for GitPicker {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let choices = self.choices(cx);
         let empty = choices.is_empty();
@@ -436,7 +436,7 @@ impl gpui::Render for GitPicker {
                 cx.emit(Picked::Dismissed);
                 cx.stop_propagation();
             }))
-            .on_key_down(cx.listener(|_, event: &gpui::KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|_, event: &gpui_kit::KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
                     cx.emit(Picked::Dismissed);
                     cx.stop_propagation();
@@ -501,7 +501,7 @@ impl gpui::Render for GitPicker {
                     div()
                         .p(px(10.))
                         .text_size(px(11.))
-                        .text_color(gpui::rgb(0xf87171))
+                        .text_color(gpui_kit::rgb(0xf87171))
                         .child(error),
                 )
             })

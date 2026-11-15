@@ -6,7 +6,7 @@ use crate::popover::{Anchor, Menu, MenuAction, MenuEvent, MenuItem, menu_popover
 pub(super) struct EditingMenu {
     menu: Entity<Menu>,
     position: Point<Pixels>,
-    _events: gpui::Subscription,
+    _events: gpui_kit::Subscription,
 }
 
 impl Input {
@@ -58,7 +58,7 @@ impl Input {
         let events = cx.subscribe_in(&menu, window, |this, _, event, window, cx| {
             this.context_menu = None;
             if let MenuEvent::Picked(id, _) = event {
-                let action: Box<dyn gpui::Action> = match id.as_ref() {
+                let action: Box<dyn gpui_kit::Action> = match id.as_ref() {
                     "undo" => Box::new(Undo),
                     "redo" => Box::new(Redo),
                     "cut" => Box::new(Cut),
@@ -92,9 +92,9 @@ impl Input {
 mod tests {
     use super::*;
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn editing_actions_respect_selection_clipboard_read_only_and_secrets(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         cx.update(|cx| {
             let input = cx.new(Input::new);

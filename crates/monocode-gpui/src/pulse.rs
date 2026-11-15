@@ -9,7 +9,7 @@
 //! clock parks once no lease is left. While no window is visible the clock
 //! slows every loop down further; a visible window behind another app's keeps
 //! the full pace, since its loops are still on screen.
-use gpui::{
+use gpui_kit::{
     AnyElement, App, Element, ElementId, EntityId, Global, GlobalElementId, InspectorElementId,
     IntoElement, LayoutId, Pixels, Window,
 };
@@ -145,7 +145,7 @@ pub(crate) fn running(cx: &App) -> bool {
 /// Waits for the clock's next tick, or returns at once while no loop runs.
 /// Work that would otherwise draw a frame of its own, such as a streamed
 /// reply's updates, lands in the loops' frame instead.
-pub(crate) async fn beat(cx: &mut gpui::AsyncApp) {
+pub(crate) async fn beat(cx: &mut gpui_kit::AsyncApp) {
     // Tests park the executor without advancing the clock, so a tick would
     // never come; they apply updates as soon as they arrive.
     if cfg!(test) {
@@ -195,7 +195,7 @@ fn tick(cx: &mut App) -> bool {
             callback(cx);
         } else {
             // A loop's frames keep its size; views can keep their measurements.
-            cx.notify_paint(view);
+            cx.notify(view);
         }
     }
     true
@@ -276,7 +276,7 @@ impl Element for Looping {
         &mut self,
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
-        _: gpui::Bounds<Pixels>,
+        _: gpui_kit::Bounds<Pixels>,
         element: &mut AnyElement,
         window: &mut Window,
         cx: &mut App,
@@ -287,7 +287,7 @@ impl Element for Looping {
         &mut self,
         _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
-        _: gpui::Bounds<Pixels>,
+        _: gpui_kit::Bounds<Pixels>,
         element: &mut AnyElement,
         _: &mut (),
         window: &mut Window,
@@ -300,7 +300,7 @@ impl Element for Looping {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{Context, Render, TestAppContext, div, prelude::*};
+    use gpui_kit::{Context, Render, TestAppContext, div, prelude::*};
     use std::{cell::Cell, rc::Rc};
 
     struct Spinner {
@@ -322,7 +322,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_loop_repaints_on_the_clock_and_parks_once_it_is_gone(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(false));
         let renders = Rc::new(Cell::new(0));
@@ -356,7 +356,7 @@ mod tests {
         cx.update(|_, cx| assert!(!cx.global::<Clock>().running));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn a_visible_window_keeps_full_pace_and_a_hidden_one_slows(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(false));
         let renders = Rc::new(Cell::new(0));
@@ -371,7 +371,7 @@ mod tests {
         cx.run_until_parked();
         assert_eq!(renders.get() - start, BACKGROUND_STRIDE as usize);
 
-        cx.simulate_visibility_change(gpui::WindowVisibility::Hidden);
+        cx.simulate_visibility_change(gpui_kit::WindowVisibility::Hidden);
         cx.run_until_parked();
         let hidden = renders.get();
         cx.executor()
@@ -383,7 +383,7 @@ mod tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn reduced_motion_leases_nothing(cx: &mut TestAppContext) {
         cx.update(|cx| cx.set_reduce_motion(true));
         let renders = Rc::new(Cell::new(0));
@@ -399,7 +399,7 @@ mod tests {
         assert_eq!(renders.get(), first);
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn stream_callbacks_share_the_clock_and_release_their_lease(cx: &mut TestAppContext) {
         struct Stream {
             active: bool,
@@ -409,7 +409,7 @@ mod tests {
             fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
                 let active = self.active;
                 let view = cx.entity().downgrade();
-                div().size_4().child(gpui::canvas(
+                div().size_4().child(gpui_kit::canvas(
                     move |_, window, cx| {
                         if active {
                             request_frame(Rate::Smooth, window, cx, move |cx| {

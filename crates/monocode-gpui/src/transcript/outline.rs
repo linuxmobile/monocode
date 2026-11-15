@@ -3,7 +3,7 @@
 use super::TranscriptView;
 use crate::popover::{Align, Anchor, AnchorSlot, Side, popover};
 use crate::theme::*;
-use gpui::{Context, ListOffset, Role, Task, Window, div, prelude::*, px};
+use gpui_kit::{Context, ListOffset, Role, Task, Window, div, prelude::*, px};
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
@@ -155,7 +155,7 @@ impl TranscriptView {
         });
         cx.notify();
     }
-    pub(super) fn outline_visible_at(&self, width: gpui::Pixels) -> bool {
+    pub(super) fn outline_visible_at(&self, width: gpui_kit::Pixels) -> bool {
         !self.mono
             && !self.document
             && self.visible
@@ -166,7 +166,7 @@ impl TranscriptView {
         &mut self,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) -> Option<gpui::AnyElement> {
+    ) -> Option<gpui_kit::AnyElement> {
         if !self.outline_visible_at(self.viewport.size.width) {
             self.outline.tweens.clear();
             return None;

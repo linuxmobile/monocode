@@ -63,7 +63,7 @@ impl Conversation {
                 approval_button("approval-allow", "Allow once")
                     .bg(content(1.))
                     .text_color(ink)
-                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .font_weight(gpui_kit::FontWeight::MEDIUM)
                     .hover(move |s| s.bg(content(0.85)).text_color(ink))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.decide_notification_request(&allow_id, Decision::Allow, cx);
@@ -80,7 +80,7 @@ impl Conversation {
                     .flex()
                     .items_center()
                     .gap(px(10.))
-                    .child(icon("square-lock", 14.).text_color(gpui::rgb(0xfbbf24)))
+                    .child(icon("square-lock", 14.).text_color(gpui_kit::rgb(0xfbbf24)))
                     .child(
                         div()
                             .min_w_0()
@@ -117,7 +117,7 @@ impl Conversation {
     }
 }
 
-fn approval_button(id: &'static str, label: &'static str) -> gpui::Stateful<gpui::Div> {
+fn approval_button(id: &'static str, label: &'static str) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .debug_selector(move || id.into())
@@ -138,7 +138,7 @@ fn approval_button(id: &'static str, label: &'static str) -> gpui::Stateful<gpui
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, VisualTestContext, WindowHandle};
+    use gpui_kit::{TestAppContext, VisualTestContext, WindowHandle};
     use monocode_core::store::Store;
     use std::{sync::Mutex, time::Duration};
 
@@ -175,7 +175,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn approval_shelf_slides_up_without_moving_the_composer_or_replaying_on_redraw(
         cx: &mut TestAppContext,
     ) {
@@ -246,7 +246,7 @@ mod tests {
         assert_eq!(visual.debug_bounds("composer-box").unwrap(), input);
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn approval_shelf_buttons_resolve_each_request_with_the_selected_decision(
         cx: &mut TestAppContext,
     ) {

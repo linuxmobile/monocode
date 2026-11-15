@@ -8,7 +8,7 @@ use crate::{
     },
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, Div, Focusable, FontWeight, Role, SharedString, Task, Window, div,
     prelude::*, px, rgb,
 };
@@ -293,7 +293,7 @@ impl SettingsView {
                         let offset = this.scroll.offset();
                         let delta = target.center().y - viewport.center().y;
                         let y = (offset.y - delta).clamp(-this.scroll.max_offset().y, px(0.));
-                        this.scroll.set_offset(gpui::point(offset.x, y));
+                        this.scroll.set_offset(gpui_kit::point(offset.x, y));
                     }
                 }
                 if this

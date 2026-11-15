@@ -2,7 +2,7 @@
 // ModelFlyout and SearchableProjectPicker.tsx's ProjectPickerPopover. Each
 // owns a search field; arrows and Enter in it move and pick in the list.
 use crate::{input, theme::*, workspace::project_name};
-use gpui::{
+use gpui_kit::{
     AnyElement, Context, Entity, EventEmitter, FocusHandle, Focusable, Role, SharedString,
     Subscription, Window, div, prelude::*, px,
 };
@@ -73,7 +73,7 @@ pub(crate) fn cached_model_name(kind: Kind, id: Option<&str>) -> SharedString {
         .unwrap_or_else(|| model_name(kind, id))
 }
 /// saveRecentModelChoice: the pick moves to the front of the six recents.
-pub(crate) fn remember_model(kind: Kind, model: Option<String>, cx: &mut gpui::App) {
+pub(crate) fn remember_model(kind: Kind, model: Option<String>, cx: &mut gpui_kit::App) {
     if cx.has_global::<crate::settings::Preferences>() {
         cx.update_global::<crate::settings::Preferences, _>(|prefs, _| {
             let choice = crate::settings::ModelChoice {
@@ -117,8 +117,8 @@ fn contains_account_id(value: &str) -> bool {
 mod model_label_tests {
     use super::*;
 
-    #[gpui::test]
-    fn remote_model_availability_comes_from_the_host(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn remote_model_availability_comes_from_the_host(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| {
             let list = cx.new(|cx| {
                 ModelList::new_for(
@@ -174,9 +174,9 @@ mod model_label_tests {
         );
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn remembered_favorites_and_recents_keep_provider_identity_and_busy_rules(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
         cx.update(|cx| {
             let prefs = crate::settings::Preferences {
@@ -226,11 +226,11 @@ mod model_label_tests {
 
     /// A rendered picker over `project`, with `models` as `kind`'s live catalog.
     fn rendered_picker(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
         kind: Kind,
         project: &str,
         models: &[&str],
-    ) -> (gpui::WindowHandle<ModelList>, Picks, Subscription) {
+    ) -> (gpui_kit::WindowHandle<ModelList>, Picks, Subscription) {
         let window = cx.update(|cx| {
             cx.open_window(Default::default(), |_, cx| {
                 cx.new(|cx| ModelList::new_for(kind, None, project, Default::default(), cx))
@@ -272,7 +272,7 @@ mod model_label_tests {
     fn star(ix: usize) -> &'static str {
         Box::leak(format!("model-star-{ix}").into_boxed_str())
     }
-    fn click_star(visual: &mut gpui::VisualTestContext, ix: usize) {
+    fn click_star(visual: &mut gpui_kit::VisualTestContext, ix: usize) {
         visual.refresh().unwrap();
         let bounds = visual
             .debug_bounds(star(ix))
@@ -280,7 +280,7 @@ mod model_label_tests {
         visual.simulate_click(bounds.center(), Default::default());
         visual.refresh().unwrap();
     }
-    fn favorites(cx: &gpui::App) -> Vec<(String, Option<String>)> {
+    fn favorites(cx: &gpui_kit::App) -> Vec<(String, Option<String>)> {
         cx.global::<crate::settings::Preferences>()
             .favorite_models
             .iter()
@@ -294,12 +294,12 @@ mod model_label_tests {
         assert_eq!(favorite_label(true, "Fast"), "Remove Fast from favorites");
     }
 
-    #[gpui::test]
-    fn star_toggles_a_favorite_without_picking_the_row(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn star_toggles_a_favorite_without_picking_the_row(cx: &mut gpui_kit::TestAppContext) {
         cx.update(|cx| cx.set_global(crate::settings::Preferences::default()));
         let (window, picks, _events) =
             rendered_picker(cx, Kind::Codex, "/work", &["example-model"]);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         // Default (0) and the catalog's model (1) both get a star.
         visual.refresh().unwrap();
         assert!(visual.debug_bounds("model-star-0").is_some());
@@ -339,17 +339,19 @@ mod model_label_tests {
             .unwrap();
     }
 
-    #[gpui::test]
-    fn picking_the_option_still_picks_and_leaves_favorites_alone(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn picking_the_option_still_picks_and_leaves_favorites_alone(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         cx.update(|cx| cx.set_global(crate::settings::Preferences::default()));
         let (window, picks, _events) =
             rendered_picker(cx, Kind::Codex, "/work", &["example-model"]);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
         // The option sits left of its star, so aim at the row's left edge.
         let star = visual.debug_bounds("model-star-1").unwrap();
         visual.simulate_click(
-            gpui::point(star.left() - gpui::px(80.), star.center().y),
+            gpui_kit::point(star.left() - gpui_kit::px(80.), star.center().y),
             Default::default(),
         );
         assert_eq!(
@@ -359,8 +361,8 @@ mod model_label_tests {
         visual.update(|_, cx| assert!(favorites(cx).is_empty()));
     }
 
-    #[gpui::test]
-    fn every_favorite_row_has_a_star(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn every_favorite_row_has_a_star(cx: &mut gpui_kit::TestAppContext) {
         let prefs = crate::settings::Preferences {
             favorite_models: vec![
                 crate::settings::ModelChoice {
@@ -383,20 +385,22 @@ mod model_label_tests {
                 cx.notify();
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.refresh().unwrap();
         assert!(visual.debug_bounds(star(0)).is_some());
         assert!(visual.debug_bounds(star(1)).is_some());
         assert!(visual.debug_bounds(star(2)).is_none());
     }
 
-    #[gpui::test]
-    fn remote_prefixed_model_is_favorited_and_picked_by_its_full_id(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn remote_prefixed_model_is_favorited_and_picked_by_its_full_id(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         const REMOTE: &str = "hermes:example-vendor:example-model";
         cx.update(|cx| cx.set_global(crate::settings::Preferences::default()));
         let (window, picks, _events) =
             rendered_picker(cx, Kind::Hermes, "remote://env/home/code", &[REMOTE]);
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         // Default (0), then the host's model (1).
         click_star(visual, 1);
         visual.update(|_, cx| {
@@ -578,7 +582,7 @@ impl ModelList {
             None => models.iter().find(|m| m.default).or(models.first()),
         }
     }
-    fn favorite(&self, kind: Kind, id: Option<&str>, cx: &gpui::App) -> bool {
+    fn favorite(&self, kind: Kind, id: Option<&str>, cx: &gpui_kit::App) -> bool {
         cx.try_global::<crate::settings::Preferences>()
             .is_some_and(|prefs| {
                 prefs
@@ -721,13 +725,13 @@ impl ModelList {
         })
         .detach();
     }
-    pub(crate) fn search_focus(&self, cx: &gpui::App) -> FocusHandle {
+    pub(crate) fn search_focus(&self, cx: &gpui_kit::App) -> FocusHandle {
         self.search.focus_handle(cx)
     }
-    fn query(&self, cx: &gpui::App) -> String {
+    fn query(&self, cx: &gpui_kit::App) -> String {
         self.search.read(cx).content.to_lowercase()
     }
-    fn entries(&self, cx: &gpui::App) -> Vec<ModelEntry> {
+    fn entries(&self, cx: &gpui_kit::App) -> Vec<ModelEntry> {
         let ModelTab::Harness(kind) = self.tab else {
             let query = self.query(cx);
             return cx
@@ -846,7 +850,7 @@ impl ModelList {
             .map(|model| model_display_name(kind, &model.id, &model.name))
             .unwrap_or_else(|| model_name(kind, id))
     }
-    fn current_index(&self, cx: &gpui::App) -> usize {
+    fn current_index(&self, cx: &gpui_kit::App) -> usize {
         self.entries(cx)
             .iter()
             .position(|entry| entry.kind == self.provider && entry.id == self.current)
@@ -1477,7 +1481,7 @@ impl ProjectPicker {
             _changed: changed,
         }
     }
-    pub(crate) fn search_focus(&self, cx: &gpui::App) -> FocusHandle {
+    pub(crate) fn search_focus(&self, cx: &gpui_kit::App) -> FocusHandle {
         self.search.focus_handle(cx)
     }
     pub(crate) fn allow_remote(mut self) -> Self {
@@ -1509,7 +1513,7 @@ impl ProjectPicker {
         self.monos = monos;
         self
     }
-    fn matching_monos(&self, cx: &gpui::App) -> Vec<&PickerMono> {
+    fn matching_monos(&self, cx: &gpui_kit::App) -> Vec<&PickerMono> {
         let query = self.search.read(cx).content.trim().to_lowercase();
         self.monos
             .iter()
@@ -1521,7 +1525,7 @@ impl ProjectPicker {
             .get(path)
             .map_or_else(|| project_name(path), |a| a.label(path))
     }
-    fn matches(&self, cx: &gpui::App) -> Vec<String> {
+    fn matches(&self, cx: &gpui_kit::App) -> Vec<String> {
         let query = self.search.read(cx).content.to_lowercase();
         self.projects
             .iter()
@@ -1628,7 +1632,7 @@ impl Render for ProjectPicker {
                             .min_w_0()
                             .truncate()
                             .text_size(px(13.))
-                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .font_weight(gpui_kit::FontWeight::MEDIUM)
                             .child(mono.name.clone()),
                     )
                     .child(
@@ -1704,7 +1708,7 @@ impl Render for ProjectPicker {
                         .max_w(px(286. - 12. - 20. - 36.))
                         .truncate()
                         .text_size(px(13.))
-                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .font_weight(gpui_kit::FontWeight::MEDIUM)
                         .child(self.label(&path)),
                 )
                 .child(

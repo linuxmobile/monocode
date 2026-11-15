@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{AnyElement, ImageSource};
+use gpui_kit::{AnyElement, ImageSource};
 use std::path::PathBuf;
 
 #[derive(Clone)]
@@ -150,13 +150,13 @@ impl Photo {
 
     fn build(origin: Origin, mime: SharedString, whole: bool, cx: &mut Context<Self>) -> Self {
         let format = match mime.as_ref() {
-            "image/jpeg" | "image/jpg" => gpui::ImageFormat::Jpeg,
-            "image/gif" => gpui::ImageFormat::Gif,
-            "image/webp" => gpui::ImageFormat::Webp,
-            "image/svg+xml" => gpui::ImageFormat::Svg,
-            "image/bmp" => gpui::ImageFormat::Bmp,
-            "image/tiff" => gpui::ImageFormat::Tiff,
-            _ => gpui::ImageFormat::Png,
+            "image/jpeg" | "image/jpg" => gpui_kit::ImageFormat::Jpeg,
+            "image/gif" => gpui_kit::ImageFormat::Gif,
+            "image/webp" => gpui_kit::ImageFormat::Webp,
+            "image/svg+xml" => gpui_kit::ImageFormat::Svg,
+            "image/bmp" => gpui_kit::ImageFormat::Bmp,
+            "image/tiff" => gpui_kit::ImageFormat::Tiff,
+            _ => gpui_kit::ImageFormat::Png,
         };
         let read = origin.clone();
         let work = cx.background_executor().spawn(async move {
@@ -169,10 +169,10 @@ impl Photo {
             Ok::<_, String>(match decoded {
                 Ok(pixels) => Ok((
                     pixels.dimensions(),
-                    Arc::new(gpui::RenderImage::new(vec![image::Frame::new(pixels)])),
+                    Arc::new(gpui_kit::RenderImage::new(vec![image::Frame::new(pixels)])),
                 )),
                 // SVG and formats the decoder lacks still go through GPUI.
-                Err(_) => Err(Arc::new(gpui::Image::from_bytes(format, bytes))),
+                Err(_) => Err(Arc::new(gpui_kit::Image::from_bytes(format, bytes))),
             })
         });
         cx.spawn(async move |this, cx| {
@@ -190,7 +190,7 @@ impl Photo {
         .detach();
         cx.on_release(|this, cx| {
             if let Some(source) = this.source.take() {
-                source.evict(cx);
+                source.remove_asset(cx);
             }
         })
         .detach();
@@ -241,10 +241,10 @@ impl Render for Photo {
             return match &self.source {
                 Some(source) => frame
                     .child(
-                        gpui::img(source.clone())
+                        gpui_kit::img(source.clone())
                             .size_full()
                             .rounded(px(16.))
-                            .object_fit(gpui::ObjectFit::Cover),
+                            .object_fit(gpui_kit::ObjectFit::Cover),
                     )
                     .into_any_element(),
                 // Until it decodes, a quiet square holds the photo's place.
@@ -341,7 +341,7 @@ impl TranscriptView {
         ix: usize,
         whole: bool,
         cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
         let photo = if let Some(origin) = Origin::of(file) {
             let key = format!("{key}-{ix}");
             let cached = self
@@ -401,8 +401,10 @@ impl TranscriptView {
             .debug_selector(move || format!("transcript-image-{ix}"))
             .aria_label(format!("Open {} full screen", file.name))
             .when_some(source, |d, source| {
-                d.cursor(gpui::CursorStyle::PointingHand)
-                    .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                d.cursor(gpui_kit::CursorStyle::PointingHand)
+                    .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation()
+                    })
                     .on_click(move |_, window, cx| {
                         cx.stop_propagation();
                         window.dispatch_action(
@@ -452,7 +454,7 @@ mod tests {
         assert_eq!(names(&rest), ["lost.png", "notes.txt"]);
     }
 
-    use gpui::{
+    use gpui_kit::{
         Context, ImageSource, ImgResourceLoader, IntoElement, Render, Resource, Styled,
         TestAppContext, Window, img, px,
     };
@@ -465,7 +467,7 @@ mod tests {
         }
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn evicting_a_decoded_source_frees_its_sprite(cx: &mut TestAppContext) {
         let path = std::env::temp_dir().join(format!("photo-evict-{}.png", std::process::id()));
         image::RgbaImage::from_pixel(2, 2, image::Rgba([255, 0, 0, 255]))
@@ -481,11 +483,13 @@ mod tests {
             .expect("the image should have decoded");
         assert!(cx.update(|window, _| window.has_image_atlas_entry(&image)));
 
-        // Views release their images from outside any window update.
+        // Views release their images from outside any window update: the
+        // decoded cache entry goes, and the window drops the atlas texture.
         let app: &TestAppContext = cx;
-        app.update(|cx| source.evict(cx));
-        assert!(!cx.update(|window, _| window.has_image_atlas_entry(&image)));
+        app.update(|cx| source.remove_asset(cx));
         assert!(!cx.update(|_, cx| source.is_asset_cached(cx)));
+        cx.update(|window, _| window.drop_image(image.clone()).unwrap());
+        assert!(!cx.update(|window, _| window.has_image_atlas_entry(&image)));
         let _ = std::fs::remove_file(path);
     }
 }

@@ -3,7 +3,7 @@ use crate::{
     runtime::{Database, locked},
     theme::*,
 };
-use gpui::{App, Context, Entity, EventEmitter, Global, Role, div, prelude::*, px};
+use gpui_kit::{App, Context, Entity, EventEmitter, Global, Role, div, prelude::*, px};
 use monocode_core::app_update::{self, Config, Installation, Installed, Update};
 use std::{
     sync::{Arc, Mutex},
@@ -70,7 +70,7 @@ pub(crate) struct Updater {
     pending: Option<Update>,
     progress: Option<u64>,
     message: Option<String>,
-    poll: Option<gpui::Task<()>>,
+    poll: Option<gpui_kit::Task<()>>,
     gate: Arc<Mutex<InstallGate>>,
 }
 impl EventEmitter<Event> for Updater {}
@@ -327,7 +327,7 @@ impl Updater {
     }
 }
 /// The sidebar's update card, shown while an update is available or installing.
-pub(crate) fn row(entity: Entity<Updater>, cx: &App) -> gpui::AnyElement {
+pub(crate) fn row(entity: Entity<Updater>, cx: &App) -> gpui_kit::AnyElement {
     let action = entity.clone();
     let state = entity.read(cx);
     let available = state.phase == Phase::Available;
@@ -345,7 +345,9 @@ pub(crate) fn row(entity: Entity<Updater>, cx: &App) -> gpui::AnyElement {
             |turn| {
                 icon("loader", 16.)
                     .text_color(content(0.7))
-                    .with_transformation(gpui::Transformation::rotate(gpui::percentage(turn)))
+                    .with_transformation(gpui_kit::Transformation::rotate(gpui_kit::percentage(
+                        turn,
+                    )))
             },
         )
         .into_any_element()
@@ -391,7 +393,7 @@ pub(crate) fn row(entity: Entity<Updater>, cx: &App) -> gpui::AnyElement {
                         .min_w_0()
                         .truncate()
                         .text_size(px(12.))
-                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .font_weight(gpui_kit::FontWeight::MEDIUM)
                         .child(label),
                 )
                 .child(
@@ -421,9 +423,9 @@ pub(crate) fn row(entity: Entity<Updater>, cx: &App) -> gpui::AnyElement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui_kit::TestAppContext;
     use std::sync::{Arc, Mutex};
-    #[gpui::test]
+    #[gpui_kit::test]
     fn quit_waits_for_installation_to_finish(cx: &mut TestAppContext) {
         let store = Arc::new(Mutex::new(
             monocode_core::store::Store::open(std::path::Path::new(":memory:")).unwrap(),
@@ -436,7 +438,7 @@ mod tests {
         gate.lock().unwrap().installing = false;
         assert!(!cx.update(|cx| defer_quit(cx)));
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn windows_share_one_updater_and_busy_operations_cannot_start_again(cx: &mut TestAppContext) {
         let store = Arc::new(Mutex::new(
             monocode_core::store::Store::open(std::path::Path::new(":memory:")).unwrap(),

@@ -2,7 +2,7 @@ use crate::{
     settings::{SettingsEvent, SettingsView, widgets::secondary_button},
     theme::*,
 };
-use gpui::{AnyElement, Context, SharedString, div, prelude::*, px};
+use gpui_kit::{AnyElement, Context, SharedString, div, prelude::*, px};
 impl SettingsView {
     pub(super) fn inbox_page(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let mut page = vec![self.project_notification_settings(cx)];

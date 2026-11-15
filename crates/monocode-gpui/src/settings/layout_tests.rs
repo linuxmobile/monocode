@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{
+use gpui_kit::{
     Bounds, TestAppContext, VisualTestContext, WindowBounds, WindowHandle, WindowOptions, point,
     size,
 };
@@ -35,7 +35,7 @@ fn window(section: Section, cx: &mut TestAppContext) -> WindowHandle<SettingsVie
     window
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn workspace_style_is_only_offered_under_the_new_layout(cx: &mut TestAppContext) {
     let window = window(Section::Appearance, cx);
     let visual = &mut VisualTestContext::from_window(window.into(), cx);
@@ -68,7 +68,7 @@ fn workspace_style_is_only_offered_under_the_new_layout(cx: &mut TestAppContext)
     }
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn skills_document_has_its_own_full_height_pane_and_compact_actions(cx: &mut TestAppContext) {
     let window = window(Section::Skills, cx);
     window
@@ -139,7 +139,7 @@ fn skills_document_has_its_own_full_height_pane_and_compact_actions(cx: &mut Tes
     assert!(visual.debug_bounds("skill-document").unwrap().size.height > px(200.));
 }
 
-#[gpui::test]
+#[gpui_kit::test]
 fn mono_mascot_is_beside_name_and_sidebar_switch_stays_visible(cx: &mut TestAppContext) {
     let window = window(Section::Monos, cx);
     window

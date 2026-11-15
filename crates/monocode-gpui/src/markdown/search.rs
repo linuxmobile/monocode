@@ -1,6 +1,6 @@
 use super::*;
 
-pub(crate) fn search_background(current: bool) -> gpui::Hsla {
+pub(crate) fn search_background(current: bool) -> gpui_kit::Hsla {
     let mut color = if current {
         accent_color()
     } else {

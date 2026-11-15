@@ -1,4 +1,4 @@
-use gpui::{App, Bounds, WindowBounds, px, size};
+use gpui_kit::{App, Bounds, WindowBounds, px, size};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -60,9 +60,9 @@ impl WindowState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{TestAppContext, point};
+    use gpui_kit::{TestAppContext, point};
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn window_state_restores_size_and_mode_without_losing_normal_size(cx: &mut TestAppContext) {
         let normal = Bounds::new(point(px(10.), px(20.)), size(px(1440.), px(900.)));
         let screen = Bounds::new(point(px(0.), px(0.)), size(px(1920.), px(1080.)));
@@ -90,7 +90,7 @@ mod tests {
         ));
     }
 
-    #[gpui::test]
+    #[gpui_kit::test]
     fn window_state_defaults_and_rejects_invalid_sizes(cx: &mut TestAppContext) {
         let state: WindowState = serde_json::from_str("{}").unwrap();
         assert_eq!(

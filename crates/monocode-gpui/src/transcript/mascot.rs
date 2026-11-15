@@ -1,6 +1,6 @@
 //! ProjectMascot / SubagentMascot: the React transcript's two-frame pixel faces.
 use crate::theme::content;
-use gpui::{AnyElement, canvas, div, prelude::*, px, rgb};
+use gpui_kit::{AnyElement, canvas, div, prelude::*, px, rgb};
 use monocode_core::tool::ToolState;
 use std::time::Duration;
 
@@ -142,11 +142,11 @@ fn sprite(index: usize, talk: bool) -> AnyElement {
             let rows = if talk { &TALK[index] } else { &REST[index] };
             let unit = bounds.size.width / 8.;
             let hop = if talk { px(-1.) } else { px(0.) };
-            let origin = bounds.origin + gpui::point(px(0.), hop);
+            let origin = bounds.origin + gpui_kit::point(px(0.), hop);
             // SVG's crispEdges snaps each shared boundary to physical pixels.
             // Merge filled runs as mascotPath does, preserving transparent eyes.
             let scale = window.scale_factor();
-            let snap = |position: gpui::Pixels| (position * scale).round() / scale;
+            let snap = |position: gpui_kit::Pixels| (position * scale).round() / scale;
             for (y, row) in rows.iter().enumerate() {
                 let pixels = row.as_bytes();
                 let mut x = 0;
@@ -163,10 +163,10 @@ fn sprite(index: usize, talk: bool) -> AnyElement {
                     let right = snap(origin.x + unit * x as f32);
                     let top = snap(origin.y + unit * y as f32);
                     let bottom = snap(origin.y + unit * (y + 1) as f32);
-                    window.paint_quad(gpui::fill(
-                        gpui::Bounds::new(
-                            gpui::point(left, top),
-                            gpui::size(right - left, bottom - top),
+                    window.paint_quad(gpui_kit::fill(
+                        gpui_kit::Bounds::new(
+                            gpui_kit::point(left, top),
+                            gpui_kit::size(right - left, bottom - top),
                         ),
                         color,
                     ));

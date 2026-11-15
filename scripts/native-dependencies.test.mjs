@@ -58,28 +58,27 @@ capture = { package = "zed-scap", path = "capture", optional = ${optional} }
   return { root, manifest, cargo, addDependency };
 }
 
-test("native build rejects even an unused optional dependency and recovers after removal", async (t) => {
+test("the guard logic allows the path stub and rejects registry copies", async (t) => {
+  const f = await fixture(t);
+  const result = f.cargo("test");
+  assert.equal(result.status, 0, result.output);
+});
+
+test("native build allows the stubbed optional dependency and recovers after removal", async (t) => {
   const f = await fixture(t);
   let result = f.cargo("build");
   assert.equal(result.status, 0, result.output);
 
   await f.addDependency(true);
   result = f.cargo("build");
-  assert.notEqual(result.status, 0, result.output);
-  assert.match(result.output, /zed-scap is prohibited/);
-  assert.match(await readFile(join(f.root, "Cargo.lock"), "utf8"), /name = "zed-scap"/);
+  assert.equal(result.status, 0, result.output);
+  const lock = await readFile(join(f.root, "Cargo.lock"), "utf8");
+  assert.match(lock, /name = "zed-scap"/);
+  assert.doesNotMatch(lock, /source = "registry[^]*"/);
 
   await writeFile(join(f.root, "Cargo.toml"), f.manifest);
   result = f.cargo("build");
   assert.equal(result.status, 0, result.output);
-});
-
-test("native build rejects a renamed active dependency at a different version", async (t) => {
-  const f = await fixture(t);
-  await f.addDependency(false);
-  const result = f.cargo("build");
-  assert.notEqual(result.status, 0, result.output);
-  assert.match(result.output, /zed-scap is prohibited/);
 });
 
 test("GPUI refuses to enable screen capture before compiling its implementation", async (t) => {

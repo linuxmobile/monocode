@@ -11,7 +11,7 @@ use crate::{
     right_panel::{RED_400, selection, spinner, stroke},
     theme::*,
 };
-use gpui::{
+use gpui_kit::{
     AnyElement, Bounds, Context, CursorStyle, Entity, EventEmitter, FocusHandle, Focusable,
     FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent, Pixels, Point, Role, ScrollHandle,
     SharedString, Subscription, Task, Window, div, prelude::*, px, rgb,
@@ -282,7 +282,7 @@ pub(crate) struct ReviewPane {
     skip_tab_click: bool,
     pending_close: Option<(usize, bool)>,
     close_prompted: bool,
-    menu: Option<(usize, Point<gpui::Pixels>, Entity<Menu>, Subscription)>,
+    menu: Option<(usize, Point<gpui_kit::Pixels>, Entity<Menu>, Subscription)>,
     _subscriptions: Vec<Subscription>,
 }
 struct FileTabDrag {
@@ -641,13 +641,13 @@ impl ReviewPane {
         cx.emit(ReviewEvent::Changed);
         cx.notify();
     }
-    pub(crate) fn unsaved_files(&self, cx: &gpui::App) -> bool {
+    pub(crate) fn unsaved_files(&self, cx: &gpui_kit::App) -> bool {
         self.sources
             .iter()
             .filter_map(|s| s.editor.as_ref())
             .any(|e| e.read(cx).dirty || e.read(cx).saving)
     }
-    fn closing_editors(&self, cx: &gpui::App) -> Vec<Entity<FileEditor>> {
+    fn closing_editors(&self, cx: &gpui_kit::App) -> Vec<Entity<FileEditor>> {
         let Some((target, others)) = self.pending_close else {
             return Vec::new();
         };
@@ -687,7 +687,7 @@ impl ReviewPane {
             .collect::<Vec<_>>()
             .join(", ");
         let answer = window.prompt(
-            gpui::PromptLevel::Warning,
+            gpui_kit::PromptLevel::Warning,
             &format!("Save changes to {names}?"),
             Some("Your unsaved edits will be lost if you discard them."),
             &["Save", "Discard", "Cancel"],
@@ -736,12 +736,12 @@ impl ReviewPane {
             editor.update(cx, |editor, cx| editor.navigate(line, column, cx));
         }
     }
-    pub(crate) fn focus_active(&self, window: &mut Window, cx: &mut gpui::App) {
+    pub(crate) fn focus_active(&self, window: &mut Window, cx: &mut gpui_kit::App) {
         // Keep workspace shortcuts reachable while the active body is loading,
         // deferred or showing an error. Rendering hands focus to a ready body.
         window.focus(&self.focus, cx);
     }
-    fn remember_body_focus(&mut self, cx: &gpui::App) {
+    fn remember_body_focus(&mut self, cx: &gpui_kit::App) {
         if let Some(source) = self.sources.get(self.state.active) {
             for handle in std::iter::once(source.view.focus_handle(cx))
                 .chain(source.editor.as_ref().map(|editor| editor.focus_handle(cx)))
@@ -1446,7 +1446,7 @@ impl ReviewPane {
     fn open_tab_menu(
         &mut self,
         ix: usize,
-        at: Point<gpui::Pixels>,
+        at: Point<gpui_kit::Pixels>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -1704,7 +1704,7 @@ impl ReviewPane {
                                 source.editor.as_ref().is_some_and(|e| e.read(cx).dirty),
                                 |d| d.child(div().size(px(6.)).rounded_full().bg(content(0.7))),
                             )
-                            .on_click(cx.listener(move |this, event: &gpui::ClickEvent, window, cx| {
+                            .on_click(cx.listener(move |this, event: &gpui_kit::ClickEvent, window, cx| {
                                 if std::mem::take(&mut this.skip_tab_click) {
                                     return;
                                 }
@@ -1723,7 +1723,7 @@ impl ReviewPane {
                             .aria_label(SharedString::from(format!("Close {label}")))
                             .absolute()
                             .right_1()
-                            .top(gpui::relative(0.5))
+                            .top(gpui_kit::relative(0.5))
                             .mt(px(-10.))
                             .size(px(20.))
                             .flex()
@@ -1884,7 +1884,7 @@ impl Render for ReviewPane {
     }
 }
 
-fn centered() -> gpui::Div {
+fn centered() -> gpui_kit::Div {
     div().size_full().flex().items_center().justify_center()
 }
 
@@ -1943,8 +1943,8 @@ mod tests {
         }
     }
 
-    #[gpui::test]
-    fn review_focus_follows_the_visible_body_after_loading(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn review_focus_follows_the_visible_body_after_loading(cx: &mut gpui_kit::TestAppContext) {
         let repo = Repo::new();
         let cwd = repo.cwd();
         let preview = repo.0.join("preview.md");
@@ -1972,7 +1972,7 @@ mod tests {
                 pane.focus_active(w, cx);
             })
             .unwrap();
-        let visual = &mut gpui::VisualTestContext::from_window(window.into(), cx);
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
         window
             .update(visual, |pane, w, cx| {
@@ -2026,8 +2026,8 @@ mod tests {
             .unwrap();
     }
 
-    #[gpui::test]
-    fn entering_panes_defer_file_reads_and_diff_construction(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn entering_panes_defer_file_reads_and_diff_construction(cx: &mut gpui_kit::TestAppContext) {
         let repo = Repo::new();
         let cwd = repo.cwd();
         let git = cx.new(|cx| ProjectGit::new(cwd.clone(), cx));
@@ -2076,8 +2076,10 @@ mod tests {
         );
     }
 
-    #[gpui::test]
-    fn reopening_diffs_reuses_views_and_only_reads_changed_files(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn reopening_diffs_reuses_views_and_only_reads_changed_files(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
         let repo = Repo::new();
         let cwd = repo.cwd();
         let git = cx.new(|cx| ProjectGit::new(cwd.clone(), cx));
@@ -2146,8 +2148,8 @@ mod tests {
         });
     }
 
-    #[gpui::test]
-    fn closed_diff_cache_is_scoped_and_bounded(cx: &mut gpui::TestAppContext) {
+    #[gpui_kit::test]
+    fn closed_diff_cache_is_scoped_and_bounded(cx: &mut gpui_kit::TestAppContext) {
         let git = cx.new(|cx| ProjectGit::new("~".into(), cx));
         let pane = cx.new(|cx| ReviewPane::new(git.clone(), Default::default(), cx));
         let tab = |sha: String| ReviewTab::Commit {
@@ -2210,11 +2212,11 @@ mod tests {
             });
         });
     }
-    #[gpui::test]
+    #[gpui_kit::test]
     fn file_reviews_are_editable_and_view_switches_preserve_the_unsaved_document(
-        cx: &mut gpui::TestAppContext,
+        cx: &mut gpui_kit::TestAppContext,
     ) {
-        use gpui::EntityInputHandler;
+        use gpui_kit::EntityInputHandler;
         let repo = Repo::new();
         cx.update(|cx| cx.set_global(crate::settings::Preferences::default()));
         let cwd = repo.cwd();
