@@ -32,9 +32,10 @@ asset generators, on Linux.
 | CI workflows installing Node | 0 |
 | CI check that fails on reintroduced Node.js source | Present in `ci.yml` |
 
-The contract test found five defects the host's own tests could not see; they are
-listed in `migration.md`. Each was fixed, and the reasoning-effort assertion was
-proven able to fail by disabling the forwarding it checks.
+The contract test found five defects the host's own tests could not see: receipts
+without a session identity, `sessions.*` demanding a `projectId`, and dropped
+`modelSettings` and `attachments`. Each was fixed, and the reasoning-effort
+assertion was proven able to fail by disabling the forwarding it checks.
 
 ## Recorded results
 

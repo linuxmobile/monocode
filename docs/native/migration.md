@@ -170,3 +170,32 @@ feature remains disabled. Preserve these guards and the licenses in
 [NOTICE](../../NOTICE).
 
 See [preview limitations](parity.md) for remaining work.
+
+## Deliberate non-adoptions
+
+Two alternatives were evaluated during the Node.js removal and knowingly not
+taken. Both are recorded with their revisit conditions so the reasoning is not
+lost to a future reader.
+
+**`tokio::process::Command` for provider children.** `monocode-core` is
+synchronous and provider I/O is pipe-bound. Adopting it would move roughly 74k
+lines onto an async runtime for no measured gain. The host, which does run async,
+uses `spawn_blocking` instead. Revisit only with a profile showing
+thread-per-child is the bottleneck.
+
+**A dedicated database thread or actor.** The host is the only writer and each
+statement is short, so a thread would add a hop without a measured benefit.
+Snapshot parsing is already avoided on the list path by the stored `summary`
+column. Revisit if a profile shows the lock held across a slow statement.
+
+## Known limitation: model ids reach the CLI unvalidated
+
+A session's model id is passed to the provider CLI as stored. A model the CLI
+does not advertise therefore fails when the turn starts rather than being
+rejected when it is chosen. A stored placeholder such as `openrouter/free` (the
+real ids have no `opencode/` prefix and name a vendor and model) surfaces as
+"Model unavailable" a few seconds after launch.
+
+Validating ids against the CLI catalog when one is selected would close this. It
+is the same class as the access-mode validation added earlier: an unknown value
+should be refused where it is chosen, not where it is used.
