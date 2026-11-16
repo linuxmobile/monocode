@@ -123,19 +123,27 @@ impl Shell {
                 .collect(),
         }
     }
+    pub(super) fn settings_page_open(&self) -> bool {
+        self.settings_shown && self.settings.is_some()
+    }
     pub(super) fn open_settings(
         &mut self,
-        section: Section,
+        section: Option<Section>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         self.leave_app_search(cx);
         self.close_preview(cx);
         self.menu = None;
-        if self.settings.is_some() {
+        if self.settings.is_none() {
+            self.create_settings(section.unwrap_or_default(), window, cx);
+            self.settings_nav_visible = true;
+        } else if let Some(section) = section {
             self.select_settings(section, cx);
-            return;
         }
+        self.show_settings(window, cx);
+    }
+    fn create_settings(&mut self, section: Section, window: &mut Window, cx: &mut Context<Self>) {
         self.navigation_revision += 1;
         let context = self.settings_context(cx);
         let prefs = self.workspace.preferences.clone();
@@ -254,13 +262,66 @@ impl Shell {
                 cx.notify();
             }
         }));
-        self.settings = Some(view.clone());
-        // Settings has its own complete rail, even when the project rail was hidden.
-        self.settings_nav_visible = true;
+        self.settings = Some(view);
+    }
+    pub(super) fn show_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(view) = self.settings.clone() else {
+            return;
+        };
+        if !self.settings_shown {
+            self.settings_restore = window.focused(cx);
+            self.leave_app_views(cx);
+            self.leave_app_search(cx);
+            self.close_preview(cx);
+            if let Some(monos) = self.monos.clone() {
+                monos.update(cx, |monos, cx| monos.close(cx));
+            }
+            self.review_focused = false;
+        }
+        self.settings_shown = true;
         self.sidebar_slide = None;
-        self.sidebar_fraction = 1.;
+        self.sidebar_fraction = if self.settings_nav_visible { 1. } else { 0. };
+        self.remember_title_tab(TitleTab::Settings);
+        self.reveal_active_tab(cx);
         window.focus(&view.focus_handle(cx), cx);
-        this_update(self, cx);
+        self.sync_settings(cx);
+        self.update_chat_visibility(cx);
+        self.sync_right_panel(cx);
+        self.invalidate_chrome(cx);
+        self.persist(cx);
+        cx.notify();
+    }
+    pub(super) fn hide_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.settings_shown {
+            return;
+        }
+        self.settings_shown = false;
+        self.sidebar_slide = None;
+        self.sidebar_fraction = if self.workspace.sidebar_visible {
+            1.
+        } else {
+            0.
+        };
+        if let Some(restore) = self.settings_restore.take() {
+            window.focus(&restore, cx);
+        }
+        self.update_chat_visibility(cx);
+        self.sync_right_panel(cx);
+        self.invalidate_chrome(cx);
+        cx.notify();
+    }
+    pub(super) fn clear_settings(&mut self) {
+        self.settings = None;
+        self.settings_shown = false;
+        self.settings_restore = None;
+        self.settings_events = None;
+        self.settings_overlay_watch = None;
+        self.sidebar_slide = None;
+        self.sidebar_fraction = if self.workspace.sidebar_visible {
+            1.
+        } else {
+            0.
+        };
     }
     pub(super) fn select_settings(&mut self, section: Section, cx: &mut Context<Self>) {
         if let Some(view) = &self.settings {
@@ -279,17 +340,18 @@ impl Shell {
         }
     }
     pub(super) fn close_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.settings = None;
-        self.settings_events = None;
-        self.settings_overlay_watch = None;
-        self.sidebar_slide = None;
-        self.sidebar_fraction = if self.workspace.sidebar_visible {
-            1.
-        } else {
-            0.
-        };
-        self.focus_active(window, cx);
-        this_update(self, cx);
+        if self.settings.is_none() {
+            return;
+        }
+        let restore = self.settings_restore.take();
+        self.close_title_tabs(&[TitleTab::Settings], None, window, cx);
+        if self.settings_page_open() {
+            return;
+        }
+        match restore {
+            Some(handle) => window.focus(&handle, cx),
+            None => self.focus_active(window, cx),
+        }
     }
     pub(super) fn apply_preferences(&mut self, cx: &mut Context<Self>) {
         self.refresh_notification_permission();
@@ -474,6 +536,111 @@ impl Shell {
         })
         .detach();
     }
+    pub(super) fn settings_title_tab(
+        &self,
+        width: f32,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
+        let active = self.settings_shown;
+        let close = active || width >= TAB_CLOSE_MIN_WIDTH;
+        div()
+            .id("settings-title-tab")
+            .debug_selector(|| "settings-title-tab".into())
+            .group("settings-title-tab")
+            .role(Role::Tab)
+            .aria_label("Settings")
+            .aria_selected(active)
+            .cursor_pointer()
+            .w(px(width))
+            .h(px(TITLE_BAR_HEIGHT))
+            .flex_shrink_0()
+            .flex()
+            .items_center()
+            .relative()
+            .child(
+                title_tab_plate(active, false)
+                    .text_color(content(if active { 1. } else { 0.5 }))
+                    .w_full()
+                    .min_w_0()
+                    .when(close && width >= TAB_CLOSE_MIN_WIDTH, |d| d.pr_7())
+                    .when(width < NARROW_TAB, |d| {
+                        d.px(px(((width - TAB_TILE.w) / 2.).max(0.)))
+                    })
+                    .gap(px(TAB_TILE_GAP))
+                    .group_hover("settings-title-tab", |s| {
+                        s.text_color(content(1.)).bg(title_tab_fill(active, true))
+                    })
+                    .child(mark_tile(
+                        &TAB_TILE,
+                        Face::Neutral,
+                        icon("settings", 14.).text_color(crate::tab_tile::tile_ink()),
+                    ))
+                    .child(
+                        div()
+                            .min_w_0()
+                            .flex_1()
+                            .truncate()
+                            .text_size(px(TITLE_TAB_TEXT_SIZE))
+                            .child("Settings"),
+                    ),
+            )
+            .when(close, |d| {
+                d.child(
+                    div()
+                        .id("close-settings-tab")
+                        .debug_selector(|| "close-settings-tab".into())
+                        .role(Role::Button)
+                        .aria_label("Close Settings")
+                        .absolute()
+                        .right_1()
+                        .top(px(10.))
+                        .size(px(20.))
+                        .rounded_sm()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .opacity(0.)
+                        .group_hover("settings-title-tab", |s| s.opacity(1.))
+                        .hover(|s| s.bg(content(0.1)))
+                        .child(icon("close", 12.))
+                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            cx.stop_propagation();
+                            this.close_settings(window, cx);
+                        })),
+                )
+            })
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, event, _, cx| {
+                    this.start_tab_drag(TitleTab::Settings, event, cx)
+                }),
+            )
+            .on_mouse_down(
+                MouseButton::Right,
+                cx.listener(|this, event: &MouseDownEvent, window, cx| {
+                    this.open_menu(
+                        MenuTarget::SettingsTab,
+                        Anchor::Point(event.position),
+                        window,
+                        cx,
+                    )
+                }),
+            )
+            .on_mouse_up(
+                MouseButton::Middle,
+                cx.listener(|this, _, window, cx| {
+                    cx.stop_propagation();
+                    this.close_settings(window, cx);
+                }),
+            )
+            .on_click(cx.listener(|this, _, window, cx| {
+                if std::mem::take(&mut this.skip_tab_click) {
+                    return;
+                }
+                this.show_settings(window, cx);
+            }))
+    }
 }
 fn this_update(this: &mut Shell, cx: &mut Context<Shell>) {
     this.invalidate_chrome(cx);
@@ -493,7 +660,7 @@ mod tests {
         let (window, _, _) = window(cx);
         window
             .update(cx, |shell, w, cx| {
-                shell.open_settings(Section::Skills, w, cx)
+                shell.open_settings(Some(Section::Skills), w, cx)
             })
             .unwrap();
         let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
@@ -516,7 +683,9 @@ mod tests {
         cx.update(super::super::bind_keys);
         let (window, _, _) = window(cx);
         window
-            .update(cx, |shell, w, cx| shell.open_settings(Section::Mcp, w, cx))
+            .update(cx, |shell, w, cx| {
+                shell.open_settings(Some(Section::Mcp), w, cx)
+            })
             .unwrap();
         let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
         visual.run_until_parked();
@@ -537,6 +706,93 @@ mod tests {
             .unwrap();
     }
     #[gpui_kit::test]
+    fn reopening_settings_with_the_shortcut_keeps_the_section(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            super::super::bind_keys(cx);
+            crate::input::bind(cx);
+            crate::popover::bind(cx);
+        });
+        cx.update(|cx| cx.set_reduce_motion(true));
+        let (window, _, _) = window(cx);
+        window
+            .update(cx, |shell, w, cx| shell.open_settings(None, w, cx))
+            .unwrap();
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        visual.run_until_parked();
+        let keybindings = visual.debug_bounds("settings-nav-keybindings").unwrap();
+        visual.simulate_click(keybindings.center(), Default::default());
+        visual.run_until_parked();
+        window
+            .update(visual, |shell, _, cx| {
+                let view = shell.settings.clone().unwrap();
+                assert_eq!(view.read(cx).section, Section::Keybindings);
+            })
+            .unwrap();
+        visual.simulate_keystrokes("secondary-,");
+        visual.run_until_parked();
+        window
+            .update(visual, |shell, _, cx| {
+                let view = shell.settings.clone().unwrap();
+                assert_eq!(view.read(cx).section, Section::Keybindings);
+                assert!(shell.settings_page_open());
+                assert_eq!(shell.active_title_tab(cx), Some(TitleTab::Settings));
+            })
+            .unwrap();
+    }
+    #[gpui_kit::test]
+    fn settings_tab_survives_switching_to_an_agent_tab(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            super::super::bind_keys(cx);
+            crate::input::bind(cx);
+            crate::popover::bind(cx);
+        });
+        cx.update(|cx| cx.set_reduce_motion(true));
+        let (window, _, _) = window(cx);
+        window
+            .update(cx, |shell, w, cx| {
+                shell.open_settings(Some(Section::Appearance), w, cx);
+            })
+            .unwrap();
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        visual.run_until_parked();
+        assert!(visual.debug_bounds("settings-title-tab").is_some());
+        window
+            .update(visual, |shell, w, cx| {
+                assert_eq!(shell.active_title_tab(cx), Some(TitleTab::Settings));
+                assert_eq!(
+                    shell.settings.clone().unwrap().read(cx).section,
+                    Section::Appearance
+                );
+                let session = shell
+                    .visible_tabs(cx)
+                    .into_iter()
+                    .find_map(|tab| tab.session())
+                    .unwrap();
+                shell.open_title_tab(&TitleTab::Session(session), w, cx);
+            })
+            .unwrap();
+        visual.run_until_parked();
+        window
+            .update(visual, |shell, w, cx| {
+                assert!(shell.settings.is_some(), "the page stays open");
+                assert!(!shell.settings_page_open());
+                assert_ne!(shell.active_title_tab(cx), Some(TitleTab::Settings));
+                shell.show_settings(w, cx);
+            })
+            .unwrap();
+        visual.run_until_parked();
+        window
+            .update(visual, |shell, _, cx| {
+                assert!(shell.settings_page_open());
+                assert_eq!(
+                    shell.settings.clone().unwrap().read(cx).section,
+                    Section::Appearance
+                );
+            })
+            .unwrap();
+        assert!(visual.debug_bounds("settings-nav-appearance").is_some());
+    }
+    #[gpui_kit::test]
     fn settings_nav_search_steps_through_results_with_arrows(cx: &mut TestAppContext) {
         cx.update(|cx| {
             super::super::bind_keys(cx);
@@ -547,7 +803,7 @@ mod tests {
         let (window, _, _) = window(cx);
         window
             .update(cx, |shell, w, cx| {
-                shell.open_settings(Section::General, w, cx)
+                shell.open_settings(Some(Section::General), w, cx)
             })
             .unwrap();
         let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
@@ -586,9 +842,14 @@ mod tests {
         let card = visual.debug_bounds("main-pane-frame").unwrap();
         let header = visual.debug_bounds("settings-header").unwrap();
         let page = visual.debug_bounds("settings-page-header").unwrap();
+        let tab = visual.debug_bounds("settings-title-tab").unwrap();
         assert!(
-            header.bottom() <= px(40.),
-            "breadcrumb and search live in the title bar"
+            tab.bottom() <= px(40.) && tab.origin.x >= card.left(),
+            "the page has its own tab in the strip"
+        );
+        assert!(
+            header.origin.y >= card.origin.y,
+            "breadcrumb and search head the page"
         );
         assert!(
             (page.left()
@@ -697,7 +958,7 @@ mod tests {
         let (window, _, _) = window(cx);
         window
             .update(cx, |shell, w, cx| {
-                shell.open_settings(Section::Appearance, w, cx)
+                shell.open_settings(Some(Section::Appearance), w, cx)
             })
             .unwrap();
         let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
@@ -733,7 +994,7 @@ mod tests {
         let (window, _, _) = window(cx);
         window
             .update(cx, |shell, w, cx| {
-                shell.open_settings(Section::Keybindings, w, cx)
+                shell.open_settings(Some(Section::Keybindings), w, cx)
             })
             .unwrap();
         let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);

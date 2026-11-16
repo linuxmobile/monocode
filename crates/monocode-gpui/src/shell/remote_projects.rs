@@ -477,7 +477,7 @@ impl Shell {
                     this.select_project(key.clone(), window, cx);
                 }
                 Picked::Connections => {
-                    this.open_settings(crate::settings::Section::Connections, window, cx)
+                    this.open_settings(Some(crate::settings::Section::Connections), window, cx)
                 }
                 Picked::Cancel => {}
             }

@@ -4,7 +4,7 @@ use super::*;
 impl Shell {
     pub(super) fn classic_surface_open(&self, cx: &App) -> bool {
         self.workspace.classic_layout
-            && (self.settings.is_some()
+            && (self.settings_page_open()
                 || self.app_view_open()
                 || self.search_page()
                 || self.mono_active(cx))
@@ -128,8 +128,13 @@ impl Shell {
     }
 
     pub(super) fn classic_rail_back(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.settings.is_some() {
-            self.close_settings(window, cx);
+        if self.settings_page_open() {
+            self.hide_settings(window, cx);
+            self.focus_active(window, cx);
+            if let Some(tab) = self.active_title_tab(cx) {
+                self.remember_title_tab(tab);
+            }
+            self.persist(cx);
         } else if self.mono_active(cx) {
             if let Some(monos) = &self.monos {
                 monos.update(cx, |monos, cx| monos.close(cx));

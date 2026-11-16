@@ -109,6 +109,7 @@ impl Shell {
             TitleTab::Mono { id, .. } => MenuTarget::MonoTab(id.clone()),
             TitleTab::Search => MenuTarget::SearchTab,
             TitleTab::App(view) => MenuTarget::AppTab(*view),
+            TitleTab::Settings => MenuTarget::SettingsTab,
         }
     }
 
@@ -153,6 +154,7 @@ impl Shell {
                 }
             }
             TitleTab::Search => (Face::Neutral, neutral("search"), "Search".into()),
+            TitleTab::Settings => (Face::Neutral, neutral("settings"), "Settings".into()),
             TitleTab::App(view) => (Face::Neutral, neutral(view.icon()), view.label().into()),
         };
         PinCard {

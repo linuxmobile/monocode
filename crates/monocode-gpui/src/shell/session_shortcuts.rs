@@ -10,7 +10,7 @@ impl Shell {
             return;
         }
         if self.app_view_open()
-            || self.settings.is_some()
+            || self.settings_page_open()
             || self.app_search.is_some()
             || self.mono_active(cx)
             || self.quick_open.is_some()

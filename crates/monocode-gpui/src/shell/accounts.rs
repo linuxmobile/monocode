@@ -44,7 +44,11 @@ impl Shell {
                 AccountEvent::Manage => {
                     cx.spawn(async move |this, cx| {
                         let _ = this.update_in(cx, |this, window, cx| {
-                            this.open_settings(crate::settings::Section::Providers, window, cx)
+                            this.open_settings(
+                                Some(crate::settings::Section::Providers),
+                                window,
+                                cx,
+                            )
                         });
                     })
                     .detach();

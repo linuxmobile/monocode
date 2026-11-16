@@ -35,6 +35,7 @@ pub(crate) enum TitleTab {
     Session(i64),
     Search,
     App(AppView),
+    Settings,
     Mono {
         id: String,
         project: String,
@@ -46,7 +47,7 @@ impl TitleTab {
     pub fn session(&self) -> Option<i64> {
         match self {
             Self::Session(id) => Some(*id),
-            Self::Mono { .. } | Self::Search | Self::App(_) => None,
+            Self::Mono { .. } | Self::Search | Self::App(_) | Self::Settings => None,
         }
     }
 }

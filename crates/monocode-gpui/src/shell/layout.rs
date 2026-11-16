@@ -130,7 +130,7 @@ impl Shell {
         false
             && self.workspace.classic_layout
             && !self.workspace.project_rail_open
-            && self.settings.is_none()
+            && !self.settings_page_open()
             && !self.app_view_open()
             && !self.search_page()
             && !self.mono_active(cx)
@@ -340,7 +340,7 @@ impl Shell {
         let panel = self
             .right_panel
             .clone()
-            .filter(|_| right_shown && self.settings.is_none())
+            .filter(|_| right_shown && !self.settings_page_open())
             .map(|panel| self.right_panel_frame(panel, right_width, full, window, cx));
         let footer = (!self.classic_surface_open(cx)).then(|| self.footer_row(cx));
         let spans_window = self.classic_titlebar_spans_window(cx);
@@ -348,7 +348,7 @@ impl Shell {
         let compact_surface = false
             && original
             && !self.workspace.project_rail_open
-            && self.settings.is_none()
+            && !self.settings_page_open()
             && self.classic_surface_open(cx);
         let tab_bar = if spans_window || (original && self.search_page()) {
             None
@@ -362,7 +362,8 @@ impl Shell {
         };
         let show_navigation = !spans_window;
         let navigation = show_navigation.then(|| self.navigation(cx));
-        let corner = (self.settings.is_none() && !original).then(|| self.panel_toggle(window, cx));
+        let corner =
+            (!self.settings_page_open() && !original).then(|| self.panel_toggle(window, cx));
         let body = div()
             .flex_1()
             .min_h_0()
@@ -518,7 +519,7 @@ impl Shell {
     fn corner_tabs_shown(&self) -> bool {
         self.workspace.right_panel_open
             && !self.app_view_open()
-            && self.settings.is_none()
+            && !self.settings_page_open()
             && !self.search_page()
     }
     /// Classic: the panel toggle holds the corner while Explorer, Terminal (when
@@ -705,19 +706,33 @@ impl Shell {
                 .overflow_hidden()
                 .child(search.view.clone());
         }
-        if let Some(settings) = &self.settings {
+        if let Some(settings) = self.settings.clone().filter(|_| self.settings_page_open()) {
+            let search = !self.workspace.classic_layout && !self.settings_nav_visible;
+            let header = settings.update(cx, |v, cx| v.header(false, search, cx));
             return div()
                 .flex_1()
                 .min_h_0()
                 .min_w_0()
                 .flex()
+                .flex_col()
                 .overflow_hidden()
-                .child(settings.clone());
+                .child(
+                    div()
+                        .h(px(TITLE_BAR_HEIGHT))
+                        .flex_shrink_0()
+                        .w_full()
+                        .flex()
+                        .items_center()
+                        .border_b_1()
+                        .border_color(crate::right_panel::stroke())
+                        .child(header),
+                )
+                .child(settings);
         }
         let panel: Option<Entity<RightPanel>> = self
             .right_panel
             .clone()
-            .filter(|_| right_shown && self.settings.is_none());
+            .filter(|_| right_shown && !self.settings_page_open());
         div()
             .flex_1()
             .min_h_0()

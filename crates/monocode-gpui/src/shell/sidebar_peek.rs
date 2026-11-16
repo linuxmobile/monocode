@@ -68,7 +68,7 @@ impl Shell {
         !self.workspace.classic_layout
             && !self.workspace.sidebar_visible
             && self.sidebar_slide.is_none()
-            && self.settings.is_none()
+            && !self.settings_page_open()
     }
 
     /// Whether the sidebar must paint uncached: inherited opacity is not part

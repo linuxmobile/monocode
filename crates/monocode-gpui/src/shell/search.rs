@@ -194,8 +194,8 @@ impl Shell {
             if let Some(monos) = &self.monos {
                 monos.update(cx, |m, cx| m.close(cx));
             }
-            if self.settings.is_some() {
-                self.close_settings(window, cx);
+            if self.settings_page_open() {
+                self.hide_settings(window, cx);
             }
         }
         self.navigation_revision += 1;

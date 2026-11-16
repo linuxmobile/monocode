@@ -355,6 +355,7 @@ pub(crate) enum MenuTarget {
     Actions,
     /// The title strip's new-tab button, when terminals open in the title bar.
     NewTab,
+    SettingsTab,
 }
 pub(crate) struct ShellMenu {
     pub(crate) target: MenuTarget,
@@ -657,6 +658,8 @@ pub(crate) struct Shell {
     app_view_events: Vec<Subscription>,
     automation_state: automation_runs::State,
     settings: Option<Entity<crate::settings::SettingsView>>,
+    settings_shown: bool,
+    settings_restore: Option<FocusHandle>,
     settings_events: Option<Subscription>,
     settings_overlay_watch: Option<Subscription>,
     app_search: Option<search::Open>,
@@ -1044,6 +1047,8 @@ impl Shell {
             app_view_events: Vec::new(),
             automation_state: Default::default(),
             settings: None,
+            settings_shown: false,
+            settings_restore: None,
             settings_events: None,
             settings_overlay_watch: None,
             app_search: None,
@@ -1268,7 +1273,7 @@ impl Shell {
     fn update_chat_visibility(&mut self, cx: &mut Context<Self>) {
         if let Some(inbox) = &self.inbox {
             let active = self.active_app_view == Some(app_views::AppView::Inbox)
-                && self.settings.is_none()
+                && !self.settings_page_open()
                 && !self.search_page();
             inbox.update(cx, |inbox, cx| inbox.set_active(active, cx));
         }
@@ -1276,7 +1281,7 @@ impl Shell {
         let mut shown: HashSet<i64> = match self.workspace.active_tab() {
             Some(tab)
                 if !self.app_view_open()
-                    && self.settings.is_none()
+                    && !self.settings_page_open()
                     && !self.search_page()
                     && !self.mono_active(cx) =>
             {
@@ -1289,7 +1294,7 @@ impl Shell {
         if self.mono_active(cx)
             && self.workspace.right_panel_open
             && !self.app_view_open()
-            && self.settings.is_none()
+            && !self.settings_page_open()
             && !self.search_page()
         {
             shown.extend(
@@ -1630,7 +1635,7 @@ impl Shell {
         (self.workspace.right_panel_open || self.right_slide.is_some())
             && (!self.workspace.classic_layout || self.mono_active(cx))
             && !self.app_view_open()
-            && self.settings.is_none()
+            && !self.settings_page_open()
             && !self.search_page()
             && (self.mono_active(cx) || self.git.read(cx).available())
     }
@@ -1640,14 +1645,14 @@ impl Shell {
             && !self.workspace.classic_layout
             && self.workspace.right_panel_open
             && !self.app_view_open()
-            && self.settings.is_none()
+            && !self.settings_page_open()
             && !self.search_page()
             && !opening;
         if let Some(panel) = &self.right_panel {
             let sidebar_tab = (self.workspace.classic_layout
                 && self.session_sidebar_available(cx)
                 && self.workspace.sidebar_visible
-                && self.settings.is_none())
+                && !self.settings_page_open())
             .then(|| self.classic_sidebar_tab.tool_tab())
             .flatten();
             let terminal_tab = self.terminal_in_panel(cx);
@@ -4217,6 +4222,7 @@ impl Shell {
             monos.update(cx, |m, cx| m.close(cx));
         }
         self.leave_app_views(cx);
+        self.hide_settings(window, cx);
         self.leave_app_search(cx);
         self.close_preview(cx);
         self.dismiss_due_reminder(id, cx);
@@ -4270,10 +4276,8 @@ impl Shell {
         self.close_title_tabs(&tabs, preferred, window, cx);
     }
     fn visit(&mut self, step: isize, window: &mut Window, cx: &mut Context<Self>) {
-        // Settings sit over the history: Back leaves them, and Forward
-        // leaves them on its way to the next visit.
-        if self.settings.is_some() {
-            self.close_settings(window, cx);
+        if self.settings_page_open() {
+            self.hide_settings(window, cx);
             if step < 0 {
                 return;
             }
@@ -4316,7 +4320,7 @@ impl Shell {
         if self.workspace.sidebar_visible && self.sidebar_focus.contains_focused(window, cx) {
             self.focus_workspace(window, cx);
         }
-        if self.settings.is_some() {
+        if self.settings_page_open() {
             let visible = !self.settings_nav_visible;
             self.slide_sidebar(visible, cx);
             self.settings_nav_visible = visible;
@@ -4357,7 +4361,7 @@ impl Shell {
     }
 
     fn focus_prompt(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.settings.is_some() || self.app_view_open() || self.app_search.is_some() {
+        if self.settings_page_open() || self.app_view_open() || self.app_search.is_some() {
             return;
         }
         if let Some(monos) = self.monos.as_ref().filter(|_| self.mono_active(cx)) {
@@ -4602,7 +4606,7 @@ impl Shell {
                                 this.workspace.active.is_some()
                                     || this.mono_active(cx)
                                     || this.app_view_open()
-                                    || this.settings.is_some()
+                                    || this.settings_page_open()
                             } else {
                                 this.navigation_revision != navigation_revision
                             }
@@ -4637,7 +4641,7 @@ impl Shell {
     fn navigation_width(&self) -> f32 {
         let closed = self.traffic_lights() + 3. * 24.;
         if self.workspace.classic_layout {
-            return if self.workspace.project_rail_open || self.settings.is_some() {
+            return if self.workspace.project_rail_open || self.settings_page_open() {
                 self.project_rail_drawn_width().max(closed + 6.)
             } else {
                 closed
@@ -4662,7 +4666,7 @@ impl Shell {
             // `pr-1.5` only beside the open sidebar; closed, the tab
             // strip's own inset is gap enough after the arrows.
             .pr(px(if self.workspace.classic_layout {
-                if self.workspace.project_rail_open || self.settings.is_some() {
+                if self.workspace.project_rail_open || self.settings_page_open() {
                     6.
                 } else {
                     0.
@@ -4684,7 +4688,7 @@ impl Shell {
                     "visit-back",
                     BACK_LABEL,
                     "chevron-left",
-                    self.settings.is_some()
+                    self.settings_page_open()
                         || (self.workspace.classic_layout && self.mono_active(cx))
                         || !self.history.back.is_empty(),
                 )
@@ -4713,7 +4717,7 @@ impl Shell {
     /// The classic layout's settings fill the project rail, so its toggle
     /// steps aside. Its slot stays, so nothing beside it moves.
     fn sidebar_toggle(&self, cx: &mut Context<Self>) -> gpui_kit::Stateful<gpui_kit::Div> {
-        if self.settings.is_some() && self.workspace.classic_layout {
+        if self.settings_page_open() && self.workspace.classic_layout {
             return div()
                 .id("toggle-sidebar")
                 .debug_selector(|| "toggle-sidebar".into())
@@ -4916,34 +4920,6 @@ impl Shell {
         // Windows' controls sit in the settings header's padding, so its
         // bottom rule still runs beneath them. Session bars leave them to the
         // corner (`toggle_room`, `corner_room`).
-        let controls = px(self.window_controls);
-        if let Some(settings) = self.settings.clone() {
-            let classic = self.workspace.boxy_layout();
-            let lead = if classic {
-                self.strip_lead(cx)
-            } else {
-                self.navigation_width() + 6.
-            };
-            let search = !self.workspace.classic_layout && !self.settings_nav_visible;
-            let header = settings.update(cx, |v, cx| v.header(!classic, search, cx));
-            return div()
-                .h(px(TITLE_BAR_HEIGHT))
-                .flex_shrink_0()
-                .flex()
-                .items_center()
-                .pr(controls)
-                .when(classic, |d| d.border_b_1().border_color(content(0.1)))
-                .child(if classic {
-                    titlebar_drag_area()
-                        .w(px(lead))
-                        .flex_shrink_0()
-                        .into_any_element()
-                } else {
-                    self.navigation(cx).into_any_element()
-                })
-                .child(header)
-                .into_any_element();
-        }
         let tabs_width = px(self.tabs_width(window, cx));
         let classic = self.workspace.boxy_layout();
         div()
@@ -5395,11 +5371,13 @@ impl Shell {
             MenuTarget::Tab(_)
             | MenuTarget::MonoTab(_)
             | MenuTarget::SearchTab
+            | MenuTarget::SettingsTab
             | MenuTarget::AppTab(_) => {
                 let tab = match target {
                     MenuTarget::Tab(id) => TitleTab::Session(*id),
                     MenuTarget::MonoTab(id) => self.mono_tab(id.clone()),
                     MenuTarget::SearchTab => TitleTab::Search,
+                    MenuTarget::SettingsTab => TitleTab::Settings,
                     MenuTarget::AppTab(view) => TitleTab::App(*view),
                     _ => unreachable!(),
                 };
@@ -5460,6 +5438,7 @@ impl Shell {
                         match &tab {
                             TitleTab::Session(id) => title(id),
                             TitleTab::Search => "Search".into(),
+                            TitleTab::Settings => "Settings".into(),
                             TitleTab::App(view) => view.label().into(),
                             TitleTab::Mono { id, .. } => self
                                 .monos
@@ -5826,6 +5805,9 @@ impl Shell {
                 self.run_title_tab_menu(self.mono_tab(id), action, window, cx)
             }
             MenuTarget::SearchTab => self.run_title_tab_menu(TitleTab::Search, action, window, cx),
+            MenuTarget::SettingsTab => {
+                self.run_title_tab_menu(TitleTab::Settings, action, window, cx)
+            }
             MenuTarget::AppTab(view) => {
                 self.run_title_tab_menu(TitleTab::App(view), action, window, cx)
             }
@@ -5850,7 +5832,7 @@ impl Shell {
             MenuTarget::Header => {
                 // "Project settings" opens the project's menu beside its row.
                 if action == "settings" {
-                    self.open_settings(crate::settings::Section::General, window, cx);
+                    self.open_settings(None, window, cx);
                 } else if action == "open-remote-project" {
                     self.open_remote_project(window, cx);
                 } else if action == "project-settings" {
@@ -6704,7 +6686,7 @@ impl Shell {
         }
     }
     fn sidebar(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        if let Some(settings) = self.settings.clone() {
+        if let Some(settings) = self.settings.clone().filter(|_| self.settings_page_open()) {
             let section = settings.read(cx).section;
             let search = settings.update(cx, |v, cx| v.search_field(true, cx));
             let select = cx.weak_entity();
@@ -7646,7 +7628,7 @@ impl Shell {
         let source = match &id {
             TitleTab::Session(tab) => Some(DragSource::Tab(*tab)),
             TitleTab::Mono { .. } => Some(DragSource::MonoTab),
-            TitleTab::Search | TitleTab::App(_) => None,
+            TitleTab::Search | TitleTab::App(_) | TitleTab::Settings => None,
         };
         let was = self.pane_drag.is_some();
         self.pane_drag = source.filter(|_| armed).map(|source| PaneDrag {
@@ -8219,6 +8201,16 @@ impl Shell {
                         element.into_any_element()
                     })
                 }
+                TitleTab::Settings => {
+                    let element = self.settings_title_tab(tab_width(tab), cx).left(shifts[ix]);
+                    Some(if dragged.as_ref() == Some(tab) {
+                        gpui_kit::deferred(element)
+                            .with_priority(1)
+                            .into_any_element()
+                    } else {
+                        element.into_any_element()
+                    })
+                }
                 TitleTab::Mono { id, .. } => {
                     let manager = self.monos.clone()?;
                     let w = tab_width(tab);
@@ -8600,7 +8592,7 @@ impl Render for Shell {
                 fraction
             }
             None => {
-                let visible = if self.settings.is_some() {
+                let visible = if self.settings_page_open() {
                     self.settings_nav_visible
                 } else {
                     self.workspace.sidebar_visible
@@ -8828,7 +8820,7 @@ impl Render for Shell {
                 this.open_quick_open(true, window, cx)
             }))
             .on_action(cx.listener(|this, _: &OpenSettings, window, cx| {
-                this.open_settings(crate::settings::Section::General, window, cx)
+                this.open_settings(None, window, cx)
             }))
             .on_action(cx.listener(|this, _: &OpenInbox, window, cx| this.open_inbox(window, cx)))
             .on_action(cx.listener(|this, _: &OpenNotes, window, cx| this.open_notes(window, cx)))
@@ -8843,7 +8835,7 @@ impl Render for Shell {
             .on_action(cx.listener(|this, _: &ResetZoom, _, cx| this.step_ui_scale(0, cx)))
             .on_action(cx.listener(|this, _: &Reload, window, cx| this.request_reload(window, cx)))
             .on_action(cx.listener(|this, _: &SidebarAppearance, window, cx| {
-                this.open_settings(crate::settings::Section::Appearance, window, cx)
+                this.open_settings(Some(crate::settings::Section::Appearance), window, cx)
             }))
             .on_action(|_: &About, window, cx| {
                 let detail = format!("Version {}", crate::notifications::updater::version());
@@ -8889,12 +8881,16 @@ impl Render for Shell {
                 {
                     return;
                 }
-                if let Some(view) = this.active_app_view.filter(|_| this.settings.is_none()) {
+                if let Some(view) = this.active_app_view.filter(|_| !this.settings_page_open()) {
                     if this.workspace.classic_layout {
                         this.close_app_view(window, cx);
                     } else {
                         this.close_title_tabs(&[TitleTab::App(view)], None, window, cx);
                     }
+                    return;
+                }
+                if this.settings_page_open() {
+                    this.close_settings(window, cx);
                     return;
                 }
                 if this.search_page() {
@@ -9071,7 +9067,7 @@ impl Render for Shell {
                 }
             }))
             .on_action(cx.listener(|this, _: &SearchFiles, window, cx| {
-                if this.app_view_open() || this.settings.is_some() || this.mono_active(cx) {
+                if this.app_view_open() || this.settings_page_open() || this.mono_active(cx) {
                     return;
                 }
                 this.close_app_search(window, cx);

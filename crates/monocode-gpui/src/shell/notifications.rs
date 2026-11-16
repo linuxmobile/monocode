@@ -236,7 +236,7 @@ impl Shell {
                 reminders::Action::OpenSettings => {
                     cx.spawn(async move |this, cx| {
                         let _ = this.update_in(cx, |this, window, cx| {
-                            this.open_settings(crate::settings::Section::General, window, cx)
+                            this.open_settings(Some(crate::settings::Section::General), window, cx)
                         });
                     })
                     .detach();
@@ -420,7 +420,7 @@ impl Shell {
     }
 
     pub(super) fn notice_session_visible(&self, id: i64, cx: &App) -> bool {
-        if self.app_view_open() || self.settings.is_some() || self.search_page() {
+        if self.app_view_open() || self.settings_page_open() || self.search_page() {
             return false;
         }
         if self.mono_active(cx) {

@@ -1172,7 +1172,7 @@ mod tests {
         visual.run_until_parked();
         window
             .update(visual, |shell, w, cx| {
-                shell.open_settings(crate::settings::Section::Monos, w, cx)
+                shell.open_settings(Some(crate::settings::Section::Monos), w, cx)
             })
             .unwrap();
         visual.run_until_parked();

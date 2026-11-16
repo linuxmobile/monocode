@@ -147,7 +147,7 @@ impl Shell {
     pub(super) fn project_rail_drawn_width(&self) -> f32 {
         if !self.workspace.classic_layout {
             0.
-        } else if self.workspace.project_rail_open || self.settings.is_some() {
+        } else if self.workspace.project_rail_open || self.settings_page_open() {
             self.workspace.project_rail_width
         } else {
             ICON_RAIL_WIDTH
@@ -164,10 +164,10 @@ impl Shell {
     pub(super) fn toggle_primary_sidebar(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // The classic layout's settings stand in for the project rail and
         // can't be hidden.
-        if self.settings.is_some() && self.workspace.classic_layout {
+        if self.settings_page_open() && self.workspace.classic_layout {
             return;
         }
-        if self.workspace.classic_layout && self.settings.is_none() {
+        if self.workspace.classic_layout && !self.settings_page_open() {
             self.workspace.project_rail_open = !self.workspace.project_rail_open;
             self.project_resize = None;
             self.fit_sidebar(cx);
@@ -195,7 +195,7 @@ impl Shell {
                     .cached(StyleRefinement::default().w(px(width - 1.)).h_full()),
             )
             .when(
-                self.workspace.project_rail_open && self.settings.is_none(),
+                self.workspace.project_rail_open && !self.settings_page_open(),
                 |d| {
                     d.child(
                         div()
@@ -235,9 +235,9 @@ impl Shell {
             .into_any_element()
     }
     pub(super) fn project_rail(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let compact = !self.workspace.project_rail_open && self.settings.is_none();
+        let compact = !self.workspace.project_rail_open && !self.settings_page_open();
         let header = titlebar_drag_area().h(px(TITLE_BAR_HEIGHT)).flex_shrink_0();
-        if self.settings.is_some() {
+        if self.settings_page_open() {
             let nav = self.sidebar(cx);
             return div()
                 .size_full()
@@ -265,9 +265,9 @@ impl Shell {
                     div().w_full().py(px(6.)).flex().justify_center().child(
                         icon_button("rail-settings", "Settings", "settings")
                             .size(px(32.))
-                            .on_click(cx.listener(|this, _, w, cx| {
-                                this.open_settings(crate::settings::Section::General, w, cx)
-                            })),
+                            .on_click(
+                                cx.listener(|this, _, w, cx| this.open_settings(None, w, cx)),
+                            ),
                     ),
                 )
                 .into_any();
@@ -523,9 +523,9 @@ impl Shell {
                                 .child("Ctrl ,"),
                         )
                     })
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        this.open_settings(crate::settings::Section::General, window, cx)
-                    })),
+                    .on_click(
+                        cx.listener(|this, _, window, cx| this.open_settings(None, window, cx)),
+                    ),
             )
             .into_any()
     }
@@ -1824,7 +1824,7 @@ mod tests {
         );
         window
             .update(visual, |shell, w, cx| {
-                shell.open_settings(crate::settings::Section::Appearance, w, cx);
+                shell.open_settings(Some(crate::settings::Section::Appearance), w, cx);
             })
             .unwrap();
         visual.run_until_parked();
@@ -2099,7 +2099,7 @@ mod tests {
         let (window, _, active) = super::super::tests::window(cx);
         window
             .update(cx, |shell, w, cx| {
-                shell.open_settings(crate::settings::Section::Appearance, w, cx);
+                shell.open_settings(Some(crate::settings::Section::Appearance), w, cx);
                 shell.settings.clone().unwrap().update(cx, |_, cx| {
                     cx.emit(crate::settings::SettingsEvent::NewLayoutBoxy(true))
                 });

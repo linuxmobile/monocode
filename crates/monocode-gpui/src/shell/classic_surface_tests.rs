@@ -918,7 +918,7 @@ fn assert_settings_navigation(classic: bool, cx: &mut TestAppContext) {
     let visual = &mut VisualTestContext::from_window(window.into(), cx);
     window
         .update(visual, |shell, window, cx| {
-            shell.open_settings(crate::settings::Section::General, window, cx)
+            shell.open_settings(Some(crate::settings::Section::General), window, cx)
         })
         .unwrap();
     visual.run_until_parked();
@@ -945,7 +945,7 @@ fn assert_settings_navigation(classic: bool, cx: &mut TestAppContext) {
     visual.run_until_parked();
     window
         .read_with(visual, |shell, _| {
-            assert!(shell.settings.is_none(), "Back leaves Settings");
+            assert!(!shell.settings_page_open(), "Back leaves Settings");
             assert_eq!(shell.workspace.active, Some(session));
         })
         .unwrap();

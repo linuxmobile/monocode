@@ -99,7 +99,7 @@ impl Shell {
                             this.open_automations(window, cx);
                         } else if this.navigation_revision == 0
                             && this.active_app_view.is_none()
-                            && this.settings.is_none()
+                            && !this.settings_page_open()
                         {
                             let saved = this.workspace.scope_focus.get(&this.tab_scope()).cloned();
                             if let Some(tab @ TitleTab::App(_)) = saved {

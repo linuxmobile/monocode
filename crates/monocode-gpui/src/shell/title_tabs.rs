@@ -83,6 +83,7 @@ impl Shell {
             .iter()
             .filter(|tab| match tab {
                 TitleTab::Search => !self.workspace.preferences.search_panel,
+                TitleTab::Settings => self.settings.is_some() && !self.workspace.classic_layout,
                 TitleTab::App(view) => {
                     !self.workspace.classic_layout
                         && (*view != app_views::AppView::Notes || self.workspace.preferences.notes)
@@ -120,6 +121,9 @@ impl Shell {
     }
 
     pub(super) fn active_title_tab(&self, cx: &App) -> Option<TitleTab> {
+        if self.settings_page_open() {
+            return Some(TitleTab::Settings);
+        }
         if let Some(view) = self.active_app_view {
             return Some(TitleTab::App(view));
         }
@@ -187,6 +191,7 @@ impl Shell {
     ) {
         match tab {
             TitleTab::Search => self.open_app_search(window, cx),
+            TitleTab::Settings => self.show_settings(window, cx),
             TitleTab::App(view) => match view {
                 app_views::AppView::Inbox => self.open_inbox(window, cx),
                 app_views::AppView::Notes => self.open_notes(window, cx),
@@ -362,6 +367,9 @@ impl Shell {
                 self.leave_app_search(cx);
                 self.saved_search = None;
             }
+            if *tab == TitleTab::Settings {
+                self.clear_settings();
+            }
             if let TitleTab::Session(id) = tab {
                 self.workspace.close(*id);
             }
@@ -393,7 +401,11 @@ impl Shell {
         self.settle_mono_panes(window, cx);
         self.history
             .prune(&self.workspace.open_sessions(), self.workspace.active);
-        if self.workspace.active.is_none() && !self.mono_active(cx) && !self.app_view_open() {
+        if self.workspace.active.is_none()
+            && !self.mono_active(cx)
+            && !self.app_view_open()
+            && !self.settings_page_open()
+        {
             self.focus_active(window, cx);
         }
         self.persist(cx);

@@ -187,8 +187,8 @@ impl Shell {
         self.leave_app_search(cx);
         self.close_preview(cx);
         self.close_menu(cx);
-        if self.settings.is_some() {
-            self.close_settings(window, cx);
+        if self.settings_page_open() {
+            self.hide_settings(window, cx);
         }
         if let Some(monos) = self.monos.clone() {
             monos.update(cx, |monos, cx| monos.close(cx));
