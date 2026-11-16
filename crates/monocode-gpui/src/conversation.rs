@@ -327,6 +327,7 @@ impl Conversation {
     }
     pub(crate) fn archive_shortcut_blocked(&self, cx: &gpui_kit::App) -> bool {
         self.menu.is_some()
+            || self.mono_ui.models.is_some()
             || self.response_menu.is_some()
             || self.git_picker.is_some()
             || self.needs_approval()
@@ -1995,6 +1996,31 @@ impl Conversation {
         })
         .detach();
     }
+    /// The current model's efforts and where the slider sits, for the
+    /// flyout's effort bar.
+    fn effort_bar_args(&self) -> Option<(Vec<String>, usize, usize, SharedString)> {
+        let model = self.model_info()?;
+        if model.efforts.is_empty() {
+            return None;
+        }
+        let efforts = model.efforts.clone();
+        let selected = self.selected_effort();
+        let default_index = model
+            .default_effort
+            .as_deref()
+            .and_then(|default| efforts.iter().position(|e| e == default))
+            .unwrap_or(0);
+        let index = selected
+            .and_then(|selected| efforts.iter().position(|e| e == selected))
+            .unwrap_or(default_index);
+        let provider = Kind::from_id(&self.summary.provider);
+        Some((
+            efforts,
+            index,
+            default_index,
+            model_display_name(provider, &model.id, &model.name),
+        ))
+    }
     fn model_info(&self) -> Option<&Model> {
         match self.model.as_deref().or(self.resolved_model.as_deref()) {
             Some(id) => self.catalog.iter().find(|m| m.id == id),
@@ -2256,18 +2282,6 @@ impl Conversation {
         // Keep the saved effort visible while the live catalog is loading.
         self.settings.effort.as_ref().map(|_| self.effort_label())
     }
-    fn effort_items(&self) -> Vec<MenuAction> {
-        self.model_info().map_or_else(Vec::new, |model| {
-            model
-                .efforts
-                .iter()
-                .map(|effort| {
-                    MenuAction::new(format!("effort:{effort}"), effort_name(effort))
-                        .checked(self.selected_effort() == Some(effort.as_str()))
-                })
-                .collect()
-        })
-    }
     /// The pill's label, which drops the catalog names' "Claude " prefix.
     fn model_label(&self) -> SharedString {
         let name = self
@@ -2433,13 +2447,16 @@ impl Conversation {
         cx.notify();
     }
     fn toggle_menu(&mut self, kind: ComposerMenu, window: &mut Window, cx: &mut Context<Self>) {
-        if kind == ComposerMenu::Model
-            && cx
+        if kind == ComposerMenu::Model {
+            // With nothing else to offer, the button opens the picker itself
+            // instead of a menu whose only row opens it.
+            let beside = cx
                 .try_global::<crate::settings::Preferences>()
-                .is_some_and(|p| p.model_controls == "beside")
-        {
-            self.toggle_mono_models(window, cx);
-            return;
+                .is_some_and(|p| p.model_controls == "beside");
+            if beside || self.mono_model_options().is_empty() {
+                self.toggle_mono_models(window, cx);
+                return;
+            }
         }
         self.mono_ui.models = None;
         if self.menu.as_ref().is_some_and(|open| open.kind == kind) {
@@ -2634,12 +2651,13 @@ impl Conversation {
             ),
             // ModelPicker: a "Model" row whose flyout lists the models.
             ComposerMenu::Model => {
+                let effort_bar = self.effort_bar_args();
                 let list = cx.new(|cx| {
                     let hidden = cx
                         .try_global::<crate::settings::Preferences>()
                         .map(|p| p.hidden_for(&self.summary.cwd))
                         .unwrap_or_default();
-                    ModelList::new_for(
+                    let list = ModelList::new_for(
                         provider,
                         self.model.clone(),
                         &self.summary.cwd,
@@ -2647,7 +2665,13 @@ impl Conversation {
                         cx,
                     )
                     .hide_providers(hidden)
-                    .allow_provider_switch(true)
+                    .allow_provider_switch(true);
+                    match effort_bar {
+                        Some((efforts, index, default_index, name)) => {
+                            list.effort_bar(efforts, index, default_index, name, cx)
+                        }
+                        None => list,
+                    }
                 });
                 events.push(cx.subscribe_in(
                     &list,
@@ -2656,6 +2680,22 @@ impl Conversation {
                         if this.apply_model_pick(picked, cx) {
                             this.close_menu(window, cx);
                         }
+                    },
+                ));
+                events.push(cx.subscribe_in(
+                    &list,
+                    window,
+                    |this, _, picked: &crate::pickers::EffortPicked, _, cx| {
+                        this.set_effort_choice(picked.0.as_deref().unwrap_or(""), cx);
+                        this.save_settings(cx);
+                        cx.notify();
+                    },
+                ));
+                events.push(cx.subscribe_in(
+                    &list,
+                    window,
+                    |this, _, _: &crate::pickers::Dismissed, window, cx| {
+                        this.close_menu(window, cx);
                     },
                 ));
                 let focus = list.read(cx).search_focus(cx);
@@ -2676,7 +2716,7 @@ impl Conversation {
                         ))
                         .flyout(Flyout {
                             view: list.into(),
-                            width: 310.,
+                            width: 318.,
                             padding: 0.,
                             height: Some(442.),
                             max_height: None,
@@ -2697,7 +2737,7 @@ impl Conversation {
                 let items = self.mono_access_options();
                 ("Access", items, 288., MenuStyle::Access)
             }
-            ComposerMenu::Setting(ix) => self.mono_setting_menu(ix),
+            ComposerMenu::Setting(ix) => self.mono_setting_menu(ix, events, window, cx),
         }
     }
     /// The model trigger: the composer's model menu.
@@ -3532,7 +3572,7 @@ pub(crate) fn remember_access(mode: AccessMode, cx: &mut gpui_kit::App) {
 fn is_effort_key(key: &str) -> bool {
     matches!(
         key,
-        "effort" | "reasoning" | "reasoningEffort" | "reasoning_effort"
+        "effort" | "reasoning" | "reasoningEffort" | "reasoning_effort" | "variant"
     )
 }
 pub(crate) fn preferred_effort(provider: &str, cx: &gpui_kit::App) -> Option<String> {

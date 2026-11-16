@@ -137,7 +137,7 @@ fn remote_catalog_response(value: &Value, providers: Vec<Kind>) -> Result<Remote
                             .collect();
                         let current = setting["value"].as_str().unwrap_or("");
                         match id {
-                            "effort" | "reasoningEffort" => {
+                            "effort" | "reasoningEffort" | "variant" => {
                                 model.efforts =
                                     choices.iter().map(|(value, _)| value.clone()).collect();
                                 model.default_effort =
@@ -491,6 +491,7 @@ fn acp_models(value: &Value) -> Vec<Model> {
                             | "reasoning"
                             | "reasoning_effort"
                             | "thinking_level"
+                            | "variant"
                     )
                 ))
     });
@@ -535,7 +536,7 @@ fn acp_models(value: &Value) -> Vec<Model> {
                     && (o["category"] == "thought_level"
                         || matches!(
                             o["id"].as_str(),
-                            Some("reasoning" | "effort" | "reasoning_effort")
+                            Some("reasoning" | "effort" | "reasoning_effort" | "variant")
                         ))
             });
             let mut row_choices = Vec::new();
@@ -582,6 +583,7 @@ fn acp_models(value: &Value) -> Vec<Model> {
                             | "reasoning_effort"
                             | "thought_level"
                             | "thinking_level"
+                            | "variant"
                     ) || matches!(option["category"].as_str(), Some("model" | "mode"))
                         || (option["category"] == "thought_level" && id != "thinking")
                     {

@@ -412,13 +412,6 @@ impl Conversation {
     }
     pub(crate) fn mono_model_options(&self) -> Vec<MenuItem> {
         let mut items: Vec<MenuAction> = Vec::new();
-        if self.model_info().is_some_and(|m| !m.efforts.is_empty()) {
-            items.push(
-                MenuAction::new("reasoning", self.effort_setting_label())
-                    .value(self.effort_label())
-                    .submenu(self.effort_items()),
-            );
-        }
         if self.model_info().is_some_and(|m| m.fast) {
             items.push(MenuAction::new("fast", "Fast").toggle(self.settings.fast));
         }
@@ -848,12 +841,13 @@ impl Conversation {
         self.git_picker = None;
         self.git_events = None;
         let provider = Kind::from_id(&self.summary.provider);
+        let effort_bar = self.effort_bar_args();
         let list = cx.new(|cx| {
             let hidden = cx
                 .try_global::<crate::settings::Preferences>()
                 .map(|p| p.hidden_for(&self.summary.cwd))
                 .unwrap_or_default();
-            ModelList::new_for(
+            let list = ModelList::new_for(
                 provider,
                 self.model.clone(),
                 &self.summary.cwd,
@@ -861,17 +855,41 @@ impl Conversation {
                 cx,
             )
             .hide_providers(hidden)
-            .allow_provider_switch(true)
-        });
-        let events = vec![cx.subscribe_in(
-            &list,
-            window,
-            |this, _, picked: &ModelPicked, window, cx| {
-                if this.apply_model_pick(picked, cx) {
-                    this.close_mono_models(window, cx);
+            .allow_provider_switch(true);
+            match effort_bar {
+                Some((efforts, index, default_index, name)) => {
+                    list.effort_bar(efforts, index, default_index, name, cx)
                 }
-            },
-        )];
+                None => list,
+            }
+        });
+        let events = vec![
+            cx.subscribe_in(
+                &list,
+                window,
+                |this, _, picked: &ModelPicked, window, cx| {
+                    if this.apply_model_pick(picked, cx) {
+                        this.close_mono_models(window, cx);
+                    }
+                },
+            ),
+            cx.subscribe_in(
+                &list,
+                window,
+                |this, _, picked: &crate::pickers::EffortPicked, _, cx| {
+                    this.set_effort_choice(picked.0.as_deref().unwrap_or(""), cx);
+                    this.save_settings(cx);
+                    cx.notify();
+                },
+            ),
+            cx.subscribe_in(
+                &list,
+                window,
+                |this, _, _: &crate::pickers::Dismissed, window, cx| {
+                    this.close_mono_models(window, cx);
+                },
+            ),
+        ];
         window.focus(&list.read(cx).search_focus(cx), cx);
         self.mono_ui.models = Some((list, events));
         cx.notify();
@@ -883,7 +901,7 @@ impl Conversation {
             popover("composer-models", Anchor::Slot(self.model_anchor.clone()))
                 .side(Side::Top)
                 .align(Align::End)
-                .width(310.)
+                .width(318.)
                 .height(442.)
                 .on_dismiss(move |window, cx| {
                     let _ = this.update(cx, |this, cx| this.close_mono_models(window, cx));
@@ -902,6 +920,9 @@ impl Conversation {
     pub(super) fn mono_setting_menu(
         &self,
         ix: usize,
+        events: &mut Vec<Subscription>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
     ) -> (&'static str, Vec<MenuItem>, f32, MenuStyle) {
         let Some(model) = self.model_info() else {
             return ("Model setting", Vec::new(), 210., MenuStyle::Explorer);
@@ -916,7 +937,30 @@ impl Conversation {
                 items.extend(rows.into_iter().map(MenuItem::from));
             };
             if !model.efforts.is_empty() {
-                group(&mut items, self.effort_setting_label(), self.effort_items());
+                let (efforts, index, default_index, name) = self
+                    .effort_bar_args()
+                    .unwrap_or((model.efforts.clone(), 0, 0, self.effort_label().into()));
+                let slider = cx.new(|cx| {
+                    crate::pickers::EffortSlider::new(
+                        efforts,
+                        index,
+                        default_index,
+                        name,
+                        false,
+                        cx,
+                    )
+                });
+                events.push(cx.subscribe_in(
+                    &slider,
+                    window,
+                    |this, _, picked: &crate::pickers::EffortPicked, _, cx| {
+                        this.set_effort_choice(picked.0.as_deref().unwrap_or(""), cx);
+                        this.save_settings(cx);
+                        cx.notify();
+                    },
+                ));
+                let focus = slider.read(cx).focus_handle(cx);
+                items.push(MenuItem::Custom(slider.into(), focus));
             }
             if model.fast {
                 group(
@@ -943,10 +987,16 @@ impl Conversation {
                 .filter(|i| matches!(i, MenuItem::Header(_)))
                 .count()
                 == 1
+                && !items.iter().any(|i| matches!(i, MenuItem::Custom(..)))
             {
                 items.retain(|i| !matches!(i, MenuItem::Header(_)));
             }
-            return ("Effort", items, 210., MenuStyle::Explorer);
+            let width = if items.iter().any(|i| matches!(i, MenuItem::Custom(..))) {
+                244.
+            } else {
+                210.
+            };
+            return ("Effort", items, width, MenuStyle::Explorer);
         }
         if let Some(control) = model.controls.get(ix - 1) {
             let selected = self

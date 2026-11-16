@@ -787,16 +787,23 @@ impl Store {
         let current = self.shared_agent(id)?.unwrap_or_default();
         let mut controls = current.model_settings;
         controls.extend(settings.model_settings.clone());
-        let effort_key = [
-            "effort",
-            "reasoning",
-            "reasoningEffort",
-            "reasoning_effort",
-            "variant",
-        ]
-        .into_iter()
-        .find(|key| controls.contains_key(*key))
-        .unwrap_or("effort");
+        let provider = sql(self.conn.query_row(
+            "SELECT harness FROM sessions WHERE id=?1",
+            [self.persisted_session_id(id)?],
+            |r| r.get::<_, String>(0),
+        ))
+        .unwrap_or_default();
+        let effort_keys: &[&str] = match provider.as_str() {
+            "opencode" => &["variant", "effort", "reasoning", "reasoningEffort", "reasoning_effort"],
+            "codex" => &["reasoningEffort", "effort", "reasoning", "reasoning_effort", "variant"],
+            "cursor" => &["reasoning", "reasoning_effort", "effort", "reasoningEffort", "variant"],
+            _ => &["effort", "reasoning", "reasoningEffort", "reasoning_effort", "variant"],
+        };
+        let effort_key = effort_keys
+            .iter()
+            .copied()
+            .find(|key| controls.contains_key(*key))
+            .unwrap_or(effort_keys[0]);
         if let Some(effort) = &settings.effort {
             controls.insert(effort_key.into(), effort.clone());
         } else {
@@ -816,11 +823,11 @@ impl Store {
             ("worktree_removed", json!(settings.worktree_removed)),
             ("provider_account_id", json!(settings.account.id)),
         ];
-        let (provider, saved_model): (String, String) = sql(self.conn.query_row(
-            "SELECT harness,model FROM sessions WHERE id=?1",
+        let (provider, saved_model): (String, String) = (provider, sql(self.conn.query_row(
+            "SELECT model FROM sessions WHERE id=?1",
             [self.persisted_session_id(id)?],
-            |r| Ok((r.get(0)?, r.get(1)?)),
-        ))?;
+            |r| r.get::<_, String>(0),
+        ))?);
         if settings.model != super::monocode_import::native_model(&saved_model, &provider) {
             let model = settings.model.as_deref().unwrap_or("default");
             let model = if provider == "claude" {

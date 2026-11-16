@@ -1,7 +1,8 @@
 // The pickers that open as flyouts beside a menu row: ModelPicker.tsx's
 // ModelFlyout and SearchableProjectPicker.tsx's ProjectPickerPopover. Each
 // owns a search field; arrows and Enter in it move and pick in the list.
-use crate::{input, theme::*, workspace::project_name};
+use crate::popover::AnchorSlot;
+use crate::{conversation::effort_name, input, theme::*, workspace::project_name};
 use gpui_kit::{
     AnyElement, Context, Entity, EventEmitter, FocusHandle, Focusable, Role, SharedString,
     Subscription, Window, div, prelude::*, px,
@@ -456,6 +457,267 @@ struct ModelEntry {
 /// The model the next turn uses; `None` is the provider's default.
 pub(crate) struct ModelPicked(pub Kind, pub Option<String>);
 
+/// The reasoning effort picked in the flyout's slider; `None` resets to the
+/// model's default.
+pub(crate) struct EffortPicked(pub Option<String>);
+
+/// Escape with the flyout open; the owner decides what to close.
+pub(crate) struct Dismissed;
+
+/// The effort levels of a model, as a slider with a reset button. Used by
+/// the model flyout and by the beside-mode effort menu.
+pub(crate) struct EffortSlider {
+    efforts: Vec<String>,
+    index: usize,
+    default_index: usize,
+    model_name: SharedString,
+    slot: AnchorSlot,
+    dragging: bool,
+    focus: FocusHandle,
+    border: bool,
+}
+impl EventEmitter<EffortPicked> for EffortSlider {}
+impl Focusable for EffortSlider {
+    fn focus_handle(&self, _: &gpui_kit::App) -> FocusHandle {
+        self.focus.clone()
+    }
+}
+impl EffortSlider {
+    pub(crate) fn new(
+        efforts: Vec<String>,
+        index: usize,
+        default_index: usize,
+        model_name: SharedString,
+        border: bool,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let last = efforts.len().saturating_sub(1);
+        Self {
+            efforts,
+            index: index.min(last),
+            default_index: default_index.min(last),
+            model_name,
+            slot: AnchorSlot::default(),
+            dragging: false,
+            focus: cx.focus_handle(),
+            border,
+        }
+    }
+    fn selected(&self) -> &str {
+        &self.efforts[self.index]
+    }
+    fn set_index(&mut self, index: usize, cx: &mut Context<Self>) {
+        let index = index.min(self.efforts.len() - 1);
+        if self.index == index {
+            return;
+        }
+        self.index = index;
+        let value = self.selected().to_owned();
+        cx.emit(EffortPicked(Some(value)));
+        cx.notify();
+    }
+    fn from_x(&mut self, x: gpui_kit::Pixels, cx: &mut Context<Self>) {
+        let Some(bounds) = self.slot.get() else { return };
+        let steps = self.efforts.len();
+        if steps < 2 {
+            return;
+        }
+        let width = bounds.size.width.as_f32();
+        if width <= 0. {
+            return;
+        }
+        let fraction = ((x - bounds.left()).as_f32() / width).clamp(0., 1.);
+        self.set_index((fraction * (steps - 1) as f32).round() as usize, cx);
+    }
+    fn reset(&mut self, cx: &mut Context<Self>) {
+        let already = self.index == self.default_index;
+        self.index = self.default_index;
+        if !already {
+            cx.notify();
+        }
+        cx.emit(EffortPicked(None));
+    }
+}
+impl Render for EffortSlider {
+    fn render(&mut self, _: &mut gpui_kit::Window, cx: &mut Context<Self>) -> impl IntoElement {
+        const KNOB: f32 = 16.;
+        let steps = self.efforts.len();
+        let last = (steps.max(2) - 1) as f32;
+        let fraction = if steps > 1 { self.index as f32 / last } else { 0.5 };
+        let track = self.slot.get().map_or(220., |bounds| {
+            bounds.size.width.as_f32().max(80.)
+        });
+        let name = effort_name(self.selected());
+        let first = effort_name(&self.efforts[0]);
+        let last_name = effort_name(&self.efforts[steps - 1]);
+        let knob = fraction * (track - KNOB);
+        let is_default = self.index == self.default_index;
+        div()
+            .w_full()
+            .flex_shrink_0()
+            .when(self.border, |d| {
+                d.border_t_1().border_color(content(0.07))
+            })
+            .px(px(12.))
+            .pt(px(8.))
+            .pb(px(10.))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(icon("zap", 15.).text_color(content(0.55)))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .flex()
+                            .flex_col()
+                            .items_center()
+                            .child(
+                                div()
+                                    .text_size(px(13.))
+                                    .line_height(px(17.))
+                                    .font_weight(gpui_kit::FontWeight::SEMIBOLD)
+                                    .text_color(content(1.))
+                                    .child(name.clone()),
+                            )
+                            .child(
+                                div()
+                                    .text_size(px(11.))
+                                    .line_height(px(14.))
+                                    .text_color(content(0.45))
+                                    .truncate()
+                                    .child(self.model_name.clone()),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .id("model-effort-reset")
+                            .debug_selector(|| "model-effort-reset".into())
+                            .role(Role::Button)
+                            .aria_label("Reset effort to default")
+                            .cursor_pointer()
+                            .size(px(28.))
+                            .flex_shrink_0()
+                            .rounded_full()
+                            .border_1()
+                            .border_color(content(0.12))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .when(is_default, |d| d.opacity(0.4))
+                            .hover(|s| s.bg(content(0.06)))
+                            .child(icon("rotate-ccw", 14.).text_color(content(0.7)))
+                            .on_click(cx.listener(|this, _, _, cx| this.reset(cx))),
+                    ),
+            )
+            .child(
+                div()
+                    .id("model-effort-slider")
+                    .debug_selector(|| "model-effort-slider".into())
+                    .role(Role::Slider)
+                    .aria_label("Reasoning effort")
+                    .aria_value(name)
+                    .track_focus(&self.focus)
+                    .tab_index(0)
+                    .cursor_pointer()
+                    .relative()
+                    .w_full()
+                    .mt(px(6.))
+                    .h(px(18.))
+                    .flex()
+                    .items_center()
+                    .child(self.slot.layout_probe())
+                    .child(
+                        div()
+                            .absolute()
+                            .left_0()
+                            .right_0()
+                            .h(px(4.))
+                            .rounded_full()
+                            .bg(content(0.15)),
+                    )
+                    .child(
+                        div()
+                            .absolute()
+                            .left_0()
+                            .w(px(knob + KNOB / 2.))
+                            .h(px(4.))
+                            .rounded_full()
+                            .bg(gpui_kit::rgb(crate::theme::ACCENT)),
+                    )
+                    .children((0..steps).map(|ix| {
+                        let dot = if steps > 1 {
+                            ix as f32 / last * (track - KNOB)
+                        } else {
+                            (track - KNOB) / 2.
+                        } + KNOB / 2.;
+                        div()
+                            .absolute()
+                            .left(px(dot - 2.))
+                            .size(px(4.))
+                            .rounded_full()
+                            .bg(content(if ix <= self.index { 0.9 } else { 0.3 }))
+                    }))
+                    .child(
+                        div()
+                            .absolute()
+                            .left(px(knob))
+                            .size(px(KNOB))
+                            .rounded_full()
+                            .bg(gpui_kit::rgb(0xffffff))
+                            .shadow_md(),
+                    )
+                    .on_mouse_down(
+                        gpui_kit::MouseButton::Left,
+                        cx.listener(|this, event: &gpui_kit::MouseDownEvent, window, cx| {
+                            window.focus(&this.focus, cx);
+                            this.dragging = true;
+                            this.from_x(event.position.x, cx);
+                            cx.stop_propagation();
+                        }),
+                    )
+                    .on_mouse_move(cx.listener(
+                        |this, event: &gpui_kit::MouseMoveEvent, _, cx| {
+                            if this.dragging
+                                && event.pressed_button == Some(gpui_kit::MouseButton::Left)
+                            {
+                                this.from_x(event.position.x, cx);
+                            }
+                        },
+                    ))
+                    .on_mouse_up(
+                        gpui_kit::MouseButton::Left,
+                        cx.listener(|this, _, _, _| this.dragging = false),
+                    )
+                    .on_key_down(cx.listener(
+                        |this, event: &gpui_kit::KeyDownEvent, _, cx| {
+                            let step = match event.keystroke.key.as_str() {
+                                "left" | "down" => this.index.saturating_sub(1),
+                                "right" | "up" => (this.index + 1).min(this.efforts.len() - 1),
+                                "home" => 0,
+                                "end" => this.efforts.len() - 1,
+                                _ => return,
+                            };
+                            this.set_index(step, cx);
+                            cx.stop_propagation();
+                        },
+                    )),
+            )
+            .child(
+                div()
+                    .flex()
+                    .justify_between()
+                    .mt(px(2.))
+                    .text_size(px(10.))
+                    .text_color(content(0.4))
+                    .child(first)
+                    .child(last_name),
+            )
+    }
+}
+
 /// ModelFlyout: providers down a rail on the left, a search field over the
 /// selected provider's models on the right. Switching providers is available
 /// between turns.
@@ -476,9 +738,13 @@ pub(crate) struct ModelList {
     tab: ModelTab,
     highlighted: usize,
     search: Entity<input::Input>,
+    effort: Option<Entity<EffortSlider>>,
+    _effort: Option<Subscription>,
     _changed: Subscription,
 }
 impl EventEmitter<ModelPicked> for ModelList {}
+impl EventEmitter<EffortPicked> for ModelList {}
+impl EventEmitter<Dismissed> for ModelList {}
 impl ModelList {
     pub(crate) fn new_for(
         provider: Kind,
@@ -528,6 +794,8 @@ impl ModelList {
                 .unwrap_or(ModelTab::Harness(provider)),
             highlighted: 0,
             search,
+            effort: None,
+            _effort: None,
             _changed: changed,
         };
         list.highlighted = list.current_index(cx);
@@ -611,6 +879,31 @@ impl ModelList {
     }
     pub(crate) fn allow_provider_switch(mut self, allowed: bool) -> Self {
         self.switch_allowed = allowed;
+        self
+    }
+    /// Show the model's effort levels as a slider at the bottom of the
+    /// flyout, Codex's ModelFlyout effort bar.
+    pub(crate) fn effort_bar(
+        mut self,
+        efforts: Vec<String>,
+        index: usize,
+        default_index: usize,
+        model_name: SharedString,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        if efforts.is_empty() {
+            return self;
+        }
+        let slider = cx.new(|cx| {
+            EffortSlider::new(efforts, index, default_index, model_name, true, cx)
+        });
+        self._effort = Some(cx.subscribe(
+            &slider,
+            |_, _, picked: &EffortPicked, cx| {
+                cx.emit(EffortPicked(picked.0.clone()));
+            },
+        ));
+        self.effort = Some(slider);
         self
     }
     /// Like the Tauri picker, hide providers whose CLI isn't installed once the
@@ -1087,6 +1380,12 @@ impl Render for ModelList {
                 this.pick(this.highlighted, cx);
                 cx.stop_propagation();
             }))
+            .on_key_down(cx.listener(|_, event: &gpui_kit::KeyDownEvent, _, cx| {
+                if event.keystroke.key.as_str() == "escape" {
+                    cx.emit(Dismissed);
+                    cx.stop_propagation();
+                }
+            }))
             .child(
                 div()
                     .id("model-providers")
@@ -1199,7 +1498,8 @@ impl Render for ModelList {
                                         ),
                                 )
                             }),
-                    ),
+                    )
+                    .children(self.effort.clone()),
             )
             .into_any_element()
     }
