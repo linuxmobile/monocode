@@ -1,4 +1,6 @@
 pub(crate) mod attachments;
+#[cfg(test)]
+mod bench_tests;
 pub(crate) mod burst;
 pub(crate) mod dates;
 mod drafts;
@@ -698,6 +700,9 @@ pub(crate) struct TranscriptView {
     /// Every hovered row and its turn. Entering the next row can arrive
     /// before leaving the last, so the turn is hovered while any row is.
     hover_rows: HashMap<(usize, usize), usize>,
+    /// Whether a source row's tool call opens an agent panel, kept until the
+    /// row's text changes: rebuilding parses every tool row in the turn.
+    tool_panel_rows: HashMap<usize, bool>,
     /// Messages entering the chat, by source start, as useBottomChatMotion.
     entrances: HashMap<usize, Instant>,
     /// The emoji a Mono answered a prompt with, by the prompt's start.
@@ -2484,6 +2489,7 @@ impl TranscriptView {
             hovered_prompt: None,
             hovered_prompt_actions: None,
             hover_rows: HashMap::new(),
+            tool_panel_rows: HashMap::new(),
             entrances: HashMap::new(),
             reactions: HashMap::new(),
             follow: Follow::default(),
@@ -2890,6 +2896,7 @@ impl TranscriptView {
         self.patch_view(self.base + start, rows, cx);
     }
     fn patch_view(&mut self, start: usize, rows: Vec<Row>, cx: &mut Context<Self>) {
+        let _perf = crate::perf_trace::Scope::new("transcript.patch");
         if rows.is_empty() {
             return;
         }
@@ -2898,6 +2905,7 @@ impl TranscriptView {
             "transcript patches must be contiguous"
         );
         let known = self.source.len();
+        let written = rows.len();
         for (ix, row) in rows.into_iter().enumerate() {
             let ix = start + ix;
             let bytes = row.text.capacity().saturating_add(row.role.capacity());
@@ -2917,6 +2925,8 @@ impl TranscriptView {
                 .get(start)
                 .is_some_and(|row| row.role == "visual")
         });
+        self.tool_panel_rows
+            .retain(|&at, _| at < start || at >= start + written);
         if start == 0 {
             self.placed.clear();
         }
@@ -3074,8 +3084,24 @@ impl TranscriptView {
         self.rebuild_rows(start, cx);
         cx.notify();
     }
+    /// Whether a source row is a tool call that opens an agent panel.
+    ///
+    /// Rebuilding asks this of every tool row in the turn, and a streamed turn
+    /// rebuilds on every patch; the answer holds until the row's text changes.
+    fn agent_panel_row(&mut self, at: usize) -> bool {
+        if let Some(panel) = self.tool_panel_rows.get(&at) {
+            return *panel;
+        }
+        let row = &self.source[at];
+        let panel = row.first
+            && serde_json::from_str::<ToolCall>(&row.text)
+                .is_ok_and(|call| matches!(call.panel(), Some(Panel::Agent(_))));
+        self.tool_panel_rows.insert(at, panel);
+        panel
+    }
     /// `rebuild` for a caller that notifies itself.
     fn rebuild_rows(&mut self, start: usize, cx: &mut Context<Self>) {
+        let _perf = crate::perf_trace::Scope::new("transcript.rebuild");
         #[cfg(test)]
         {
             self.rebuild_passes += 1;
@@ -3165,21 +3191,26 @@ impl TranscriptView {
                 message_ix -= 1;
             }
         }
+        let mut turn_has_panel = false;
+        if !self.mono {
+            for at in current_turn..current_end {
+                if self.source[at].role == "tool" && self.agent_panel_row(at) {
+                    turn_has_panel = true;
+                    break;
+                }
+            }
+        }
         if !self.mono
-            && (self.source[current_turn..current_end].iter().any(|row| {
-                row.role == "tool"
-                    && row.first
-                    && serde_json::from_str::<ToolCall>(&row.text)
-                        .is_ok_and(|call| matches!(call.panel(), Some(Panel::Agent(_))))
-            }) || self.rows.iter().any(|row| {
-                self.messages
-                    .get(row.message)
-                    .is_some_and(|message| message.turn == current_turn)
-                    && matches!(
-                        &row.body,
-                        Body::Tool { call, .. } if matches!(call.panel(), Some(Panel::Agent(_)))
-                    )
-            }))
+            && (turn_has_panel
+                || self.rows.iter().any(|row| {
+                    self.messages
+                        .get(row.message)
+                        .is_some_and(|message| message.turn == current_turn)
+                        && matches!(
+                            &row.body,
+                            Body::Tool { call, .. } if matches!(call.panel(), Some(Panel::Agent(_)))
+                        )
+                }))
         {
             // Pinned runs sit below the fold's work rather than at their
             // original source offset. Rebuild the whole turn so a suffix
@@ -5843,6 +5874,7 @@ fn reasoning_summary_of(tree: &crate::markdown_model::BlockTree) -> SharedString
 impl gpui_kit::EventEmitter<ResponseRequest> for TranscriptView {}
 impl Render for TranscriptView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let _perf = crate::perf_trace::Scope::new("transcript.render");
         self.perf_scroll(window, cx);
         let top = self.list.logical_scroll_top();
         // Rows that don't fill the viewport can't scroll, so their top being

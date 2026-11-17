@@ -161,6 +161,7 @@ struct Chrome {
 }
 impl Render for Chrome {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let _perf = crate::perf_trace::Scope::new("shell.chrome");
         self.renders += 1;
         let kind = self.kind;
         self.owner
@@ -8486,6 +8487,7 @@ fn enter_from(leaf: &LayoutLeaf) -> (Edge, Rect) {
 }
 impl Render for Shell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let _perf = crate::perf_trace::Scope::new("shell.render");
         self.keep_visible_idle_agents(cx);
         self.sync_ui_scale(window, cx);
         if self.mono_panes_unsettled(cx) {

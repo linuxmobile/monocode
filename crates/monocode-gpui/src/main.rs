@@ -45,6 +45,7 @@ mod notifications;
 mod pane_layout;
 mod pane_motion;
 mod particle_text;
+mod perf_trace;
 mod phase_tile;
 mod pickers;
 mod popover;
@@ -418,6 +419,7 @@ fn main() {
             cx.set_global(title_raster);
             image_memory::init(cx);
             frame_log::start(cx);
+            perf_trace::start(cx);
             gpu_trim::start(cx);
             input::bind(cx);
             image_lightbox::bind(cx);

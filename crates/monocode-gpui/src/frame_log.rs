@@ -7,7 +7,9 @@
 //! - `fps`: draws per second, split into `layout` (content changed),
 //!   `paint` (only animation steps) and `refresh` (whole-window redraws).
 //! - `draw`: average and slowest time inside GPUI's draw, in milliseconds.
-//! - `main`: main-thread CPU over the second, the number to keep low.
+//! - `main`: main-thread CPU over the second, the number to keep low. GPUI
+//!   Fast reports no frame counters, so a Linux build logs `fps=0` lines with
+//!   `main` alone; `MONOCODE_PERF_TRACE=1` names the app's own hot paths.
 //! - `views`: entity views rendered vs. cached ones reused.
 //! - `by`: the views whose own `notify` caused frames, with frame counts.
 //! - after `|`: counts the app adds with `frame_stats::count`.
@@ -64,7 +66,9 @@ pub(crate) fn start(cx: &mut App) {
             let now = Instant::now();
             let main = cpu.percent_since_last(now.duration_since(last));
             last = now;
-            if stats.frames == 0 {
+            // GPUI Fast has no frame counters; its main-thread CPU still names
+            // the seconds worth reading.
+            if stats.frames == 0 && !main.is_some_and(|main| main > 0.5) {
                 continue;
             }
             let line = format_line(&stats, main);
@@ -116,18 +120,14 @@ fn format_line(stats: &frame_stats::FrameStats, main: Option<f64>) -> String {
     )
 }
 
-/// CPU time of the thread that created it, read through Mach.
+/// CPU time of the thread that created it, read from `/proc` on Linux.
 struct MainThreadCpu {
     last: Option<Duration>,
 }
 
 impl MainThreadCpu {
     fn new() -> Self {
-        let mut cpu = Self {
-            // SAFETY: names the calling thread's Mach port without taking a
-            // new right, so there is nothing to deallocate.
-            last: None,
-        };
+        let mut cpu = Self { last: None };
         cpu.last = cpu.used();
         cpu
     }
@@ -140,6 +140,17 @@ impl MainThreadCpu {
     }
 
     fn used(&self) -> Option<Duration> {
-        None
+        // `/proc/self/task/<tid>/stat` counts this thread alone; the process
+        // total would hide a busy background worker behind an idle frame.
+        let tid = unsafe { libc::gettid() };
+        let stat = std::fs::read_to_string(format!("/proc/self/task/{tid}/stat")).ok()?;
+        // `comm` may hold spaces and parentheses; fields resume after the last `)`.
+        let mut fields = stat.get(stat.rfind(')')? + 1..)?.split_whitespace();
+        let utime: u64 = fields.nth(11)?.parse().ok()?;
+        let stime: u64 = fields.next()?.parse().ok()?;
+        let hertz = u64::try_from(unsafe { libc::sysconf(libc::_SC_CLK_TCK) }).unwrap_or(100);
+        Some(Duration::from_micros(
+            (utime + stime).saturating_mul(1_000_000) / hertz.max(1),
+        ))
     }
 }

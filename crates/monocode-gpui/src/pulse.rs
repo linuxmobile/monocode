@@ -41,20 +41,23 @@ impl Rate {
     }
 }
 
-type FrameCallback = Box<dyn FnOnce(&mut App)>;
+/// One tick's work; the bool says whether the loop keeps running.
+type FrameCallback = Box<dyn FnOnce(&mut App) -> bool>;
+/// A loop's own callback, which runs after the tick's queued work.
+type LoopCallback = Box<dyn FnOnce(&mut App)>;
 struct Lease {
     rate: Rate,
     /// Painted a loop since the clock last notified it.
     painted: bool,
-    on_tick: Option<FrameCallback>,
+    on_tick: Option<LoopCallback>,
 }
 
 #[derive(Default)]
 struct Clock {
     epoch: Option<Instant>,
     leases: HashMap<EntityId, Lease>,
-    /// Waiters for the next tick, see [`beat`].
-    beats: Vec<async_channel::Sender<()>>,
+    /// Updates to apply inside the next tick, before it notifies the loops.
+    pending: Vec<FrameCallback>,
     tick: u64,
     running: bool,
 }
@@ -82,7 +85,7 @@ fn request_inner(
     rate: Rate,
     window: &Window,
     cx: &mut App,
-    mut on_tick: Option<FrameCallback>,
+    mut on_tick: Option<LoopCallback>,
 ) -> bool {
     if cx.reduce_motion() {
         return false;
@@ -142,35 +145,26 @@ pub(crate) fn running(cx: &App) -> bool {
     cx.try_global::<Clock>().is_some_and(|clock| clock.running)
 }
 
-/// Waits for the clock's next tick, or returns at once while no loop runs.
-/// Work that would otherwise draw a frame of its own, such as a streamed
-/// reply's updates, lands in the loops' frame instead.
-pub(crate) async fn beat(cx: &mut gpui_kit::AsyncApp) {
+/// Runs `work` inside the clock's next tick, before the tick notifies the
+/// loops, so a view the work changes draws in the loops' frame rather than one
+/// of its own. Work queued while no loop runs runs at once.
+///
+/// `work` returns whether to keep going, like the update loop it replaces.
+pub(crate) fn land(cx: &mut gpui_kit::AsyncApp, work: impl FnOnce(&mut App) -> bool + 'static) {
     // Tests park the executor without advancing the clock, so a tick would
     // never come; they apply updates as soon as they arrive.
-    if cfg!(test) {
+    let running = !cfg!(test) && cx.update(|cx| cx.default_global::<Clock>().running);
+    if !running {
+        cx.update(work);
         return;
     }
-    let beat = cx.update(|cx| {
-        let clock = cx.default_global::<Clock>();
-        clock.running.then(|| {
-            let (tx, rx) = async_channel::bounded(1);
-            clock.beats.push(tx);
-            rx
-        })
-    });
-    if let Some(beat) = beat {
-        beat.recv().await.ok();
-    }
+    cx.update(|cx| cx.default_global::<Clock>().pending.push(Box::new(work)));
 }
 
 fn tick(cx: &mut App) -> bool {
     let background = !app_visible(cx);
     let clock = cx.global_mut::<Clock>();
-    // Before the loops notify, so whatever the waiters change draws with them.
-    for beat in clock.beats.drain(..) {
-        beat.try_send(()).ok();
-    }
+    let pending = std::mem::take(&mut clock.pending);
     clock.tick = clock.tick.wrapping_add(1);
     let tick = clock.tick;
     let mut due = Vec::new();
@@ -186,9 +180,13 @@ fn tick(cx: &mut App) -> bool {
         due.push((*view, lease.on_tick.take()));
         true
     });
-    if clock.leases.is_empty() {
+    if clock.leases.is_empty() && pending.is_empty() {
         clock.running = false;
         return false;
+    }
+    // Before the loops notify, so what an update changes draws with them.
+    for work in pending {
+        work(cx);
     }
     for (view, callback) in due {
         if let Some(callback) = callback {

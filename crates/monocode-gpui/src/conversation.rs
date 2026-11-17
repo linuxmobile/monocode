@@ -1231,7 +1231,7 @@ impl Conversation {
         self.approvals.clear();
         self.questions.clear();
         let (tx, rx) = async_channel::bounded(8);
-        let mut turn_model_id = settings
+        let turn_model_id = settings
             .turn_model
             .as_ref()
             .and_then(|turn| turn.model_id.clone())
@@ -1253,328 +1253,340 @@ impl Conversation {
             .detach();
         cx.spawn(async move |this, cx| {
             while let Ok(update) = rx.recv().await {
-                // Land each update on the spinners' 30Hz beat: the reply then
-                // redraws in their frames instead of adding frames of its own.
-                if !update.finished {
-                    crate::pulse::beat(cx).await;
-                }
                 let finished = update.finished;
-                if this
-                    .update(cx, |this, cx| {
-                        if this.submission_generation != generation {
-                            return;
-                        }
-                        let stopping = this.stopping;
-                        // The final update settles accepted rows and storage.
-                        // Ignore streaming notifications after the user stops.
-                        if stopping && !finished {
-                            return;
-                        }
-                        let source_selected = this.summary.provider == source_provider
-                            && this.settings.account.id == source_account;
-                        if let Some(cwd) = update.worktree_cwd
-                            && (this.settings.worktree_cwd.as_ref() != Some(&cwd)
-                                || this.settings.new_worktree)
-                        {
-                            this.preparing_worktree = false;
-                            this.settings.worktree_cwd = Some(cwd);
-                            this.settings.new_worktree = false;
-                            this.save_settings(cx);
-                            this.generate_worktree_branch(&worktree_message, cx);
-                            this.refresh_git(cx);
-                        }
-                        // The host renamed the conversation; it is not sent back.
-                        if let Some(title) = update.title
-                            && this.summary.title != title
-                        {
-                            this.summary.title = title;
-                            cx.emit(SessionChanged);
-                        }
-                        if let Some(commands) = update.commands.filter(|_| source_selected) {
-                            this.completion.update(cx, |completion, cx| {
-                                completion.set_native_commands(commands, cx)
-                            });
-                        }
-                        let needed_approval = this.needs_approval();
-                        let incoming_notification_input = !stopping
-                            && (!update.approvals.is_empty() || !update.questions.is_empty());
-                        let mono_queue_changed = this.settings.mono.is_some()
-                            && (update.turn_ready
-                                || update.delivered.is_some()
-                                || !update.follow_up_delivered.is_empty()
-                                || !update.follow_up_errors.is_empty());
-                        this.transcript.update(cx, |v, cx| {
-                            v.patch(update.start, update.rows, cx);
-                            if stopping {
-                                v.stop_streaming(cx);
+                let entity = this.clone();
+                let source_provider = source_provider.clone();
+                let source_account = source_account.clone();
+                let worktree_message = worktree_message.clone();
+                let mut turn_model_id = turn_model_id.clone();
+                let apply = move |cx: &mut gpui_kit::App| {
+                    entity
+                        .update(cx, |this, cx| {
+                            if this.submission_generation != generation {
+                                return;
                             }
-                        });
-                        if let Some(id) = update.provider_turn_id {
-                            this.transcript
-                                .update(cx, |view, _| view.record_provider_turn(id));
-                        }
-                        if let Some(id) = update.provider_id {
-                            if let Some(pending) = this.settings.pending_provider_switch.as_mut()
-                                && pending.from == source_provider
-                                && pending.account.id == source_account
+                            let stopping = this.stopping;
+                            // The final update settles accepted rows and storage.
+                            // Ignore streaming notifications after the user stops.
+                            if stopping && !finished {
+                                return;
+                            }
+                            let source_selected = this.summary.provider == source_provider
+                                && this.settings.account.id == source_account;
+                            if let Some(cwd) = update.worktree_cwd
+                                && (this.settings.worktree_cwd.as_ref() != Some(&cwd)
+                                    || this.settings.new_worktree)
                             {
-                                pending.provider_id = Some(id);
-                            } else if source_selected {
-                                this.summary.provider_id = Some(id);
+                                this.preparing_worktree = false;
+                                this.settings.worktree_cwd = Some(cwd);
+                                this.settings.new_worktree = false;
+                                this.save_settings(cx);
+                                this.generate_worktree_branch(&worktree_message, cx);
+                                this.refresh_git(cx);
                             }
-                        }
-                        if let Some(handoff) = update.handoff {
-                            this.settings.pending_provider_switch = None;
-                            this.settings.handoff = handoff;
-                            this.save_settings(cx);
-                        }
-                        if let Some(model) = update.config_model {
-                            if let Some(pending) = this.settings.pending_provider_switch.as_mut()
-                                && pending.from == source_provider
-                                && pending.account.id == source_account
+                            // The host renamed the conversation; it is not sent back.
+                            if let Some(title) = update.title
+                                && this.summary.title != title
                             {
-                                pending.model = Some(model);
-                            } else if source_selected {
-                                this.model = Some(model.clone());
-                                this.settings.model = Some(model);
+                                this.summary.title = title;
+                                cx.emit(SessionChanged);
                             }
-                        }
-                        if let Some(settings) = update.config_settings {
-                            if let Some(pending) = this.settings.pending_provider_switch.as_mut()
-                                && pending.from == source_provider
-                                && pending.account.id == source_account
-                            {
-                                pending.model_settings.extend(settings);
-                            } else if source_selected {
-                                this.settings.model_settings.extend(settings);
-                            }
-                            this.save_settings(cx);
-                        }
-                        if let Some(model) = update.model {
-                            turn_model_id = Some(model.clone());
-                            let name: SharedString = this
-                                .catalog
-                                .iter()
-                                .find(|entry| source_selected && entry.id == model)
-                                .map(|entry| {
-                                    let name = model_display_name(
-                                        Kind::from_id(&source_provider),
-                                        &entry.id,
-                                        &entry.name,
-                                    );
-                                    name.strip_prefix("Claude ")
-                                        .unwrap_or(&name)
-                                        .to_owned()
-                                        .into()
-                                })
-                                .unwrap_or_else(|| {
-                                    model_name(Kind::from_id(&source_provider), Some(&model))
+                            if let Some(commands) = update.commands.filter(|_| source_selected) {
+                                this.completion.update(cx, |completion, cx| {
+                                    completion.set_native_commands(commands, cx)
                                 });
-                            if source_selected {
-                                this.resolved_model = Some(model);
                             }
-                            this.transcript
-                                .update(cx, |v, _| v.identity(&source_provider, &name));
-                        }
-                        if let Some(context) = update.context.filter(|_| source_selected) {
-                            this.context = Some(context);
-                        }
-                        if let Some(metrics) = update.metrics {
-                            this.transcript.update(cx, |v, _| v.metrics(metrics));
-                        }
-                        if update.turn_ready && !stopping {
-                            this.follow_ups.ready = true;
-                        }
-                        for id in update.follow_up_delivered {
-                            if this.settings.mono.is_some() {
-                                this.mono_message_delivered(id, cx);
-                            } else {
-                                this.follow_up_delivered(&id, cx);
+                            let needed_approval = this.needs_approval();
+                            let incoming_notification_input = !stopping
+                                && (!update.approvals.is_empty() || !update.questions.is_empty());
+                            let mono_queue_changed = this.settings.mono.is_some()
+                                && (update.turn_ready
+                                    || update.delivered.is_some()
+                                    || !update.follow_up_delivered.is_empty()
+                                    || !update.follow_up_errors.is_empty());
+                            this.transcript.update(cx, |v, cx| {
+                                v.patch(update.start, update.rows, cx);
+                                if stopping {
+                                    v.stop_streaming(cx);
+                                }
+                            });
+                            if let Some(id) = update.provider_turn_id {
+                                this.transcript
+                                    .update(cx, |view, _| view.record_provider_turn(id));
                             }
-                        }
-                        for (id, error) in update.follow_up_errors {
-                            if this.settings.mono.is_some() {
-                                this.mono_message_failed(id, error);
-                            } else {
-                                this.fail_follow_up(&id, error, cx);
+                            if let Some(id) = update.provider_id {
+                                if let Some(pending) =
+                                    this.settings.pending_provider_switch.as_mut()
+                                    && pending.from == source_provider
+                                    && pending.account.id == source_account
+                                {
+                                    pending.provider_id = Some(id);
+                                } else if source_selected {
+                                    this.summary.provider_id = Some(id);
+                                }
                             }
-                        }
-                        if let Some(id) = update.delivered {
-                            if this.settings.mono.is_some() {
-                                this.mono_message_delivered(id, cx);
-                            } else {
-                                this.follow_up_delivered(&id, cx);
+                            if let Some(handoff) = update.handoff {
+                                this.settings.pending_provider_switch = None;
+                                this.settings.handoff = handoff;
+                                this.save_settings(cx);
                             }
-                        }
-                        if !stopping || finished {
-                            this.status = update.status;
-                        }
-                        if let Some(tasks) = update.background.filter(|_| !stopping) {
-                            this.set_background(tasks, cx);
-                        }
-                        if !stopping {
-                            this.approvals.extend(update.approvals);
-                        }
-                        for id in update.approvals_resolved {
-                            this.approvals.retain(|approval| approval.id != id);
-                        }
-                        for id in update.questions_resolved {
-                            this.questions.retain(|(card, _)| card.read(cx).id() != id);
-                        }
-                        for request in update.questions.into_iter().filter(|_| !stopping) {
-                            let card =
-                                cx.new(|cx| crate::questions::QuestionCard::new(request, cx));
-                            let events = cx.subscribe(
-                                &card,
-                                |this, _, reply: &crate::questions::Answered, cx| {
-                                    if this
-                                        .questions
-                                        .front()
-                                        .is_none_or(|(card, _)| card.read(cx).id() != reply.id)
-                                    {
-                                        return;
-                                    }
-                                    let before = this.needs_approval();
-                                    let decision = reply
-                                        .answers
-                                        .clone()
-                                        .map_or(Decision::Deny, Decision::Answer);
-                                    if this.controls.as_ref().is_none_or(|controls| {
-                                        controls
-                                            .send(Control {
-                                                id: reply.id.clone(),
-                                                decision,
-                                            })
-                                            .is_err()
-                                    }) {
-                                        this.status =
+                            if let Some(model) = update.config_model {
+                                if let Some(pending) =
+                                    this.settings.pending_provider_switch.as_mut()
+                                    && pending.from == source_provider
+                                    && pending.account.id == source_account
+                                {
+                                    pending.model = Some(model);
+                                } else if source_selected {
+                                    this.model = Some(model.clone());
+                                    this.settings.model = Some(model);
+                                }
+                            }
+                            if let Some(settings) = update.config_settings {
+                                if let Some(pending) =
+                                    this.settings.pending_provider_switch.as_mut()
+                                    && pending.from == source_provider
+                                    && pending.account.id == source_account
+                                {
+                                    pending.model_settings.extend(settings);
+                                } else if source_selected {
+                                    this.settings.model_settings.extend(settings);
+                                }
+                                this.save_settings(cx);
+                            }
+                            if let Some(model) = update.model {
+                                turn_model_id = Some(model.clone());
+                                let name: SharedString = this
+                                    .catalog
+                                    .iter()
+                                    .find(|entry| source_selected && entry.id == model)
+                                    .map(|entry| {
+                                        let name = model_display_name(
+                                            Kind::from_id(&source_provider),
+                                            &entry.id,
+                                            &entry.name,
+                                        );
+                                        name.strip_prefix("Claude ")
+                                            .unwrap_or(&name)
+                                            .to_owned()
+                                            .into()
+                                    })
+                                    .unwrap_or_else(|| {
+                                        model_name(Kind::from_id(&source_provider), Some(&model))
+                                    });
+                                if source_selected {
+                                    this.resolved_model = Some(model);
+                                }
+                                this.transcript
+                                    .update(cx, |v, _| v.identity(&source_provider, &name));
+                            }
+                            if let Some(context) = update.context.filter(|_| source_selected) {
+                                this.context = Some(context);
+                            }
+                            if let Some(metrics) = update.metrics {
+                                this.transcript.update(cx, |v, _| v.metrics(metrics));
+                            }
+                            if update.turn_ready && !stopping {
+                                this.follow_ups.ready = true;
+                            }
+                            for id in update.follow_up_delivered {
+                                if this.settings.mono.is_some() {
+                                    this.mono_message_delivered(id, cx);
+                                } else {
+                                    this.follow_up_delivered(&id, cx);
+                                }
+                            }
+                            for (id, error) in update.follow_up_errors {
+                                if this.settings.mono.is_some() {
+                                    this.mono_message_failed(id, error);
+                                } else {
+                                    this.fail_follow_up(&id, error, cx);
+                                }
+                            }
+                            if let Some(id) = update.delivered {
+                                if this.settings.mono.is_some() {
+                                    this.mono_message_delivered(id, cx);
+                                } else {
+                                    this.follow_up_delivered(&id, cx);
+                                }
+                            }
+                            if !stopping || finished {
+                                this.status = update.status;
+                            }
+                            if let Some(tasks) = update.background.filter(|_| !stopping) {
+                                this.set_background(tasks, cx);
+                            }
+                            if !stopping {
+                                this.approvals.extend(update.approvals);
+                            }
+                            for id in update.approvals_resolved {
+                                this.approvals.retain(|approval| approval.id != id);
+                            }
+                            for id in update.questions_resolved {
+                                this.questions.retain(|(card, _)| card.read(cx).id() != id);
+                            }
+                            for request in update.questions.into_iter().filter(|_| !stopping) {
+                                let card =
+                                    cx.new(|cx| crate::questions::QuestionCard::new(request, cx));
+                                let events =
+                                    cx.subscribe(
+                                        &card,
+                                        |this, _, reply: &crate::questions::Answered, cx| {
+                                            if this.questions.front().is_none_or(|(card, _)| {
+                                                card.read(cx).id() != reply.id
+                                            }) {
+                                                return;
+                                            }
+                                            let before = this.needs_approval();
+                                            let decision = reply
+                                                .answers
+                                                .clone()
+                                                .map_or(Decision::Deny, Decision::Answer);
+                                            if this.controls.as_ref().is_none_or(|controls| {
+                                                controls
+                                                    .send(Control {
+                                                        id: reply.id.clone(),
+                                                        decision,
+                                                    })
+                                                    .is_err()
+                                            }) {
+                                                this.status =
                                             "The provider is no longer waiting for this answer"
                                                 .into();
-                                        cx.notify();
-                                        return;
-                                    }
-                                    if let Some((card, _)) = this.questions.pop_front() {
-                                        this.question_overlay.release(card, cx);
-                                    }
-                                    this.status = if !this.approvals.is_empty() {
-                                        "Waiting for approval"
-                                    } else if !this.questions.is_empty() {
-                                        "Waiting for your answer"
-                                    } else {
-                                        "Working…"
-                                    }
-                                    .into();
-                                    if before != this.needs_approval() {
+                                                cx.notify();
+                                                return;
+                                            }
+                                            if let Some((card, _)) = this.questions.pop_front() {
+                                                this.question_overlay.release(card, cx);
+                                            }
+                                            this.status = if !this.approvals.is_empty() {
+                                                "Waiting for approval"
+                                            } else if !this.questions.is_empty() {
+                                                "Waiting for your answer"
+                                            } else {
+                                                "Working…"
+                                            }
+                                            .into();
+                                            if before != this.needs_approval() {
+                                                cx.emit(SessionChanged);
+                                            }
+                                            cx.notify();
+                                        },
+                                    );
+                                let keep_open = cx.subscribe(
+                                    &card,
+                                    |this, _, request: &crate::questions::KeptOpen, cx| {
+                                        if let Some(controls) = &this.controls {
+                                            let _ = controls.send(Control {
+                                                id: request.id.clone(),
+                                                decision: Decision::KeepOpen,
+                                            });
+                                        }
                                         cx.emit(SessionChanged);
+                                        cx.notify();
+                                    },
+                                );
+                                this.questions.push_back((card, vec![events, keep_open]));
+                                this.status = "Waiting for your answer".into();
+                            }
+                            if !finished && !this.approvals.is_empty() {
+                                this.status = "Waiting for approval".into();
+                            } else if !finished && !this.questions.is_empty() {
+                                this.status = "Waiting for your answer".into();
+                            }
+                            if finished {
+                                if this.is_remote() {
+                                    this.settings.remote_action = None;
+                                    this.remote_state.refreshing = false;
+                                }
+                                this.summary.updated_at = monocode_core::time::now_ms();
+                                this.busy = false;
+                                this.stopping = false;
+                                this.clear_background();
+                                if this.is_remote() {
+                                    this.refresh_remote_snapshot(cx);
+                                }
+                                this.preparing_worktree = false;
+                                if !stopping && let Some(limit) = update.usage_limit {
+                                    this.settings.usage_limit = Some(limit);
+                                }
+                                if !this.is_remote() {
+                                    this.detect_usage_limit(cx);
+                                }
+                                this.review
+                                    .update(cx, |review, cx| review.set_busy(false, cx));
+                                this.follow_ups.ready = false;
+                                if this.follow_ups.resuming {
+                                    this.follow_ups.resuming = false;
+                                    if !stopping && this.status == "Ready" {
+                                        this.follow_ups.state.paused = false;
+                                        for message in &mut this.follow_ups.state.messages {
+                                            message.error = None;
+                                        }
+                                        this.save_follow_ups(cx);
                                     }
-                                    cx.notify();
-                                },
-                            );
-                            let keep_open = cx.subscribe(
-                                &card,
-                                |this, _, request: &crate::questions::KeptOpen, cx| {
-                                    if let Some(controls) = &this.controls {
-                                        let _ = controls.send(Control {
-                                            id: request.id.clone(),
-                                            decision: Decision::KeepOpen,
-                                        });
-                                    }
-                                    cx.emit(SessionChanged);
-                                    cx.notify();
-                                },
-                            );
-                            this.questions.push_back((card, vec![events, keep_open]));
-                            this.status = "Waiting for your answer".into();
-                        }
-                        if !finished && !this.approvals.is_empty() {
-                            this.status = "Waiting for approval".into();
-                        } else if !finished && !this.questions.is_empty() {
-                            this.status = "Waiting for your answer".into();
-                        }
-                        if finished {
-                            if this.is_remote() {
-                                this.settings.remote_action = None;
-                                this.remote_state.refreshing = false;
-                            }
-                            this.summary.updated_at = monocode_core::time::now_ms();
-                            this.busy = false;
-                            this.stopping = false;
-                            this.clear_background();
-                            if this.is_remote() {
-                                this.refresh_remote_snapshot(cx);
-                            }
-                            this.preparing_worktree = false;
-                            if !stopping && let Some(limit) = update.usage_limit {
-                                this.settings.usage_limit = Some(limit);
-                            }
-                            if !this.is_remote() {
-                                this.detect_usage_limit(cx);
-                            }
-                            this.review
-                                .update(cx, |review, cx| review.set_busy(false, cx));
-                            this.follow_ups.ready = false;
-                            if this.follow_ups.resuming {
-                                this.follow_ups.resuming = false;
-                                if !stopping && this.status == "Ready" {
-                                    this.follow_ups.state.paused = false;
-                                    for message in &mut this.follow_ups.state.messages {
-                                        message.error = None;
-                                    }
+                                }
+                                if let Some(id) = this.follow_ups.sending.clone() {
+                                    this.fail_follow_up(
+                                        &id,
+                                        "The turn ended before this message was accepted".into(),
+                                        cx,
+                                    );
+                                }
+                                if this.status != "Ready"
+                                    && !this.follow_ups.state.messages.is_empty()
+                                {
+                                    this.follow_ups.state.paused = true;
                                     this.save_follow_ups(cx);
                                 }
-                            }
-                            if let Some(id) = this.follow_ups.sending.clone() {
-                                this.fail_follow_up(
-                                    &id,
-                                    "The turn ended before this message was accepted".into(),
-                                    cx,
-                                );
-                            }
-                            if this.status != "Ready" && !this.follow_ups.state.messages.is_empty()
-                            {
-                                this.follow_ups.state.paused = true;
-                                this.save_follow_ups(cx);
-                            }
-                            this.approvals.clear();
-                            this.questions.clear();
-                            this.controls = None;
-                            this.transcript.update(cx, |v, cx| v.streaming(false, cx));
-                            let model_id = turn_model_id.clone();
-                            // The runtime saved the receipt's stop; settings save the
-                            // view's copy next, so it must agree.
-                            let stopped = stopping || this.notification_cancelled;
-                            this.transcript.update(cx, |view, _| {
-                                if let Some(turn) = view.active_turn()
-                                    && let Some(info) = view.turns.get_mut(&turn)
-                                {
-                                    info.model_id = model_id;
-                                    info.stopped = stopped;
+                                this.approvals.clear();
+                                this.questions.clear();
+                                this.controls = None;
+                                this.transcript.update(cx, |v, cx| v.streaming(false, cx));
+                                let model_id = turn_model_id.clone();
+                                // The runtime saved the receipt's stop; settings save the
+                                // view's copy next, so it must agree.
+                                let stopped = stopping || this.notification_cancelled;
+                                this.transcript.update(cx, |view, _| {
+                                    if let Some(turn) = view.active_turn()
+                                        && let Some(info) = view.turns.get_mut(&turn)
+                                    {
+                                        info.model_id = model_id;
+                                        info.stopped = stopped;
+                                    }
+                                });
+                                if stopping {
+                                    this.planning_orchestration = false;
+                                    this.orchestration_progress = None;
+                                } else {
+                                    this.finish_orchestration_plan(cx);
                                 }
-                            });
-                            if stopping {
-                                this.planning_orchestration = false;
-                                this.orchestration_progress = None;
-                            } else {
-                                this.finish_orchestration_plan(cx);
+                                this.settings.turns = this.transcript.read(cx).window_turns();
+                                this.save_settings(cx);
+                                this.refresh_git(cx);
+                                this.run_history_actions(cx);
+                                this.mono_flush_external(cx);
+                                cx.emit(SessionChanged);
+                            } else if incoming_notification_input
+                                || mono_queue_changed
+                                || needed_approval != this.needs_approval()
+                            {
+                                cx.emit(SessionChanged);
                             }
-                            this.settings.turns = this.transcript.read(cx).window_turns();
-                            this.save_settings(cx);
-                            this.refresh_git(cx);
-                            this.run_history_actions(cx);
-                            this.mono_flush_external(cx);
-                            cx.emit(SessionChanged);
-                        } else if incoming_notification_input
-                            || mono_queue_changed
-                            || needed_approval != this.needs_approval()
-                        {
-                            cx.emit(SessionChanged);
-                        }
-                        this.pump_follow_ups(cx);
-                        cx.notify();
-                    })
-                    .is_err()
-                {
-                    break;
+                            this.pump_follow_ups(cx);
+                            cx.notify();
+                        })
+                        .is_ok()
+                };
+                // A streamed update lands inside the spinners' tick, before it
+                // notifies its loops, so the reply draws in their frame instead
+                // of adding a whole-window frame of its own.
+                if finished {
+                    if !cx.update(apply) {
+                        break;
+                    }
+                } else {
+                    crate::pulse::land(cx, apply);
                 }
             }
         })
@@ -3879,6 +3891,7 @@ mod composer_motion_tests {
 }
 impl Render for Conversation {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let _perf = crate::perf_trace::Scope::new("conversation.render");
         if self._input_focus.is_none() {
             let focus = self.input.focus_handle(cx);
             self._input_focus = Some([

@@ -29,6 +29,14 @@ scripts/perf/frame-run.sh crates/monocode-gpui/target/release/monocode-gpui 20
 PROFILE=1 scripts/perf/frame-run.sh crates/monocode-gpui/target/release/monocode-gpui 15
 ```
 
+- `memory.sh [db] [seconds] [binary]` reads a store copied from a real profile
+  and prints the app's RSS and thread count once a second while it idles; use it
+  to check whether a large transcript or a long-running window is what grows.
+
+```sh
+scripts/perf/memory.sh /path/to/monocode.db 30
+```
+
 A frame log line reads:
 
 ```
@@ -49,3 +57,16 @@ had to shape because its line cache missed. Any run of the app takes
 Compare a change with the report from before it (CPU, main thread, and the
 view and layout rows). Profile a release build; a debug build's numbers say
 little about release.
+
+GPUI Fast has no frame counters, so on Linux the app logs `fps=0` lines with
+the `main=` column alone; that is the number to compare. `MONOCODE_PERF_TRACE=1`
+adds the app's own hot paths, one `[perf]` line per second with the calls,
+total, worst and average time of each scope added with
+`perf_trace::Scope::new(...)`:
+
+```sh
+MONOCODE_PERF_TRACE=1 PROFILE=1 scripts/perf/frame-run.sh crates/monocode-gpui/target/release/monocode-gpui 20
+```
+
+`docs/native/performance.md` records the measured baselines and the costs
+that are known to dominate them.
