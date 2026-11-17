@@ -516,8 +516,10 @@ impl EffortSlider {
         cx.emit(EffortPicked(Some(value)));
         cx.notify();
     }
-    fn from_x(&mut self, x: gpui_kit::Pixels, cx: &mut Context<Self>) {
-        let Some(bounds) = self.slot.get() else { return };
+    fn drag_to(&mut self, x: gpui_kit::Pixels, cx: &mut Context<Self>) {
+        let Some(bounds) = self.slot.get() else {
+            return;
+        };
         let steps = self.efforts.len();
         if steps < 2 {
             return;
@@ -543,10 +545,15 @@ impl Render for EffortSlider {
         const KNOB: f32 = 16.;
         let steps = self.efforts.len();
         let last = (steps.max(2) - 1) as f32;
-        let fraction = if steps > 1 { self.index as f32 / last } else { 0.5 };
-        let track = self.slot.get().map_or(220., |bounds| {
-            bounds.size.width.as_f32().max(80.)
-        });
+        let fraction = if steps > 1 {
+            self.index as f32 / last
+        } else {
+            0.5
+        };
+        let track = self
+            .slot
+            .get()
+            .map_or(220., |bounds| bounds.size.width.as_f32().max(80.));
         let name = effort_name(self.selected());
         let first = effort_name(&self.efforts[0]);
         let last_name = effort_name(&self.efforts[steps - 1]);
@@ -555,9 +562,7 @@ impl Render for EffortSlider {
         div()
             .w_full()
             .flex_shrink_0()
-            .when(self.border, |d| {
-                d.border_t_1().border_color(content(0.07))
-            })
+            .when(self.border, |d| d.border_t_1().border_color(content(0.07)))
             .px(px(12.))
             .pt(px(8.))
             .pb(px(10.))
@@ -674,36 +679,34 @@ impl Render for EffortSlider {
                         cx.listener(|this, event: &gpui_kit::MouseDownEvent, window, cx| {
                             window.focus(&this.focus, cx);
                             this.dragging = true;
-                            this.from_x(event.position.x, cx);
+                            this.drag_to(event.position.x, cx);
                             cx.stop_propagation();
                         }),
                     )
-                    .on_mouse_move(cx.listener(
-                        |this, event: &gpui_kit::MouseMoveEvent, _, cx| {
+                    .on_mouse_move(
+                        cx.listener(|this, event: &gpui_kit::MouseMoveEvent, _, cx| {
                             if this.dragging
                                 && event.pressed_button == Some(gpui_kit::MouseButton::Left)
                             {
-                                this.from_x(event.position.x, cx);
+                                this.drag_to(event.position.x, cx);
                             }
-                        },
-                    ))
+                        }),
+                    )
                     .on_mouse_up(
                         gpui_kit::MouseButton::Left,
                         cx.listener(|this, _, _, _| this.dragging = false),
                     )
-                    .on_key_down(cx.listener(
-                        |this, event: &gpui_kit::KeyDownEvent, _, cx| {
-                            let step = match event.keystroke.key.as_str() {
-                                "left" | "down" => this.index.saturating_sub(1),
-                                "right" | "up" => (this.index + 1).min(this.efforts.len() - 1),
-                                "home" => 0,
-                                "end" => this.efforts.len() - 1,
-                                _ => return,
-                            };
-                            this.set_index(step, cx);
-                            cx.stop_propagation();
-                        },
-                    )),
+                    .on_key_down(cx.listener(|this, event: &gpui_kit::KeyDownEvent, _, cx| {
+                        let step = match event.keystroke.key.as_str() {
+                            "left" | "down" => this.index.saturating_sub(1),
+                            "right" | "up" => (this.index + 1).min(this.efforts.len() - 1),
+                            "home" => 0,
+                            "end" => this.efforts.len() - 1,
+                            _ => return,
+                        };
+                        this.set_index(step, cx);
+                        cx.stop_propagation();
+                    })),
             )
             .child(
                 div()
@@ -894,15 +897,11 @@ impl ModelList {
         if efforts.is_empty() {
             return self;
         }
-        let slider = cx.new(|cx| {
-            EffortSlider::new(efforts, index, default_index, model_name, true, cx)
-        });
-        self._effort = Some(cx.subscribe(
-            &slider,
-            |_, _, picked: &EffortPicked, cx| {
-                cx.emit(EffortPicked(picked.0.clone()));
-            },
-        ));
+        let slider =
+            cx.new(|cx| EffortSlider::new(efforts, index, default_index, model_name, true, cx));
+        self._effort = Some(cx.subscribe(&slider, |_, _, picked: &EffortPicked, cx| {
+            cx.emit(EffortPicked(picked.0.clone()));
+        }));
         self.effort = Some(slider);
         self
     }

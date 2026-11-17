@@ -794,10 +794,34 @@ impl Store {
         ))
         .unwrap_or_default();
         let effort_keys: &[&str] = match provider.as_str() {
-            "opencode" => &["variant", "effort", "reasoning", "reasoningEffort", "reasoning_effort"],
-            "codex" => &["reasoningEffort", "effort", "reasoning", "reasoning_effort", "variant"],
-            "cursor" => &["reasoning", "reasoning_effort", "effort", "reasoningEffort", "variant"],
-            _ => &["effort", "reasoning", "reasoningEffort", "reasoning_effort", "variant"],
+            "opencode" => &[
+                "variant",
+                "effort",
+                "reasoning",
+                "reasoningEffort",
+                "reasoning_effort",
+            ],
+            "codex" => &[
+                "reasoningEffort",
+                "effort",
+                "reasoning",
+                "reasoning_effort",
+                "variant",
+            ],
+            "cursor" => &[
+                "reasoning",
+                "reasoning_effort",
+                "effort",
+                "reasoningEffort",
+                "variant",
+            ],
+            _ => &[
+                "effort",
+                "reasoning",
+                "reasoningEffort",
+                "reasoning_effort",
+                "variant",
+            ],
         };
         let effort_key = effort_keys
             .iter()
@@ -823,11 +847,14 @@ impl Store {
             ("worktree_removed", json!(settings.worktree_removed)),
             ("provider_account_id", json!(settings.account.id)),
         ];
-        let (provider, saved_model): (String, String) = (provider, sql(self.conn.query_row(
-            "SELECT model FROM sessions WHERE id=?1",
-            [self.persisted_session_id(id)?],
-            |r| r.get::<_, String>(0),
-        ))?);
+        let (provider, saved_model): (String, String) = (
+            provider,
+            sql(self.conn.query_row(
+                "SELECT model FROM sessions WHERE id=?1",
+                [self.persisted_session_id(id)?],
+                |r| r.get::<_, String>(0),
+            ))?,
+        );
         if settings.model != super::monocode_import::native_model(&saved_model, &provider) {
             let model = settings.model.as_deref().unwrap_or("default");
             let model = if provider == "claude" {

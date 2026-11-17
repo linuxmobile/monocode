@@ -1652,6 +1652,12 @@ mod tests {
 
     #[test]
     fn a_login_shell_runs_and_its_output_reaches_the_grid() {
+        // The grid must be read in a shell whose line editing and prompts the
+        // test can predict, whatever the user's login shell is. The suite runs
+        // one test at a time, so the override cannot race another spawn.
+        // SAFETY: single-threaded test process; restored at the end.
+        let previous = std::env::var_os("SHELL");
+        unsafe { std::env::set_var("SHELL", "/bin/sh") };
         let dir = std::env::temp_dir().to_string_lossy().into_owned();
         let size = GridSize {
             columns: 60,
@@ -1695,5 +1701,12 @@ mod tests {
             }
         }
         assert!(exited);
+        // SAFETY: as above.
+        unsafe {
+            match previous {
+                Some(shell) => std::env::set_var("SHELL", shell),
+                None => std::env::remove_var("SHELL"),
+            }
+        }
     }
 }

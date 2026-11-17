@@ -937,9 +937,12 @@ impl Conversation {
                 items.extend(rows.into_iter().map(MenuItem::from));
             };
             if !model.efforts.is_empty() {
-                let (efforts, index, default_index, name) = self
-                    .effort_bar_args()
-                    .unwrap_or((model.efforts.clone(), 0, 0, self.effort_label().into()));
+                let (efforts, index, default_index, name) = self.effort_bar_args().unwrap_or((
+                    model.efforts.clone(),
+                    0,
+                    0,
+                    self.effort_label(),
+                ));
                 let slider = cx.new(|cx| {
                     crate::pickers::EffortSlider::new(
                         efforts,
