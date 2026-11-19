@@ -145,6 +145,12 @@ struct RenderedBlock {
     rows: Vec<Arc<MarkdownRow>>,
     words: usize,
 }
+struct CodeContext {
+    id: String,
+    key: (usize, usize),
+    message_start: usize,
+    assistant: bool,
+}
 #[derive(Clone)]
 enum Body {
     RemotePlan(crate::conversation::remote_plans::Plan),
@@ -180,6 +186,11 @@ enum Body {
         expandable: bool,
     },
     Reasoning,
+    /// Earlier turns behind a completed context compaction.
+    Compacted {
+        boundary: usize,
+        turns: usize,
+    },
     Actions {
         turn: usize,
         complete: bool,
@@ -703,6 +714,8 @@ pub(crate) struct TranscriptView {
     /// Whether a source row's tool call opens an agent panel, kept until the
     /// row's text changes: rebuilding parses every tool row in the turn.
     tool_panel_rows: HashMap<usize, bool>,
+    /// Whether a source row is a completed compaction, with the same lifetime.
+    compaction_rows: HashMap<usize, bool>,
     /// Messages entering the chat, by source start, as useBottomChatMotion.
     entrances: HashMap<usize, Instant>,
     /// The emoji a Mono answered a prompt with, by the prompt's start.
@@ -737,6 +750,11 @@ pub(crate) struct TranscriptView {
     collapse_groups: bool,
     /// Finished replies fold their work under "worked for".
     fold_work: bool,
+    /// Compaction boundaries the reader has chosen to open again.
+    expanded_compactions: HashSet<usize>,
+    /// The boundary currently collapsed, and the row that carries its summary.
+    compaction_boundary: Option<usize>,
+    compaction_row_ix: Option<usize>,
     search_match: Option<(usize, String)>,
     highlights: HashMap<u64, Option<Arc<HighlightedDocument>>>,
     highlighting: HashSet<u64>,
@@ -2490,6 +2508,7 @@ impl TranscriptView {
             hovered_prompt_actions: None,
             hover_rows: HashMap::new(),
             tool_panel_rows: HashMap::new(),
+            compaction_rows: HashMap::new(),
             entrances: HashMap::new(),
             reactions: HashMap::new(),
             follow: Follow::default(),
@@ -2512,6 +2531,9 @@ impl TranscriptView {
             smooth_reveal: true,
             collapse_groups: false,
             fold_work: true,
+            expanded_compactions: HashSet::new(),
+            compaction_boundary: None,
+            compaction_row_ix: None,
             search_match: None,
             highlights: HashMap::new(),
             highlighting: HashSet::new(),
@@ -2926,6 +2948,8 @@ impl TranscriptView {
                 .is_some_and(|row| row.role == "visual")
         });
         self.tool_panel_rows
+            .retain(|&at, _| at < start || at >= start + written);
+        self.compaction_rows
             .retain(|&at, _| at < start || at >= start + written);
         if start == 0 {
             self.placed.clear();
@@ -3991,6 +4015,7 @@ impl TranscriptView {
         };
         self.phase_toggle = None;
         self.rows.extend(merged);
+        self.apply_compaction_boundary();
         self.windowed_phases = self
             .rows
             .iter()
@@ -4500,15 +4525,21 @@ impl TranscriptView {
         &mut self,
         fence: Arc<Fence>,
         lines: std::ops::Range<usize>,
-        ix: usize,
+        context: CodeContext,
         cx: &mut Context<Self>,
     ) -> gpui_kit::AnyElement {
+        let CodeContext {
+            id,
+            key,
+            message_start,
+            assistant,
+        } = context;
         self.highlight(&fence, cx);
         let first = lines.start == 0;
         let last = lines.end == fence.lines.len();
-        let key = fence.key;
+        let fence_key = fence.key;
         let code = fence.code.clone();
-        let copied = self.copied == Some(key);
+        let copied = self.copied == Some(fence_key);
         let file_link = fence.path.as_ref().map(|raw| {
             let (path, location) = crate::file_editor::file_location(
                 raw,
@@ -4561,7 +4592,7 @@ impl TranscriptView {
                         })
                         .child(
                             div()
-                                .id(("code-file-link", ix))
+                                .id(format!("{id}-file-link"))
                                 .flex_1()
                                 .min_w_0()
                                 .truncate()
@@ -4609,14 +4640,14 @@ impl TranscriptView {
                                             .unwrap_or(&code)
                                             .to_owned(),
                                     ));
-                                    this.copied = Some(key);
+                                    this.copied = Some(fence_key);
                                     cx.notify();
                                     cx.spawn(async move |this, cx| {
                                         cx.background_executor()
                                             .timer(std::time::Duration::from_millis(1500))
                                             .await;
                                         let _ = this.update(cx, |this, cx| {
-                                            if this.copied == Some(key) {
+                                            if this.copied == Some(fence_key) {
                                                 this.copied = None;
                                                 cx.notify();
                                             }
@@ -4630,7 +4661,7 @@ impl TranscriptView {
             })
             .child(
                 div()
-                    .id(("code-scroll", ix))
+                    .id(format!("{id}-scroll"))
                     .overflow_x_scroll()
                     .w_full()
                     .py(px(10.))
@@ -4641,17 +4672,12 @@ impl TranscriptView {
                     .child(markdown::code_lines_selected(
                         &fence,
                         lines,
-                        self.highlights.get(&key).and_then(|v| v.as_deref()),
+                        self.highlights.get(&fence_key).and_then(|v| v.as_deref()),
                         self.search_match.as_ref().map_or("", |(_, q)| q.as_str()),
                         self.search_match
                             .as_ref()
-                            .is_some_and(|(start, _)| *start == self.rows[ix].key.0),
-                        self.text_selection(
-                            self.rows[ix].key,
-                            self.messages[self.rows[ix].message].start,
-                            self.messages[self.rows[ix].message].role == "assistant",
-                            cx,
-                        ),
+                            .is_some_and(|(start, _)| *start == message_start),
+                        self.text_selection(key, message_start, assistant, cx),
                     )),
             )
             .into_any_element()
@@ -4663,6 +4689,12 @@ impl TranscriptView {
         cx: &mut Context<Self>,
     ) -> gpui_kit::AnyElement {
         self.rendered += 1;
+        if let Some(boundary) = self.compaction_boundary
+            && self.compaction_row_ix != Some(ix)
+            && self.rows[ix].key.0 < boundary
+        {
+            return div().h_0().into_any_element();
+        }
         if let Some(group) = self.rows[ix].phase_group()
             && self.windowed_phase(group)
         {
@@ -4839,6 +4871,40 @@ impl TranscriptView {
             Body::Tool { .. } | Body::Phase { .. } | Body::Reasoning
         );
         let body = match row.body {
+            Body::Compacted { boundary, turns } => {
+                let label = if turns == 1 {
+                    "1 earlier turn compacted".to_owned()
+                } else {
+                    format!("{turns} earlier turns compacted")
+                };
+                div()
+                    .id(("compacted", boundary))
+                    .debug_selector(|| "compact-boundary".into())
+                    .w_full()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .py_1()
+                    .text_size(px(13.))
+                    .line_height(px(20.))
+                    .text_color(content(0.5))
+                    .child(icon("clock", 14.).text_color(content(0.4)))
+                    .child(div().min_w_0().flex_1().truncate().child(label))
+                    .child(
+                        div()
+                            .id(("compacted-expand", boundary))
+                            .debug_selector(|| "compact-expand".into())
+                            .role(Role::Button)
+                            .cursor_pointer()
+                            .text_color(content(0.7))
+                            .hover(|s| s.text_color(content(1.)))
+                            .child("Show earlier turns")
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.toggle_compaction(boundary, cx)
+                            })),
+                    )
+                    .into_any_element()
+            }
             Body::GitAction(card) => self.git_card_row(&card, message_start, cx),
             Body::RemotePlan(plan) => self.remote_plan_card(&plan, cx),
             Body::Visual(document) => self.visual_row(message_start, document, cx),
@@ -5223,13 +5289,27 @@ impl TranscriptView {
                 let prepared = self.markdown_cache.get(row.key, md);
                 let md = &prepared.row;
                 let body = if let Part::Code { fence, lines } = &md.part {
-                    self.code(fence.clone(), lines.clone(), ix, cx)
+                    let (start, assistant) = {
+                        let message = &self.messages[row.message];
+                        (message.start, message.role == "assistant")
+                    };
+                    self.code(
+                        fence.clone(),
+                        lines.clone(),
+                        CodeContext {
+                            id: format!("code-{}-{}", row.key.0, row.key.1),
+                            key: row.key,
+                            message_start: start,
+                            assistant,
+                        },
+                        cx,
+                    )
                 } else if let Part::Visual { id, caption } = &md.part {
                     self.placed_visual(id, caption, cx)
                 } else {
                     markdown::body_selected(
                         md,
-                        format!("md-{ix}").into(),
+                        format!("md-{}-{}", row.key.0, row.key.1).into(),
                         if reasoning {
                             markdown::Tone::Reasoning
                         } else if row.work {
@@ -5317,7 +5397,7 @@ impl TranscriptView {
                     && last
                     && (!first
                         || self.clamped_prompts.contains(&message_start)
-                        || self.prompt_lines(&text, window) > 4);
+                        || self.prompt_lines(ix, &text, window) > 4);
                 let bubble = div()
                     .when(photo_body.is_none(), |d| d.w_full())
                     .relative()
@@ -5590,7 +5670,7 @@ impl TranscriptView {
             })
             .child(
                 div()
-                    .id(("row", ix))
+                    .id(format!("row-{}-{}", row.key.0, row.key.1))
                     .w_full()
                     .flex()
                     .justify_center()
@@ -5831,7 +5911,12 @@ impl TranscriptView {
         self.rebuild(start, cx);
     }
     /// Wrapped lines of a user message's text at the bubble's text width.
-    fn prompt_lines(&self, text: &str, window: &Window) -> usize {
+    fn prompt_lines(&mut self, ix: usize, text: &str, window: &Window) -> usize {
+        let message = &self.messages[self.rows[ix].message];
+        let (start, fingerprint) = (message.start, message.prompt_fingerprint);
+        if let Some(lines) = self.measurements.cached_prompt_lines(start, fingerprint) {
+            return lines;
+        }
         let column = self.viewport.size.width.min(px(COLUMN));
         // Row padding (`pl-14` and `COLUMN_PAD` in the chat layout,
         // `COLUMN_PAD` both sides otherwise), the bubble's 36rem cap and its
@@ -5842,9 +5927,12 @@ impl TranscriptView {
             column - px(2. * COLUMN_PAD)
         };
         let text = SharedString::from(text.trim_end().to_owned());
-        measurements::shape_prompt(text, Some(bubble - PROMPT_PAD_X), window)
+        let lines: usize = measurements::shape_prompt(text, Some(bubble - PROMPT_PAD_X), window)
             .map(|line| line.wrap_boundaries.len() + 1)
-            .sum()
+            .sum();
+        self.measurements
+            .store_prompt_lines(start, fingerprint, lines);
+        lines
     }
     /// How far phase `group`'s tile has morphed into its chevron, eased:
     /// 0 is the tile, 1 the chevron.
@@ -5858,6 +5946,49 @@ impl TranscriptView {
         self.phases.insert(group, open);
         self.list.pause_following_tail();
         self.rebuild(group, cx);
+    }
+    /// Collapse the turns before the newest completed compaction into one row.
+    /// Source rows stay intact: the provider owns the model's context, and the
+    /// saved transcript keeps every turn, so only presentation is folded here.
+    fn apply_compaction_boundary(&mut self) {
+        let boundary = self.source.iter().enumerate().rev().find_map(|(at, row)| {
+            if !row.first || row.role != "tool" {
+                return None;
+            }
+            let compact = *self.compaction_rows.entry(at).or_insert_with(|| {
+                serde_json::from_str::<ToolCall>(&row.text)
+                    .is_ok_and(|tool| tool.is_compaction() && tool.state == ToolState::Completed)
+            });
+            compact.then_some(at)
+        });
+        let boundary = boundary.filter(|&at| at > 0 && !self.expanded_compactions.contains(&at));
+        let changed = self.compaction_boundary != boundary;
+        self.compaction_boundary = boundary;
+        self.compaction_row_ix = None;
+        if let Some(at) = boundary
+            && let Some(ix) = self.rows.iter().position(|row| row.key.0 < at)
+        {
+            let turns = self.source[..at]
+                .iter()
+                .filter(|row| row.is_prompt())
+                .count();
+            self.rows[ix].body = Body::Compacted {
+                boundary: at,
+                turns,
+            };
+            self.compaction_row_ix = Some(ix);
+        }
+        if changed {
+            let count = self.list.item_count().min(self.rows.len());
+            self.list.remeasure_items(0..count);
+        }
+    }
+    fn toggle_compaction(&mut self, boundary: usize, cx: &mut Context<Self>) {
+        if !self.expanded_compactions.remove(&boundary) {
+            self.expanded_compactions.insert(boundary);
+        }
+        self.list.pause_following_tail();
+        self.rebuild(0, cx);
     }
 }
 /// The folded thinking header's line: the first non-empty row of the block,
@@ -7669,6 +7800,136 @@ mod scroll_tests {
                 );
                 view.jump_to_bottom(cx);
                 assert!(!view.show_jump && view.list.is_following_tail());
+            })
+            .unwrap();
+    }
+}
+
+#[cfg(test)]
+mod compaction_tests {
+    use super::*;
+    use gpui_kit::{TestAppContext, WindowBounds, WindowOptions, point};
+
+    fn row(role: &str, text: &str) -> Row {
+        Row {
+            role: role.into(),
+            text: text.into(),
+            first: true,
+            sent_at: None,
+        }
+    }
+
+    fn compaction(state: ToolState) -> Row {
+        let mut call = ToolCall::new("compact", "contextCompaction");
+        call.state = state;
+        row("tool", &serde_json::to_string(&call).unwrap())
+    }
+
+    fn chat(cx: &mut TestAppContext) -> gpui_kit::WindowHandle<TranscriptView> {
+        cx.update(|cx| {
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds::new(
+                        point(px(0.), px(0.)),
+                        size(px(900.), px(600.)),
+                    ))),
+                    ..Default::default()
+                },
+                |_, cx| cx.new(|_| TranscriptView::new()),
+            )
+            .unwrap()
+        })
+    }
+
+    #[gpui_kit::test]
+    fn completed_compaction_folds_older_turns_until_opened(cx: &mut TestAppContext) {
+        let window = chat(cx);
+        window
+            .update(cx, |view, _, cx| {
+                view.patch(
+                    0,
+                    vec![
+                        row("user", "old question"),
+                        row("assistant", "old answer"),
+                        row("user", "new question"),
+                        compaction(ToolState::Completed),
+                        row("assistant", "after compaction"),
+                    ],
+                    cx,
+                );
+                assert_eq!(view.compaction_boundary, Some(3));
+                let summary = view.compaction_row_ix.expect("a summary row is inserted");
+                assert!(matches!(
+                    view.rows[summary].body,
+                    Body::Compacted {
+                        boundary: 3,
+                        turns: 2
+                    }
+                ));
+                view.toggle_compaction(3, cx);
+                assert_eq!(view.compaction_boundary, None);
+                assert!(
+                    view.rows
+                        .iter()
+                        .all(|row| !matches!(row.body, Body::Compacted { .. }))
+                );
+            })
+            .unwrap();
+    }
+
+    #[gpui_kit::test]
+    fn running_compaction_does_not_fold(cx: &mut TestAppContext) {
+        let window = chat(cx);
+        window
+            .update(cx, |view, _, cx| {
+                view.patch(
+                    0,
+                    vec![
+                        row("user", "question"),
+                        compaction(ToolState::Running),
+                        row("assistant", "answer"),
+                    ],
+                    cx,
+                );
+                assert_eq!(view.compaction_boundary, None);
+                assert_eq!(view.compaction_row_ix, None);
+            })
+            .unwrap();
+    }
+
+    #[gpui_kit::test]
+    fn the_summary_row_renders_and_its_button_opens_the_earlier_turns(cx: &mut TestAppContext) {
+        let window = chat(cx);
+        window
+            .update(cx, |view, _, cx| {
+                view.patch(
+                    0,
+                    vec![
+                        row("user", "old question"),
+                        row("assistant", "old answer"),
+                        row("user", "new question"),
+                        compaction(ToolState::Completed),
+                        row("assistant", "after compaction"),
+                    ],
+                    cx,
+                );
+            })
+            .unwrap();
+        let visual = &mut gpui_kit::VisualTestContext::from_window(window.into(), cx);
+        visual.run_until_parked();
+        visual.refresh().unwrap();
+        visual
+            .debug_bounds("compact-boundary")
+            .expect("the compaction summary paints");
+        let expand = visual
+            .debug_bounds("compact-expand")
+            .expect("the expand control paints");
+        visual.simulate_click(expand.center(), Default::default());
+        visual.run_until_parked();
+        window
+            .update(cx, |view, _, _| {
+                assert_eq!(view.compaction_boundary, None);
+                assert!(view.expanded_compactions.contains(&3));
             })
             .unwrap();
     }

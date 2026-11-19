@@ -984,7 +984,20 @@ fn markdown_text(
             markdown::resolve_file_links(&mut row, base);
         }
         let rendered = if let markdown::Part::Code { fence, lines } = &row.part {
-            view.code(fence.clone(), lines.clone(), fence.key as usize, cx)
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            identity.hash(&mut hasher);
+            let key = (hasher.finish() as usize, index);
+            view.code(
+                fence.clone(),
+                lines.clone(),
+                super::CodeContext {
+                    id: format!("agent-code-{identity}-{index}"),
+                    key,
+                    message_start: 0,
+                    assistant: false,
+                },
+                cx,
+            )
         } else {
             markdown::body(
                 &row,

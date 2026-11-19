@@ -492,17 +492,7 @@ fn run_turn_using(
         } else if let Some(handoff) = &settings.handoff {
             monocode_core::response::wrap_handoff_prompt(&handoff.from, &handoff.brief, &prompt)
         } else if provider_id.is_none() && turn_start > 0 {
-            let mut history = String::new();
-            for row in transcript.rows[..turn_start]
-                .iter()
-                .rev()
-                .filter(|r| matches!(r.role.as_str(), "user" | "assistant"))
-            {
-                if history.len() + row.text.len() > 32_000 {
-                    break;
-                }
-                history = format!("{}: {}\n\n{history}", row.role, row.text);
-            }
+            let history = prior_history(&transcript.rows, turn_start);
             format!(
                 "Continue this conversation, using the prior messages as context.\n\n{history}\nCurrent user message:\n{prompt}"
             )
@@ -1143,6 +1133,71 @@ fn shlex_quote(text: &str) -> String {
             .replace('$', "\\$")
             .replace('`', "\\`")
     )
+}
+
+const PRIOR_HISTORY_BYTES: usize = 32_000;
+
+/// The newest user and assistant rows that fit the prompt's history budget,
+/// oldest first. Collecting before joining keeps the build linear in the
+/// bounded budget instead of reallocating the whole prefix per row.
+fn prior_history(rows: &[Row], turn_start: usize) -> String {
+    let mut picked: Vec<&Row> = Vec::new();
+    let mut bytes = 0usize;
+    for row in rows[..turn_start.min(rows.len())].iter().rev() {
+        if !matches!(row.role.as_str(), "user" | "assistant") {
+            continue;
+        }
+        let cost = row.role.len() + 2 + row.text.len() + 2;
+        if bytes + cost > PRIOR_HISTORY_BYTES {
+            break;
+        }
+        bytes += cost;
+        picked.push(row);
+    }
+    picked
+        .into_iter()
+        .rev()
+        .map(|row| format!("{}: {}", row.role, row.text))
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+#[cfg(test)]
+mod prior_history_tests {
+    use super::*;
+
+    fn row(role: &str, text: &str) -> Row {
+        Row {
+            role: role.into(),
+            text: text.into(),
+            first: true,
+            sent_at: None,
+        }
+    }
+
+    #[test]
+    fn keeps_prompts_in_order_and_drops_other_roles() {
+        let rows = vec![
+            row("user", "first"),
+            row("tool", "not context"),
+            row("assistant", "second"),
+            row("user", "current"),
+        ];
+        assert_eq!(prior_history(&rows, 3), "user: first\n\nassistant: second");
+    }
+
+    #[test]
+    fn budget_counts_separators_and_keeps_the_newest_rows() {
+        let text = "x".repeat(PRIOR_HISTORY_BYTES - "assistant: ".len() - 2);
+        let rows = vec![row("user", "old"), row("assistant", &text)];
+        assert_eq!(prior_history(&rows, 2), format!("assistant: {text}"));
+    }
+
+    #[test]
+    fn clamps_turn_start() {
+        let rows = vec![row("user", "only")];
+        assert_eq!(prior_history(&rows, usize::MAX), "user: only");
+    }
 }
 
 #[cfg(test)]

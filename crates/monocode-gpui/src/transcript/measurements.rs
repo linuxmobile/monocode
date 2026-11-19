@@ -17,6 +17,8 @@ pub(super) struct Measurements {
     rows: HashMap<usize, Pixels>,
     /// Bubble widths by message start, with the content they were measured for.
     prompt_widths: HashMap<usize, (u64, Pixels)>,
+    /// Wrapped-line counts for the trailing chunk of a prompt, by message start.
+    prompt_lines: HashMap<usize, (u64, usize)>,
     retained: HashMap<(usize, usize), RetainedHeight>,
     frame: u64,
     /// Advances on every frame that may have resized rows for reasons their
@@ -27,6 +29,8 @@ pub(super) struct Measurements {
     pub(super) fresh: usize,
     #[cfg(test)]
     fresh_prompt_widths: usize,
+    #[cfg(test)]
+    pub(super) fresh_prompt_lines: usize,
 }
 struct RetainedHeight {
     height: Pixels,
@@ -48,10 +52,27 @@ impl Measurements {
     fn viewport_changed(&mut self) {
         self.rows.clear();
         self.retained.clear();
+        self.prompt_lines.clear();
     }
     pub(super) fn clear(&mut self) {
         self.viewport_changed();
         self.prompt_widths.clear();
+    }
+    pub(super) fn cached_prompt_lines(&mut self, start: usize, fingerprint: u64) -> Option<usize> {
+        self.prompt_lines
+            .get(&start)
+            .filter(|(seen, _)| *seen == fingerprint)
+            .map(|(_, lines)| *lines)
+    }
+    pub(super) fn store_prompt_lines(&mut self, start: usize, fingerprint: u64, lines: usize) {
+        if self.prompt_lines.len() >= 256 {
+            self.prompt_lines.clear();
+        }
+        self.prompt_lines.insert(start, (fingerprint, lines));
+        #[cfg(test)]
+        {
+            self.fresh_prompt_lines += 1;
+        }
     }
 }
 
@@ -667,6 +688,53 @@ mod tests {
             .iter()
             .position(|row| view.messages[row.message].start == prompt && row.last)
             .unwrap()
+    }
+
+    #[gpui_kit::test]
+    fn prompt_line_counts_are_reused_until_the_prompt_changes(cx: &mut TestAppContext) {
+        let window = chat(cx);
+        probe(window, cx, |view, window, cx| {
+            view.visible = false;
+            let mut transcript = monocode_core::transcript::Transcript::default();
+            let prompt = transcript.begin("user");
+            transcript.append(&format!("A long prompt line\n{}", "x\n".repeat(512)));
+            let answer = transcript.begin("assistant");
+            transcript.append("Answer");
+            view.patch(0, transcript.rows, cx);
+            view.begin_measurements(window, cx);
+
+            let tail = prompt_tail(view, prompt);
+            let Body::Plain(text) = &view.rows[tail].body else {
+                panic!("the prompt's last chunk must be plain text");
+            };
+            let text = text.clone();
+            let lines = view.prompt_lines(tail, &text, window);
+            let fresh = view.measurements.fresh_prompt_lines;
+            assert_eq!(view.prompt_lines(tail, &text, window), lines);
+            assert_eq!(
+                view.measurements.fresh_prompt_lines, fresh,
+                "an unchanged prompt must not be shaped again"
+            );
+
+            for i in 0..5 {
+                view.patch(answer, vec![row("assistant", &format!("Answer {i}"))], cx);
+                assert_eq!(view.prompt_lines(tail, &text, window), lines);
+            }
+            assert_eq!(view.measurements.fresh_prompt_lines, fresh);
+
+            let mut edited = view.source[prompt].clone();
+            edited.text.push_str(" a different final line");
+            view.patch(prompt, vec![edited], cx);
+            view.prompt_lines(tail, &text, window);
+            assert_eq!(view.measurements.fresh_prompt_lines, fresh + 1);
+
+            window.set_rem_size(window.rem_size() + px(1.));
+            view.begin_measurements(window, cx);
+            assert!(
+                view.measurements.prompt_lines.is_empty(),
+                "style changes must invalidate cached line counts"
+            );
+        });
     }
 
     #[gpui_kit::test]

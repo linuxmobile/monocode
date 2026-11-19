@@ -70,6 +70,17 @@ Idle is genuinely idle: no timer keeps drawing when nothing is happening.
 - `transcript::bench_tests` measures the streaming patch path
   (`cargo test -p monocode-gpui --profile native-dev -- --ignored --nocapture
   perf_streaming`).
+- A completed context compaction folds the turns before it into one summary row.
+  Only presentation is hidden: source rows, provider context and the saved
+  transcript are unchanged, and "Show earlier turns" opens them again. The
+  verdict is cached per source row and dropped when that row is patched.
+- Wrapped-line counts for a prompt's trailing chunk are cached by message
+  content, so shaping text is not repeated on every frame a prompt is visible.
+  Row and code element ids now derive from a row's domain key, not its list
+  index, so a folded range cannot mis-key them.
+- The new-provider-session history fallback collects rows before joining them
+  instead of prepending to a `String` one row at a time, and counts separators
+  against its 32 KiB budget.
 
 ## Known costs, in the order they are worth fixing
 
@@ -92,6 +103,12 @@ Idle is genuinely idle: no timer keeps drawing when nothing is happening.
    on every delta (`visuals::placements` over `self.source[start..]`). One
    message is cheap; a long reply near the end of a turn pays for the whole
    message at 25 Hz.
+4. **Blob-backed shared sessions rewrite their whole history on each save.**
+   `shared_write_rows` parses all of `blocks_json`, merges, re-encodes it and
+   re-hashes it every 650 ms while streaming (`store/shared.rs`). Indexed
+   sessions limit this to the newest 10 turns. Migrating a blob session to
+   indexed paging changes row indices, so it belongs in an offline import,
+   not in a live save path.
 
 ## Not the problem
 
