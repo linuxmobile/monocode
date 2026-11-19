@@ -151,6 +151,12 @@ struct CodeContext {
     message_start: usize,
     assistant: bool,
 }
+/// Placements already collected for one source row, so a streamed delta only
+/// scans the text that was actually added.
+struct PlacementScan {
+    bytes: usize,
+    pending: bool,
+}
 #[derive(Clone)]
 enum Body {
     RemotePlan(crate::conversation::remote_plans::Plan),
@@ -716,6 +722,10 @@ pub(crate) struct TranscriptView {
     tool_panel_rows: HashMap<usize, bool>,
     /// Whether a source row is a completed compaction, with the same lifetime.
     compaction_rows: HashMap<usize, bool>,
+    /// Where placement scanning reached in each assistant row.
+    placement_scans: HashMap<usize, PlacementScan>,
+    /// Placements contributed by each assistant row, so a replaced row can drop its own.
+    placements_by_row: HashMap<usize, HashSet<String>>,
     /// Messages entering the chat, by source start, as useBottomChatMotion.
     entrances: HashMap<usize, Instant>,
     /// The emoji a Mono answered a prompt with, by the prompt's start.
@@ -2509,6 +2519,8 @@ impl TranscriptView {
             hover_rows: HashMap::new(),
             tool_panel_rows: HashMap::new(),
             compaction_rows: HashMap::new(),
+            placement_scans: HashMap::new(),
+            placements_by_row: HashMap::new(),
             entrances: HashMap::new(),
             reactions: HashMap::new(),
             follow: Follow::default(),
@@ -2928,9 +2940,45 @@ impl TranscriptView {
         );
         let known = self.source.len();
         let written = rows.len();
-        for (ix, row) in rows.into_iter().enumerate() {
-            let ix = start + ix;
+        if start == 0 {
+            self.placed.clear();
+            self.placements_by_row.clear();
+            self.placement_scans.clear();
+        }
+        let mut placed_changed = false;
+        for (offset, row) in rows.into_iter().enumerate() {
+            let ix = start + offset;
             let bytes = row.text.capacity().saturating_add(row.role.capacity());
+            let old_ids = self.placements_by_row.remove(&ix).unwrap_or_default();
+            for id in &old_ids {
+                self.placed.remove(id);
+            }
+            let previous_scan = self.placement_scans.remove(&ix);
+            let full = previous_scan
+                .as_ref()
+                .is_none_or(|scan| scan.pending || row.text.len() < scan.bytes);
+            let from = if full {
+                0
+            } else {
+                previous_scan.as_ref().unwrap().bytes.saturating_sub(9)
+            };
+            let mut ids = HashSet::new();
+            if row.role == "assistant" {
+                if !full {
+                    ids.extend(old_ids.iter().cloned());
+                }
+                visuals::placements(&row.text[from..], &mut ids);
+                self.placement_scans.insert(
+                    ix,
+                    PlacementScan {
+                        bytes: row.text.len(),
+                        pending: visuals::placement_pending(&row.text),
+                    },
+                );
+                self.placements_by_row.insert(ix, ids.clone());
+            }
+            self.placed.extend(ids.iter().cloned());
+            placed_changed |= ids != old_ids;
             if ix < self.source.len() {
                 let old = &self.source[ix];
                 self.source_bytes = self
@@ -2947,21 +2995,15 @@ impl TranscriptView {
                 .get(start)
                 .is_some_and(|row| row.role == "visual")
         });
+        let live = |at: &usize| *at < self.source.len();
         self.tool_panel_rows
-            .retain(|&at, _| at < start || at >= start + written);
+            .retain(|&at, _| live(&at) && (at < start || at >= start + written));
         self.compaction_rows
-            .retain(|&at, _| at < start || at >= start + written);
-        if start == 0 {
-            self.placed.clear();
-        }
+            .retain(|&at, _| live(&at) && (at < start || at >= start + written));
+        self.placements_by_row.retain(|&at, _| live(&at));
+        self.placement_scans.retain(|&at, _| live(&at));
         self.published.retain(|_, (at, _)| *at < start);
-        let placed = self.placed.len();
-        for row in &self.source[start..] {
-            if row.role == "assistant" {
-                visuals::placements(&row.text, &mut self.placed);
-            }
-        }
-        let placed = self.placed.len() != placed;
+        let placed = placed_changed;
         if known == 0 && self.mono && !self.streaming {
             self.history_start = history::page_start(&self.source, self.source.len());
         }
@@ -7800,6 +7842,125 @@ mod scroll_tests {
                 );
                 view.jump_to_bottom(cx);
                 assert!(!view.show_jump && view.list.is_following_tail());
+            })
+            .unwrap();
+    }
+}
+
+#[cfg(test)]
+mod placement_tests {
+    use super::*;
+    use gpui_kit::{TestAppContext, WindowBounds, WindowOptions, point};
+
+    fn answer(text: &str) -> Row {
+        Row {
+            role: "assistant".into(),
+            text: text.into(),
+            first: true,
+            sent_at: None,
+        }
+    }
+
+    fn chat(cx: &mut TestAppContext) -> gpui_kit::WindowHandle<TranscriptView> {
+        cx.update(|cx| {
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds::new(
+                        point(px(0.), px(0.)),
+                        size(px(900.), px(600.)),
+                    ))),
+                    ..Default::default()
+                },
+                |_, cx| cx.new(|_| TranscriptView::new()),
+            )
+            .unwrap()
+        })
+    }
+
+    #[gpui_kit::test]
+    fn appended_markers_are_found_even_when_split_across_deltas(cx: &mut TestAppContext) {
+        let window = chat(cx);
+        window
+            .update(cx, |view, _, cx| {
+                view.patch(
+                    0,
+                    vec![answer("first ![one](visual:one). second ![two](visual:tw")],
+                    cx,
+                );
+                assert!(view.placed.contains("one"));
+                assert!(!view.placed.contains("two"));
+                assert!(view.placement_scans[&0].pending);
+
+                view.patch(
+                    0,
+                    vec![answer(
+                        "first ![one](visual:one). second ![two](visual:two).",
+                    )],
+                    cx,
+                );
+                assert!(view.placed.contains("one"));
+                assert!(view.placed.contains("two"));
+                assert!(!view.placement_scans[&0].pending);
+                assert_eq!(
+                    view.placement_scans[&0].bytes,
+                    "first ![one](visual:one). second ![two](visual:two).".len()
+                );
+            })
+            .unwrap();
+    }
+
+    #[gpui_kit::test]
+    fn replacing_a_row_drops_only_its_own_placements(cx: &mut TestAppContext) {
+        let window = chat(cx);
+        window
+            .update(cx, |view, _, cx| {
+                view.patch(
+                    0,
+                    vec![answer("![one](visual:one)"), answer("![two](visual:two)")],
+                    cx,
+                );
+                assert!(view.placed.contains("one") && view.placed.contains("two"));
+
+                view.patch(1, vec![answer("no marker here")], cx);
+                assert!(!view.placed.contains("two"));
+                assert!(view.placed.contains("one"));
+            })
+            .unwrap();
+    }
+
+    #[gpui_kit::test]
+    fn a_marker_prefix_split_across_deltas_is_still_found(cx: &mut TestAppContext) {
+        let window = chat(cx);
+        window
+            .update(cx, |view, _, cx| {
+                view.patch(
+                    0,
+                    vec![answer("placeholder"), answer("start ![two](vis")],
+                    cx,
+                );
+                assert!(!view.placed.contains("two"));
+                view.patch(1, vec![answer("start ![two](visual:two).")], cx);
+                assert!(view.placed.contains("two"));
+            })
+            .unwrap();
+    }
+
+    #[gpui_kit::test]
+    fn a_shorter_replacement_rescans_the_whole_row(cx: &mut TestAppContext) {
+        let window = chat(cx);
+        window
+            .update(cx, |view, _, cx| {
+                view.patch(
+                    0,
+                    vec![
+                        answer("placeholder"),
+                        answer("![one](visual:one) and a long tail of other text"),
+                    ],
+                    cx,
+                );
+                view.patch(1, vec![answer("![two](visual:two)")], cx);
+                assert!(!view.placed.contains("one"));
+                assert!(view.placed.contains("two"));
             })
             .unwrap();
     }

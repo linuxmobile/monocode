@@ -27,6 +27,19 @@ pub(crate) fn placements(text: &str, out: &mut HashSet<String>) {
     }
 }
 
+/// Whether the text ends in a marker whose id is still streaming: only then
+/// can an appended delta complete a placement that started before the cut.
+pub(crate) fn placement_pending(text: &str) -> bool {
+    let Some(at) = text.rfind("](visual:") else {
+        return false;
+    };
+    let rest = &text[at + 9..];
+    !rest.contains(')')
+        && rest
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-'))
+}
+
 impl TranscriptView {
     fn visual_view(
         &mut self,
@@ -258,5 +271,27 @@ mod tests {
             view.replace_history(Vec::new(), cx);
             assert!(view.visuals.is_empty());
         });
+    }
+
+    /// Ignore; this measures the scan primitive, not a whole transcript frame.
+    #[test]
+    #[ignore]
+    fn perf_placement_scan_is_linear_in_the_delta() {
+        use std::time::Instant;
+
+        let settled = format!("{} ![one](visual:one)", "word ".repeat(600_000));
+        let appended = format!("{settled} ![two](visual:two)");
+        let round = |text: &str, expected: &str| {
+            let start = Instant::now();
+            for _ in 0..20 {
+                let mut found = HashSet::new();
+                placements(text, &mut found);
+                assert!(found.contains(expected));
+            }
+            start.elapsed().as_secs_f64() * 1000. / 20.
+        };
+        let whole = round(&appended, "one");
+        let delta = round(&appended[settled.len().saturating_sub(9)..], "two");
+        println!("full={whole:.3}ms windowed={delta:.3}ms");
     }
 }

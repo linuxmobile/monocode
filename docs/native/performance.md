@@ -81,6 +81,11 @@ Idle is genuinely idle: no timer keeps drawing when nothing is happening.
 - The new-provider-session history fallback collects rows before joining them
   instead of prepending to a `String` one row at a time, and counts separators
   against its 32 KiB budget.
+- Visual placement scanning is incremental: each assistant row records how far
+  it was scanned and whether a marker id is still streaming, so a delta scans
+  only the new bytes. The scan primitive measures ~1.05 ms full vs ~0.001 ms
+  windowed on 3 MiB of text (`--ignored perf_placement_scan`); source-indexed
+  caches now also survive history paging.
 
 ## Known costs, in the order they are worth fixing
 
@@ -99,10 +104,9 @@ Idle is genuinely idle: no timer keeps drawing when nothing is happening.
    this tree. The reuse decision lives in GPUI Fast's retained-layout cache
    (`Window::dirty_views`, `reusable_cached`), not in this crate, so making
    those two tests pass means fixing or upgrading the renderer.
-3. **`patch_view` re-places markers over the whole tail** of a streamed reply
-   on every delta (`visuals::placements` over `self.source[start..]`). One
-   message is cheap; a long reply near the end of a turn pays for the whole
-   message at 25 Hz.
+3. ~~**`patch_view` re-places markers over the whole tail** of a streamed reply
+   on every delta.~~ Fixed: placements are tracked per source row and only the
+   appended bytes are scanned.
 4. **Blob-backed shared sessions rewrite their whole history on each save.**
    `shared_write_rows` parses all of `blocks_json`, merges, re-encodes it and
    re-hashes it every 650 ms while streaming (`store/shared.rs`). Indexed

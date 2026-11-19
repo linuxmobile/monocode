@@ -251,6 +251,10 @@ impl TranscriptView {
         };
         map(&mut self.visuals, f);
         map(&mut self.prepared_parsers, f);
+        map(&mut self.tool_panel_rows, f);
+        map(&mut self.compaction_rows, f);
+        map(&mut self.placement_scans, f);
+        map(&mut self.placements_by_row, f);
         map(&mut self.entrances, f);
         map(&mut self.reactions, f);
         map(&mut self.note_feedback, f);
@@ -269,6 +273,7 @@ impl TranscriptView {
         set(&mut self.expanded, f);
         set(&mut self.expanded_prompts, f);
         set(&mut self.clamped_prompts, f);
+        set(&mut self.expanded_compactions, f);
         set(&mut self.windowed_phases, f);
         set(&mut self.seen_steps, f);
         self.action_anchors = std::mem::take(&mut self.action_anchors)
@@ -410,6 +415,10 @@ impl TranscriptView {
         self.history_loading = false;
         self.history_requested = false;
         self.history_search = None;
+        self.tool_panel_rows.clear();
+        self.compaction_rows.clear();
+        self.placements_by_row.clear();
+        self.placement_scans.clear();
         self.prepared_parsers = HashMap::new();
         self.mono_groups = Default::default();
         self.attachment_images = HashMap::new();
@@ -457,6 +466,10 @@ impl TranscriptView {
         // Reopening also handles a source that became empty in another window.
         self.source = Vec::new();
         self.source_bytes = 0;
+        self.tool_panel_rows.clear();
+        self.compaction_rows.clear();
+        self.placements_by_row.clear();
+        self.placement_scans.clear();
         self.messages = Vec::new();
         self.rows = Vec::new();
         self.history_start = 0;
