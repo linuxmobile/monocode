@@ -5,9 +5,15 @@ mod remote;
 pub mod report;
 use serde::Deserialize;
 use std::{
+    io::Read,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, ExitStatus, Stdio},
+    sync::mpsc,
+    thread,
+    time::{Duration, Instant},
 };
+
+const METADATA_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Branch {
@@ -50,6 +56,77 @@ pub(crate) fn git(cwd: &Path, args: &[&str]) -> Result<String, String> {
     }
     String::from_utf8(out.stdout).map_err(|e| e.to_string())
 }
+pub(crate) fn command_stdout(
+    command: &mut Command,
+    timeout: Duration,
+) -> Result<(ExitStatus, Vec<u8>, Vec<u8>), String> {
+    let mut child = command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Could not run Git: {e}"))?;
+    let mut stdout = child.stdout.take().ok_or("Could not read Git output")?;
+    let mut stderr = child.stderr.take().ok_or("Could not read Git errors")?;
+    let (out_tx, out_rx) = mpsc::channel();
+    thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = stdout.read_to_end(&mut bytes).map(|_| bytes);
+        let _ = out_tx.send(result);
+    });
+    let (err_tx, err_rx) = mpsc::channel();
+    thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = stderr.read_to_end(&mut bytes).map(|_| bytes);
+        let _ = err_tx.send(result);
+    });
+    let deadline = Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                let out = out_rx
+                    .recv_timeout(remaining)
+                    .map_err(|_| "Could not read Git output".to_owned())?
+                    .map_err(|e| e.to_string())?;
+                let err = err_rx
+                    .recv_timeout(remaining)
+                    .map_err(|_| "Could not read Git errors".to_owned())?
+                    .map_err(|e| e.to_string())?;
+                return Ok((status, out, err));
+            }
+            Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(1)),
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("Git took too long".into());
+            }
+            Err(e) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("Could not run Git: {e}"));
+            }
+        }
+    }
+}
+
+fn git_metadata(cwd: &Path, args: &[&str]) -> Result<String, String> {
+    if crate::files::remote::is_remote(cwd) {
+        return Err("This isn’t available for projects on another machine yet.".into());
+    }
+    let mut command = Command::new("git");
+    command
+        .current_dir(cwd)
+        .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0");
+    crate::process::configure_child(&mut command);
+    let (status, stdout, stderr) = command_stdout(&mut command, METADATA_TIMEOUT)?;
+    if !status.success() {
+        return Err(String::from_utf8_lossy(&stderr).trim().to_owned());
+    }
+    String::from_utf8(stdout).map_err(|e| e.to_string())
+}
+
 /// Where a session's own paths stand against `HEAD`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SessionChanges {
@@ -179,13 +256,13 @@ pub fn snapshot(cwd: &Path) -> Result<Snapshot, String> {
     if crate::files::remote::is_remote(cwd) {
         return remote::snapshot(cwd);
     }
-    let root = git(cwd, &["rev-parse", "--show-toplevel"])?;
-    let current = git(cwd, &["symbolic-ref", "--short", "HEAD"])
+    let root = git_metadata(cwd, &["rev-parse", "--show-toplevel"])?;
+    let current = git_metadata(cwd, &["symbolic-ref", "--short", "HEAD"])
         .ok()
         .map(|s| s.trim().to_owned());
     let detached = current.is_none();
     let current = current.or_else(|| {
-        git(cwd, &["rev-parse", "--short", "HEAD"])
+        git_metadata(cwd, &["rev-parse", "--short", "HEAD"])
             .ok()
             .map(|s| s.trim().to_owned())
     });
@@ -195,7 +272,7 @@ pub fn snapshot(cwd: &Path) -> Result<Snapshot, String> {
     let linked = trees
         .iter()
         .any(|t| !t.main && std::fs::canonicalize(&t.path).ok().as_ref() == Some(&root));
-    let branches = git(
+    let branches = git_metadata(
         cwd,
         &[
             "for-each-ref",
@@ -237,7 +314,7 @@ pub fn worktrees(cwd: &Path) -> Result<Vec<Worktree>, String> {
     }
     let mut trees = Vec::new();
     let mut tree = Worktree::default();
-    for field in git(cwd, &["worktree", "list", "--porcelain", "-z"])?.split('\0') {
+    for field in git_metadata(cwd, &["worktree", "list", "--porcelain", "-z"])?.split('\0') {
         if field.is_empty() {
             if !tree.path.is_empty() {
                 tree.main = trees.is_empty();
@@ -437,6 +514,29 @@ pub fn create_project_worktree(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn bounded_git_output_drains_more_than_a_pipe() {
+        let mut command = Command::new("sh");
+        command.args([
+            "-c",
+            "i=0; while [ $i -lt 12000 ]; do printf 'metadata line\\n'; i=$((i+1)); done",
+        ]);
+        let (status, out, err) = command_stdout(&mut command, Duration::from_secs(5)).unwrap();
+        assert!(status.success());
+        assert_eq!(out.iter().filter(|&&byte| byte == b'\n').count(), 12000);
+        assert!(err.is_empty());
+    }
+    #[test]
+    fn bounded_git_output_kills_a_stalled_child() {
+        let started = Instant::now();
+        let mut command = Command::new("sh");
+        command.args(["-c", "exec sleep 30"]);
+        assert_eq!(
+            command_stdout(&mut command, Duration::from_millis(50)).unwrap_err(),
+            "Git took too long"
+        );
+        assert!(started.elapsed() < Duration::from_secs(5));
+    }
     #[test]
     fn uncommitted_only_checks_the_sessions_paths_staged_or_unstaged() {
         let temp = tempfile::tempdir().unwrap();

@@ -125,6 +125,7 @@ pub struct Pr {
 const HISTORY_DEFAULT: u32 = 200;
 const HISTORY_MAX: u32 = 500;
 const MAX_UNTRACKED_BYTES: u64 = 1024 * 1024;
+const GIT_METADATA_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 /// Uncommitted line counts: staged + unstaged vs HEAD, plus untracked
 /// (gitignore-aware) files counted as additions.
@@ -1355,11 +1356,14 @@ pub fn git_dirs(root: &Path) -> Vec<std::path::PathBuf> {
 }
 
 fn git_stdout(root: &Path, args: &[&str]) -> Option<String> {
-    let output = git_cmd().arg("-C").arg(root).args(args).output().ok()?;
-    if !output.status.success() {
+    let mut command = git_cmd();
+    command.arg("-C").arg(root).args(args);
+    let (status, stdout, _) =
+        crate::git::command_stdout(&mut command, GIT_METADATA_TIMEOUT).ok()?;
+    if !status.success() {
         return None;
     }
-    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let text = String::from_utf8_lossy(&stdout).trim().to_string();
     if text.is_empty() {
         None
     } else {
