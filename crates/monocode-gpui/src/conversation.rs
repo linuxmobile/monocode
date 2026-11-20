@@ -198,7 +198,7 @@ pub(crate) struct Conversation {
     question_overlay: crate::questions::Overlay,
     controls: Option<std::sync::mpsc::Sender<Control>>,
     branch: Option<String>,
-    git: Option<monocode_core::git::Snapshot>,
+    git: Option<Arc<monocode_core::git::Snapshot>>,
     git_picker: Option<Entity<GitPicker>>,
     git_events: Option<Subscription>,
     preparing_worktree: bool,

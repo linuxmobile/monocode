@@ -5,7 +5,7 @@ use gpui_kit::{
     div, prelude::*, px,
 };
 use monocode_core::git::{self, Snapshot};
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Mode {
@@ -87,7 +87,7 @@ pub(crate) struct GitPicker {
     cwd: PathBuf,
     mode: Mode,
     selected: Option<String>,
-    state: Option<Snapshot>,
+    state: Option<Arc<Snapshot>>,
     search: Entity<input::Input>,
     active: usize,
     busy: bool,

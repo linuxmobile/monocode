@@ -17,7 +17,7 @@ use gpui_kit::{
 use monocode_core::{
     agent::AccessMode, git::Snapshot, project_appearance::ProjectAppearance, provider::Kind,
 };
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 pub(crate) const WIDTH: f32 = 680.;
 pub(crate) const INITIAL_HEIGHT: f32 = 128.;
@@ -180,7 +180,7 @@ pub(crate) struct QuickComposer {
     fast: bool,
     access: AccessMode,
     workspace: Workspace,
-    git: Option<Snapshot>,
+    git: Option<Arc<Snapshot>>,
     git_settled: bool,
     git_epoch: usize,
     attachments: Vec<PathBuf>,

@@ -52,6 +52,7 @@ pub(crate) struct SearchView {
     /// Floating command panel; otherwise the original full page.
     panel: bool,
     files: Vec<monocode_core::files::ProjectFile>,
+    file_index: monocode_core::search::FilenameIndex,
     scope: Scope,
     query: String,
     hits: Vec<Hit>,
@@ -113,6 +114,7 @@ impl SearchView {
             let result = work.await;
             let _ = this.update(cx, |this, cx| {
                 if let Ok(files) = result {
+                    this.file_index = monocode_core::search::FilenameIndex::new(files.clone());
                     this.files = files;
                     this.rank(cx);
                 }
@@ -132,6 +134,7 @@ impl SearchView {
             original_header: None,
             panel: sources.panel,
             files: vec![],
+            file_index: monocode_core::search::FilenameIndex::default(),
             scope: Scope::All,
             query: String::new(),
             hits: vec![],
@@ -259,7 +262,7 @@ impl SearchView {
                     .into_iter()
                     .chain(self.local.clone())
                     .chain(self.remote.clone())
-                    .chain(search::filenames(&self.files, &self.query, &self.recent))
+                    .chain(self.file_index.rank(&self.query, &self.recent))
                     .chain(self.content.clone())
                     .chain(search::projects(&self.projects, &self.query)),
                 self.scope,
