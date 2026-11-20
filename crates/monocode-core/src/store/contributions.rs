@@ -23,7 +23,6 @@ impl Store {
     }
 
     /// A connection-local revision of writes to the transcript database.
-    // shortcut: unrelated and legacy marker writes trigger rescans, use a transcript-only revision if costly.
     pub fn contribution_history_version(&self) -> Result<(u64, i64, u64), String> {
         self.conn
             .query_row("PRAGMA data_version", [], |row| row.get(0))

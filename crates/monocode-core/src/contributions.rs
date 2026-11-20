@@ -616,6 +616,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let git = |args: &[&str]| crate::git::git(dir.path(), args).unwrap();
         git(&["init", "-q", "--object-format=sha1"]);
+        git(&["config", "tag.gpgsign", "false"]);
         assert_eq!(
             git(&["mktree"]).trim(),
             "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
@@ -664,6 +665,7 @@ mod tests {
         git(&["config", "user.email", "mono@example.com"]);
         git(&["config", "user.name", "Mono"]);
         git(&["config", "commit.gpgsign", "false"]);
+        git(&["config", "tag.gpgsign", "false"]);
         std::fs::write(dir.path().join("a.txt"), "one\ntwo\n").unwrap();
         git(&["add", "a.txt"]);
         let output = git(&["commit", "-m", "Initial"]);

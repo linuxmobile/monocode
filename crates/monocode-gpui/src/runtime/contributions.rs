@@ -45,7 +45,6 @@ pub(crate) fn record(store: &Database, session: i64, cwd: &str, tool: &ToolCall)
             .collect();
         if let Ok(store) = locked(&store) {
             for (item, resolved) in resolved {
-                // shortcut: unresolved commits are retried from history, upgrade when checkout provenance is stored.
                 if !resolved || store.record_contribution(&item).is_err() {
                     invalidate(&store, session);
                 }
