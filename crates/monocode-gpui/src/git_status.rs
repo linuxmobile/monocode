@@ -370,7 +370,10 @@ mod tests {
     #[gpui_kit::test]
     fn line_count_edits_leave_the_listing_and_refs_alone(cx: &mut gpui_kit::TestAppContext) {
         use gpui_kit::AppContext as _;
-        let dir = std::env::temp_dir().join(format!("monocode-git-listing-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "monocode-git-listing-{}",
+            monocode_core::mono::new_id()
+        ));
         std::fs::create_dir_all(&dir).unwrap();
         let root = dir.canonicalize().unwrap();
         let git = |args: &[&str]| {
